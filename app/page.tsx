@@ -1,10 +1,16 @@
 import { getDashboardData } from "@/lib/data";
+import { RpmForm } from "@/app/components/RpmForm";
 
 export const revalidate = 0; // sempre buscar dado fresco
 
 function formatNumber(n: number | null | undefined) {
   if (n == null) return "—";
   return new Intl.NumberFormat("pt-BR").format(Math.round(n));
+}
+
+function formatCurrency(n: number | null | undefined) {
+  if (n == null) return "—";
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 }
 
 function formatDate(iso: string | null | undefined) {
@@ -33,7 +39,8 @@ export default async function Home() {
           <h1 className="title">Painel de Acompanhamento</h1>
           <p className="subtitle">
             Views por dia, e histórico de trocas de título, thumbnail e descrição — coletados
-            automaticamente via YouTube Data API v3. Retenção, CTR e impressões vêm do Studio.
+            automaticamente via YouTube Data API v3. RPM é inserido manualmente e a receita é
+            calculada automaticamente.
           </p>
         </div>
         <div className="sync-pill">
@@ -53,14 +60,14 @@ export default async function Home() {
             <li>Views acumuladas e views/dia de cada vídeo</li>
             <li>Título, descrição e thumbnail atuais</li>
             <li>Histórico de quando cada um desses campos foi alterado</li>
-            <li>CTR, impressões e retenção, quando importados do Studio</li>
+            <li>Receita estimada, a partir do RPM informado manualmente</li>
           </ol>
         </div>
       )}
 
       {hasData && (
         <div className="grid">
-          {rows.map(({ video, latest, viewsPerDay, daysLive, manual, changes }) => (
+          {rows.map(({ video, latest, viewsPerDay, daysLive, manual, revenue, changes }) => (
             <div className="card facet" key={video.id}>
               {latest?.thumbnail_url && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -90,6 +97,16 @@ export default async function Home() {
                 <div className="stat">
                   <div className="stat-value">{manual?.retention_pct != null ? `${manual.retention_pct}%` : "—"}</div>
                   <div className="stat-label">retenção (studio)</div>
+                </div>
+              </div>
+
+              <div className="stat-row">
+                <div className="stat">
+                  <div className="stat-value malachite">{formatCurrency(revenue)}</div>
+                  <div className="stat-label">receita estimada</div>
+                </div>
+                <div className="stat">
+                  <RpmForm videoId={video.id} currentRpm={manual?.rpm ?? null} />
                 </div>
               </div>
 
