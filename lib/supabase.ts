@@ -5,6 +5,16 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+/**
+ * Cliente com service_role — ignora RLS. Só pode ser usado em código que roda
+ * no servidor (Route Handlers, Server Actions). NUNCA importar isso em um
+ * componente marcado "use client".
+ */
+export function getServiceSupabase() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  return createClient(supabaseUrl, serviceKey);
+}
+
 export type VideoRow = {
   id: string;
   youtube_video_id: string;
