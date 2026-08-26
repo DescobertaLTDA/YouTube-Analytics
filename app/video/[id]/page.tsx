@@ -27,6 +27,16 @@ function formatDate(iso: string | null | undefined) {
   }).format(new Date(iso));
 }
 
+// Formata data apenas para o gráfico (mais curta)
+function formatChartDate(iso: string | null | undefined) {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  return date.toLocaleDateString('pt-BR', { 
+    day: '2-digit', 
+    month: 'short'
+  });
+}
+
 async function getVideoData(videoId: string) {
   const allData = await getDashboardData();
   return allData.find(item => item.video.id === videoId);
@@ -41,12 +51,15 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
 
   const { video, latest, viewsPerDay, daysLive, manual, revenue, history, changes } = videoData;
 
-  const chartData = history.map(snapshot => ({
-    date: formatDate(snapshot.captured_at),
-    views: snapshot.view_count || 0
-  }));
+  // Dados para o gráfico - ordenados por data (mais antigo primeiro)
+  const chartData = [...history]
+    .sort((a, b) => new Date(a.captured_at).getTime() - new Date(b.captured_at).getTime())
+    .map(snapshot => ({
+      date: formatChartDate(snapshot.captured_at),
+      views: snapshot.view_count || 0,
+      fullDate: snapshot.captured_at
+    }));
 
-  // IMPORTANTE: Passe o youtube_video_id para o RoteirosList
   const youtubeVideoId = video.youtube_video_id;
 
   return (
@@ -94,24 +107,44 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
         </div>
       </div>
 
+      {/* GRÁFICO CORRIGIDO */}
       <div className="chart-section">
         <h2>📊 Evolução de Views</h2>
         <div className="chart-container">
           {chartData.length > 1 ? (
             <div className="chart-line-wrapper">
-              <svg className="chart-line" viewBox={`0 0 ${Math.max(chartData.length * 60, 600)} 200`} preserveAspectRatio="xMidYMid meet">
-                <line x1="0" y1="40" x2="100%" y2="40" stroke="#e9ecef" strokeWidth="1" />
-                <line x1="0" y1="80" x2="100%" y2="80" stroke="#e9ecef" strokeWidth="1" />
-                <line x1="0" y1="120" x2="100%" y2="120" stroke="#e9ecef" strokeWidth="1" />
-                <line x1="0" y1="160" x2="100%" y2="160" stroke="#e9ecef" strokeWidth="1" />
+              <svg className="chart-line" viewBox="0 0 600 200" preserveAspectRatio="xMidYMid meet">
+                {/* Grid lines */}
+                <line x1="0" y1="40" x2="600" y2="40" stroke="#e9ecef" strokeWidth="1" />
+                <line x1="0" y1="80" x2="600" y2="80" stroke="#e9ecef" strokeWidth="1" />
+                <line x1="0" y1="120" x2="600" y2="120" stroke="#e9ecef" strokeWidth="1" />
+                <line x1="0" y1="160" x2="600" y2="160" stroke="#e9ecef" strokeWidth="1" />
                 
+                {/* Área sob a linha */}
+                <polygon
+                  points={(() => {
+                    const maxViews = Math.max(...chartData.map(d => d.views), 1);
+                    const points = chartData.map((d, i) => {
+                      const x = (i / (chartData.length - 1)) * 600;
+                      const y = 200 - (d.views / maxViews) * 160 - 20;
+                      return `${x},${y}`;
+                    }).join(' ');
+                    return points + ` 600,180 0,180`;
+                  })()}
+                  fill="url(#areaGradient)"
+                  opacity="0.3"
+                />
+                
+                {/* Linha do gráfico */}
                 <polyline
-                  points={chartData.map((d, i) => {
-                    const maxViews = Math.max(...chartData.map(p => p.views), 1);
-                    const x = i * (600 / Math.max(chartData.length - 1, 1));
-                    const y = 200 - (d.views / maxViews) * 160 - 20;
-                    return `${x},${y}`;
-                  }).join(' ')}
+                  points={(() => {
+                    const maxViews = Math.max(...chartData.map(d => d.views), 1);
+                    return chartData.map((d, i) => {
+                      const x = (i / (chartData.length - 1)) * 600;
+                      const y = 200 - (d.views / maxViews) * 160 - 20;
+                      return `${x},${y}`;
+                    }).join(' ');
+                  })()}
                   fill="none"
                   stroke="#3ecf8e"
                   strokeWidth="3"
@@ -119,17 +152,7 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
                   strokeLinejoin="round"
                 />
                 
-                <polygon
-                  points={chartData.map((d, i) => {
-                    const maxViews = Math.max(...chartData.map(p => p.views), 1);
-                    const x = i * (600 / Math.max(chartData.length - 1, 1));
-                    const y = 200 - (d.views / maxViews) * 160 - 20;
-                    return `${x},${y}`;
-                  }).join(' ') + ` ${(chartData.length - 1) * (600 / Math.max(chartData.length - 1, 1))},180 0,180`}
-                  fill="url(#areaGradient)"
-                  opacity="0.3"
-                />
-                
+                {/* Gradient */}
                 <defs>
                   <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#3ecf8e" stopOpacity="0.8" />
@@ -137,16 +160,17 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
                   </linearGradient>
                 </defs>
                 
+                {/* Pontos de dados */}
                 {chartData.map((d, i) => {
                   const maxViews = Math.max(...chartData.map(p => p.views), 1);
-                  const x = i * (600 / Math.max(chartData.length - 1, 1));
+                  const x = (i / (chartData.length - 1)) * 600;
                   const y = 200 - (d.views / maxViews) * 160 - 20;
                   return (
                     <circle
                       key={i}
                       cx={x}
                       cy={y}
-                      r="4"
+                      r="5"
                       fill="#3ecf8e"
                       stroke="#ffffff"
                       strokeWidth="2"
@@ -154,8 +178,9 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
                   );
                 })}
                 
+                {/* Labels das datas */}
                 {chartData.map((d, i) => {
-                  const x = i * (600 / Math.max(chartData.length - 1, 1));
+                  const x = (i / (chartData.length - 1)) * 600;
                   return (
                     <text
                       key={i}
@@ -165,7 +190,6 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
                       fontSize="10"
                       fill="#97a19c"
                       fontFamily="JetBrains Mono, monospace"
-                      transform={`rotate(-45, ${x}, 195)`}
                     >
                       {d.date}
                     </text>
@@ -179,6 +203,7 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
         </div>
       </div>
 
+      {/* ROTEIRO COM TIMESTAMPS CLICÁVEIS */}
       <div className="roteiro-section">
         <div className="roteiro-header">
           <h2>📝 Roteiro do Vídeo</h2>
@@ -189,7 +214,6 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
           />
         </div>
         
-        {/* Passa o youtubeVideoId para o RoteirosList */}
         <RoteirosList videoId={youtubeVideoId} />
       </div>
 
