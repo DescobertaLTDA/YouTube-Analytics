@@ -1,11 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface RoteiroButtonProps {
   videoId: string;
@@ -36,19 +31,14 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
       let sourceTitle = null;
       let youtubeVideoId = null;
       
-      // Procura o título e URL nas linhas que começam com #
       for (const line of lines) {
         const trimmed = line.trim();
         if (trimmed.startsWith('#')) {
           const content = trimmed.replace(/^#\s*/, '').trim();
-          // Verifica se é URL
           if (content.includes('youtube.com') || content.includes('youtu.be')) {
             const match = content.match(/(?:watch\?v=|watch\/|youtu\.be\/)([a-zA-Z0-9_-]{6,})/);
-            if (match) {
-              youtubeVideoId = match[1];
-            }
+            if (match) youtubeVideoId = match[1];
           } else if (!content.includes('tactiq.io') && !content.includes('http')) {
-            // Se não for URL e não for "tactiq.io", provavelmente é o título
             sourceTitle = content;
           }
         }
@@ -59,8 +49,8 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
       const timestampLines = lines.filter(line => timestampRegex.test(line.trim()));
       const segmentCount = timestampLines.length;
 
-      // Calcula duração (último timestamp)
-      let durationSeconds = null;
+      // Calcula duração
+      let durationSeconds = 0;
       if (timestampLines.length > 0) {
         const lastLine = timestampLines[timestampLines.length - 1];
         const match = lastLine.match(/(\d{2}):(\d{2}):(\d{2})\.(\d{3})/);
@@ -70,8 +60,8 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
         }
       }
 
-      // Dados para salvar
-      const dataToSave = {
+      // Dados para enviar
+      const dados = {
         video_id: videoId,
         video_title: videoTitle || sourceTitle || 'Sem título',
         video_label: videoLabel || 'Vídeo',
@@ -80,19 +70,25 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
         youtube_video_id: youtubeVideoId,
         source_title: sourceTitle,
         segment_count: segmentCount,
-        duration_seconds: Math.round(durationSeconds || 0)
+        duration_seconds: Math.round(durationSeconds)
       };
 
-      console.log('Enviando dados:', dataToSave);
+      console.log('📤 Enviando dados:', dados);
 
-      const { error } = await supabase
-        .from('roteiros')
-        .insert([dataToSave]);
+      // Envia via API
+      const response = await fetch('/api/roteiros', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dados)
+      });
 
-      if (error) {
-        console.error('Erro detalhado do Supabase:', error);
-        throw new Error(error.message || 'Erro ao salvar');
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao salvar');
       }
+
+      console.log('✅ Resposta da API:', result);
 
       setMessage({ 
         type: 'success', 
@@ -103,9 +99,9 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
       setTimeout(() => {
         setShowModal(false);
         setMessage(null);
-      }, 3000);
+      }, 2000);
     } catch (error: any) {
-      console.error('Erro ao salvar roteiro:', error);
+      console.error('❌ Erro ao salvar roteiro:', error);
       setMessage({ 
         type: 'error', 
         text: `❌ Erro: ${error.message || 'Tente novamente.'}` 
@@ -157,11 +153,9 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
                   color: 'var(--text-muted)', 
                   marginTop: '6px',
                   display: 'flex',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: '4px'
+                  justifyContent: 'space-between'
                 }}>
-                  <span>📌 O sistema extrai automaticamente os timestamps e capítulos</span>
+                  <span>📌 O sistema extrai automaticamente os timestamps</span>
                   <span>{roteiro.length} caracteres</span>
                 </div>
               </div>
