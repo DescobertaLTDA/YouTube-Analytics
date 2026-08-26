@@ -456,7 +456,6 @@ a {
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
-  cursor: pointer;
   transition: all 0.2s ease;
 }
 
@@ -470,6 +469,11 @@ a {
   align-items: center;
   padding: 12px 16px;
   gap: 12px;
+  cursor: pointer;
+}
+
+.roteiro-item-header:hover {
+  background: var(--malachite-dim);
 }
 
 .roteiro-item-info {
@@ -526,34 +530,69 @@ a {
   color: var(--ink);
 }
 
-.roteiro-texto {
+/* ===== TIMESTAMPS ===== */
+.roteiro-timestamps {
   margin-top: 12px;
   max-height: 400px;
   overflow-y: auto;
-}
-
-.roteiro-texto pre {
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  line-height: 1.7;
-  color: var(--text);
-  white-space: pre-wrap;
-  word-wrap: break-word;
   background: var(--bg);
-  padding: 12px;
   border-radius: 6px;
   border: 1px solid var(--border);
+  padding: 8px 0;
 }
 
-.roteiro-texto::-webkit-scrollbar {
+.roteiro-timestamps-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.roteiro-timestamp-item {
+  display: flex;
+  gap: 12px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s ease;
+  cursor: pointer;
+}
+
+.roteiro-timestamp-item:hover {
+  background: var(--malachite-dim);
+}
+
+.roteiro-timestamp-item:last-child {
+  border-bottom: none;
+}
+
+.roteiro-timestamp-time {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--malachite);
+  flex-shrink: 0;
+  min-width: 70px;
+  font-weight: 600;
+}
+
+.roteiro-timestamp-text {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.roteiro-timestamp-item.chapter .roteiro-timestamp-text {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Scroll */
+.roteiro-timestamps::-webkit-scrollbar {
   width: 6px;
 }
 
-.roteiro-texto::-webkit-scrollbar-track {
+.roteiro-timestamps::-webkit-scrollbar-track {
   background: var(--surface);
 }
 
-.roteiro-texto::-webkit-scrollbar-thumb {
+.roteiro-timestamps::-webkit-scrollbar-thumb {
   background: #c1c7cd;
   border-radius: 3px;
 }
