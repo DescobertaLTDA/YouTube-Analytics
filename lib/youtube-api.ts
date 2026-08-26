@@ -14,6 +14,31 @@ export interface YouTubeVideoData {
   publishedAt: string;
 }
 
+export interface Change {
+  field: string;
+  oldValue: string | null;
+  newValue: string;
+}
+
+export interface ViewImpact {
+  field: string;
+  viewsBefore: number;
+  viewsAfter: number;
+  growth: number;
+  impact: string;
+}
+
+export interface ViewImpactDetailed {
+  field: string;
+  viewsBefore: number;
+  viewsAfter: number;
+  growth: number;
+  growthPerDay: number;
+  trend: string;
+  impact: string;
+  recommendation: string;
+}
+
 /**
  * Busca dados de um vídeo específico no YouTube
  */
@@ -61,7 +86,7 @@ export async function fetchMultipleYouTubeVideos(videoIds: string[]): Promise<Yo
   if (videoIds.length === 0) return [];
   
   // YouTube API limita a 50 IDs por requisição
-  const chunks = [];
+  const chunks: string[][] = [];
   for (let i = 0; i < videoIds.length; i += 50) {
     chunks.push(videoIds.slice(i, i + 50));
   }
@@ -106,8 +131,8 @@ export async function fetchMultipleYouTubeVideos(videoIds: string[]): Promise<Yo
 export function detectChanges(
   previous: SnapshotRow | null,
   current: YouTubeVideoData
-): { field: string; oldValue: string | null; newValue: string }[] {
-  const changes = [];
+): Change[] {
+  const changes: Change[] = [];
 
   if (!previous) {
     // Primeiro snapshot, não há mudanças para detectar
@@ -148,11 +173,11 @@ export function detectChanges(
  * Analisa o impacto da mudança nas views
  */
 export function analyzeViewImpact(
-  changes: { field: string; oldValue: string | null; newValue: string }[],
+  changes: Change[],
   previousViews: number | null,
   currentViews: number,
   daysSinceLastSnapshot: number
-): { field: string; viewsBefore: number; viewsAfter: number; growth: number; impact: string }[] {
+): ViewImpact[] {
   if (!previousViews) return [];
 
   const viewGrowth = currentViews - previousViews;
@@ -172,21 +197,12 @@ export function analyzeViewImpact(
  * Inclui recomendações baseadas no tipo de mudança e tendência
  */
 export function analyzeViewImpactDetailed(
-  changes: { field: string; oldValue: string | null; newValue: string }[],
+  changes: Change[],
   previousViews: number | null,
   currentViews: number,
   daysSinceLastSnapshot: number,
   previousSnapshots: { view_count: number; captured_at: string }[] = []
-): { 
-  field: string; 
-  viewsBefore: number; 
-  viewsAfter: number; 
-  growth: number; 
-  growthPerDay: number;
-  trend: string;
-  impact: string;
-  recommendation: string;
-}[] {
+): ViewImpactDetailed[] {
   if (!previousViews) return [];
 
   const viewGrowth = currentViews - previousViews;
@@ -215,8 +231,6 @@ export function analyzeViewImpactDetailed(
     let recommendation = "Manter estratégia atual";
 
     // Compara crescimento atual com a média anterior
-    const growthDifference = growthPerDay - previousAverageGrowth;
-    
     if (growthPerDay > previousAverageGrowth * 1.2) {
       trend = "melhorou 🚀";
       impact = "positivo 📈";
@@ -356,8 +370,8 @@ export function extractTranscriptInfo(roteiro: string): {
   durationSeconds: number;
 } {
   const lines = roteiro.split('\n');
-  let sourceTitle = null;
-  let youtubeVideoId = null;
+  let sourceTitle: string | null = null;
+  let youtubeVideoId: string | null = null;
   
   for (const line of lines) {
     const trimmed = line.trim();
