@@ -54,3 +54,24 @@ export type ChangeLogRow = {
   new_value: string | null;
   detected_at: string;
 };
+
+export type TranscriptRow = {
+  id: string;
+  video_id: string | null;
+  youtube_video_id: string | null;
+  source_title: string | null;
+  raw_text: string;
+  segment_count: number;
+  duration_seconds: number | null;
+  uploaded_at: string;
+};
+
+export type TranscriptSegmentRow = {
+  id: string;
+  transcript_id: string;
+  segment_order: number;
+  timestamp_label: string;
+  timestamp_seconds: number;
+  text: string;
+  is_chapter: boolean;
+};

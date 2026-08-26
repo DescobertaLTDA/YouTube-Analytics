@@ -1,4 +1,12 @@
-import { supabase, VideoRow, SnapshotRow, ManualAnalyticsRow, ChangeLogRow } from "./supabase";
+import {
+  supabase,
+  VideoRow,
+  SnapshotRow,
+  ManualAnalyticsRow,
+  ChangeLogRow,
+  TranscriptRow,
+  TranscriptSegmentRow,
+} from "./supabase";
 
 export type VideoWithStats = {
   video: VideoRow;
@@ -81,4 +89,45 @@ export async function getDashboardData(): Promise<VideoWithStats[]> {
   }
 
   return results;
+}
+
+export type TranscriptWithSegments = {
+  transcript: TranscriptRow;
+  segments: TranscriptSegmentRow[];
+};
+
+// Lista os transcripts arquivados, cada um com sua minutagem (segments) já
+// ordenada por timestamp — usado na página /transcripts.
+export async function getTranscripts(): Promise<TranscriptWithSegments[]> {
+  const { data: transcripts } = await supabase
+    .from("transcripts")
+    .select("*")
+    .order("uploaded_at", { ascending: false });
+
+  if (!transcripts || transcripts.length === 0) return [];
+
+  const results: TranscriptWithSegments[] = [];
+
+  for (const transcript of transcripts as TranscriptRow[]) {
+    const { data: segments } = await supabase
+      .from("transcript_segments")
+      .select("*")
+      .eq("transcript_id", transcript.id)
+      .order("timestamp_seconds", { ascending: true });
+
+    results.push({ transcript, segments: (segments as TranscriptSegmentRow[]) || [] });
+  }
+
+  return results;
+}
+
+// Lista simplificada de vídeos pra popular o <select> do formulário de
+// importação (vincular a transcrição a um vídeo já cadastrado é opcional).
+export async function getVideoOptions(): Promise<Pick<VideoRow, "id" | "channel_label" | "youtube_video_id">[]> {
+  const { data } = await supabase
+    .from("videos")
+    .select("id, channel_label, youtube_video_id")
+    .order("published_at", { ascending: true });
+
+  return data || [];
 }
