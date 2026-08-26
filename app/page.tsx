@@ -1,5 +1,6 @@
 import { getDashboardData } from "@/lib/data";
 import { RpmForm } from "@/app/components/RpmForm";
+import { RoteiroButton } from "@/app/components/RoteiroButton";
 
 export const revalidate = 0; // sempre buscar dado fresco
 
@@ -43,8 +44,18 @@ export default async function Home() {
             calculada automaticamente.
           </p>
         </div>
-        <div className="sync-pill">
-          última sincronização: <strong>{hasData ? formatDate(rows[0].latest?.captured_at) : "—"}</strong>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-end" }}>
+          <div className="nav-links">
+            <a className="nav-link active" href="/">
+              painel
+            </a>
+            <a className="nav-link" href="/transcripts">
+              transcripts
+            </a>
+          </div>
+          <div className="sync-pill">
+            última sincronização: <strong>{hasData ? formatDate(rows[0].latest?.captured_at) : "—"}</strong>
+          </div>
         </div>
       </div>
 
@@ -108,6 +119,15 @@ export default async function Home() {
                 <div className="stat">
                   <RpmForm videoId={video.id} currentRpm={manual?.rpm ?? null} />
                 </div>
+              </div>
+
+              {/* Botão de Roteiro - NOVO */}
+              <div style={{ marginTop: '12px', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
+                <RoteiroButton 
+                  videoId={video.youtube_video_id}
+                  videoTitle={latest?.title || 'Vídeo sem título'}
+                  videoLabel={video.channel_label || 'Vídeo'}
+                />
               </div>
 
               <div className="changes">
