@@ -49,7 +49,6 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
       const timestampLines = lines.filter(line => timestampRegex.test(line.trim()));
       const segmentCount = timestampLines.length;
 
-      // Calcula duração
       let durationSeconds = 0;
       if (timestampLines.length > 0) {
         const lastLine = timestampLines[timestampLines.length - 1];
@@ -60,9 +59,12 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
         }
       }
 
-      // Dados para enviar
+      // Usa o videoId que veio do YouTube (correto)
+      const videoIdToSave = youtubeVideoId || videoId;
+      console.log('📤 Salvando com video_id:', videoIdToSave);
+
       const dados = {
-        video_id: videoId,
+        video_id: videoIdToSave,
         video_title: videoTitle || sourceTitle || 'Sem título',
         video_label: videoLabel || 'Vídeo',
         roteiro: roteiro.trim(),
@@ -73,9 +75,8 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
         duration_seconds: Math.round(durationSeconds)
       };
 
-      console.log('📤 Enviando dados:', dados);
+      console.log('📤 Dados completos:', dados);
 
-      // Envia via API
       const response = await fetch('/api/roteiros', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -134,6 +135,9 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
               <div className="modal-video-info">
                 <span className="modal-video-label">{videoLabel}</span>
                 <p className="modal-video-title">{videoTitle}</p>
+                <p style={{ fontSize: '11px', color: 'var(--text-faint)', marginTop: '4px' }}>
+                  ID: {videoId}
+                </p>
               </div>
 
               <div className="form-group">
