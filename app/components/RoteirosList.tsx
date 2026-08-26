@@ -34,17 +34,31 @@ export function RoteirosList({ videoId }: RoteirosListProps) {
       }
 
       try {
+        console.log('🔍 Buscando roteiros para:', videoId);
+        
         const response = await fetch(`/api/roteiros?video_id=${encodeURIComponent(videoId)}`);
-        const result = await response.json();
-
+        
+        // Verifica se a resposta é ok
         if (!response.ok) {
-          throw new Error(result.error || 'Erro ao carregar');
+          const text = await response.text();
+          console.error('❌ Resposta não OK:', text);
+          throw new Error(`HTTP ${response.status}: ${text}`);
         }
 
+        // Tenta fazer o parse do JSON
+        let result;
+        try {
+          result = await response.json();
+        } catch (parseError) {
+          console.error('❌ Erro ao parsear JSON:', parseError);
+          throw new Error('Resposta inválida do servidor');
+        }
+
+        console.log('✅ Roteiros via API:', result);
         setRoteiros(result.data || []);
       } catch (error: any) {
         console.error('❌ Erro ao carregar roteiros:', error);
-        setError(error.message);
+        setError(error.message || 'Erro ao carregar roteiros');
       } finally {
         setLoading(false);
       }
@@ -53,39 +67,17 @@ export function RoteirosList({ videoId }: RoteirosListProps) {
     loadRoteiros();
   }, [videoId]);
 
-  // Função para extrair timestamps do texto
-  const extractTimestamps = (text: string) => {
-    const lines = text.split('\n');
-    const timestampRegex = /^(\d{2}:\d{2}:\d{2}\.\d{3})\s+(.*)$/;
-    const segments: { time: string; text: string }[] = [];
-    
-    for (const line of lines) {
-      const match = line.trim().match(timestampRegex);
-      if (match) {
-        segments.push({
-          time: match[1].slice(0, 8), // Pega só HH:MM:SS
-          text: match[2]
-        });
-      }
-    }
-    
-    return segments;
-  };
-
-  // Remove as linhas de cabeçalho do transcript
-  const cleanTranscript = (text: string) => {
-    const lines = text.split('\n');
-    // Remove linhas que começam com # (cabeçalho)
-    const cleaned = lines.filter(line => !line.trim().startsWith('#'));
-    return cleaned.join('\n');
-  };
-
   if (loading) {
     return <p className="text-muted">⏳ Carregando roteiros...</p>;
   }
 
   if (error) {
-    return <p className="text-muted" style={{ color: 'var(--rose)' }}>❌ Erro: {error}</p>;
+    return (
+      <div className="roteiros-empty">
+        <p className="text-muted" style={{ color: 'var(--rose)' }}>❌ Erro: {error}</p>
+        <p className="text-muted-small">Tente recarregar a página ou enviar o roteiro novamente.</p>
+      </div>
+    );
   }
 
   if (roteiros.length === 0) {
@@ -99,59 +91,42 @@ export function RoteirosList({ videoId }: RoteirosListProps) {
 
   return (
     <div className="roteiros-list-container">
-      {roteiros.map((roteiro) => {
-        const segments = extractTimestamps(roteiro.roteiro);
-        const cleanedText = cleanTranscript(roteiro.roteiro);
-        const isExpanded = selectedRoteiro === roteiro.id;
-
-        return (
+      {roteiros.map((roteiro) => (
+        <div 
+          key={roteiro.id} 
+          className="roteiro-item"
+        >
           <div 
-            key={roteiro.id} 
-            className="roteiro-item"
+            className="roteiro-item-header"
+            onClick={() => setSelectedRoteiro(selectedRoteiro === roteiro.id ? null : roteiro.id)}
           >
-            <div 
-              className="roteiro-item-header"
-              onClick={() => setSelectedRoteiro(isExpanded ? null : roteiro.id)}
-            >
-              <div className="roteiro-item-info">
-                <span className="roteiro-item-title">
-                  {roteiro.source_title || roteiro.video_title || 'Roteiro'}
-                </span>
-                <span className="roteiro-item-meta">
-                  {segments.length} segmentos · 
-                  {roteiro.duration_seconds ? ` ${Math.round(roteiro.duration_seconds / 60)}min` : ''} · 
-                  {new Date(roteiro.created_at).toLocaleDateString('pt-BR')}
-                </span>
-              </div>
-              <span className="roteiro-item-toggle">
-                {isExpanded ? '▲' : '▼'}
+            <div className="roteiro-item-info">
+              <span className="roteiro-item-title">
+                {roteiro.source_title || roteiro.video_title || 'Roteiro'}
+              </span>
+              <span className="roteiro-item-meta">
+                {roteiro.segment_count || 0} segmentos · 
+                {roteiro.duration_seconds ? ` ${Math.round(roteiro.duration_seconds / 60)}min` : ''} · 
+                {new Date(roteiro.created_at).toLocaleDateString('pt-BR')}
               </span>
             </div>
-            
-            {isExpanded && (
-              <div className="roteiro-item-content">
-                <div className="roteiro-minutagem">
-                  <strong>⏱️ Minutagem:</strong> {roteiro.minutagem || 'Não especificada'}
-                </div>
-                
-                {/* Timestamps clicáveis */}
-                {segments.length > 0 && (
-                  <div className="roteiro-timestamps">
-                    <div className="roteiro-timestamps-grid">
-                      {segments.map((seg, idx) => (
-                        <div key={idx} className="roteiro-timestamp-item">
-                          <span className="roteiro-timestamp-time">{seg.time}</span>
-                          <span className="roteiro-timestamp-text">{seg.text}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+            <span className="roteiro-item-toggle">
+              {selectedRoteiro === roteiro.id ? '▲' : '▼'}
+            </span>
           </div>
-        );
-      })}
+          
+          {selectedRoteiro === roteiro.id && (
+            <div className="roteiro-item-content">
+              <div className="roteiro-minutagem">
+                <strong>⏱️ Minutagem:</strong> {roteiro.minutagem || 'Não especificada'}
+              </div>
+              <div className="roteiro-texto">
+                <pre>{roteiro.roteiro}</pre>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
