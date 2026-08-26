@@ -1,11 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface Roteiro {
   id: string;
@@ -34,51 +29,22 @@ export function RoteirosList({ videoId }: RoteirosListProps) {
   useEffect(() => {
     async function loadRoteiros() {
       if (!videoId) {
-        console.log('⚠️ videoId vazio, não vai buscar');
         setLoading(false);
         return;
       }
 
-      // Normaliza o video_id (remove caracteres especiais, mantém apenas alfanuméricos)
-      const normalizedVideoId = videoId.trim();
-      console.log('🔍 Buscando roteiros para video_id:', normalizedVideoId);
-      
       try {
-        // Busca TODOS os roteiros primeiro para debug
-        const { data: allData, error: allError } = await supabase
-          .from('roteiros')
-          .select('*')
-          .order('created_at', { ascending: false });
+        const response = await fetch(`/api/roteiros?video_id=${encodeURIComponent(videoId)}`);
+        const result = await response.json();
 
-        if (allError) {
-          console.error('❌ Erro ao buscar todos:', allError);
-        } else {
-          console.log('📋 Todos os roteiros:', allData);
+        if (!response.ok) {
+          throw new Error(result.error || 'Erro ao carregar');
         }
 
-        // Busca filtrado pelo video_id (exato)
-        const { data, error } = await supabase
-          .from('roteiros')
-          .select('*')
-          .eq('video_id', normalizedVideoId)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.error('❌ Erro na consulta filtrada:', error);
-          setError(error.message);
-          throw error;
-        }
-
-        console.log('✅ Roteiros encontrados para este vídeo:', data);
-        setRoteiros(data || []);
-        
-        if (data && data.length === 0) {
-          console.log('⚠️ Nenhum roteiro encontrado para video_id:', normalizedVideoId);
-          console.log('💡 Verifique se o ID está correto. IDs no banco:', allData?.map(r => r.video_id));
-        }
-      } catch (error) {
+        setRoteiros(result.data || []);
+      } catch (error: any) {
         console.error('❌ Erro ao carregar roteiros:', error);
-        setError('Erro ao carregar roteiros');
+        setError(error.message);
       } finally {
         setLoading(false);
       }
@@ -86,6 +52,33 @@ export function RoteirosList({ videoId }: RoteirosListProps) {
 
     loadRoteiros();
   }, [videoId]);
+
+  // Função para extrair timestamps do texto
+  const extractTimestamps = (text: string) => {
+    const lines = text.split('\n');
+    const timestampRegex = /^(\d{2}:\d{2}:\d{2}\.\d{3})\s+(.*)$/;
+    const segments: { time: string; text: string }[] = [];
+    
+    for (const line of lines) {
+      const match = line.trim().match(timestampRegex);
+      if (match) {
+        segments.push({
+          time: match[1].slice(0, 8), // Pega só HH:MM:SS
+          text: match[2]
+        });
+      }
+    }
+    
+    return segments;
+  };
+
+  // Remove as linhas de cabeçalho do transcript
+  const cleanTranscript = (text: string) => {
+    const lines = text.split('\n');
+    // Remove linhas que começam com # (cabeçalho)
+    const cleaned = lines.filter(line => !line.trim().startsWith('#'));
+    return cleaned.join('\n');
+  };
 
   if (loading) {
     return <p className="text-muted">⏳ Carregando roteiros...</p>;
@@ -100,49 +93,65 @@ export function RoteirosList({ videoId }: RoteirosListProps) {
       <div className="roteiros-empty">
         <p className="text-muted">📭 Nenhum roteiro enviado ainda.</p>
         <p className="text-muted-small">Clique em "Enviar Roteiro" para adicionar o transcript deste vídeo.</p>
-        <p className="text-muted-small" style={{ fontSize: '11px', marginTop: '8px', color: 'var(--text-faint)' }}>
-          Debug: video_id = "{videoId}"
-        </p>
       </div>
     );
   }
 
   return (
     <div className="roteiros-list-container">
-      {roteiros.map((roteiro) => (
-        <div 
-          key={roteiro.id} 
-          className="roteiro-item"
-          onClick={() => setSelectedRoteiro(selectedRoteiro === roteiro.id ? null : roteiro.id)}
-        >
-          <div className="roteiro-item-header">
-            <div className="roteiro-item-info">
-              <span className="roteiro-item-title">
-                {roteiro.source_title || roteiro.video_title || 'Roteiro'}
-              </span>
-              <span className="roteiro-item-meta">
-                {roteiro.segment_count || 0} segmentos · 
-                {roteiro.duration_seconds ? ` ${Math.round(roteiro.duration_seconds / 60)}min` : ''} · 
-                {new Date(roteiro.created_at).toLocaleDateString('pt-BR')}
+      {roteiros.map((roteiro) => {
+        const segments = extractTimestamps(roteiro.roteiro);
+        const cleanedText = cleanTranscript(roteiro.roteiro);
+        const isExpanded = selectedRoteiro === roteiro.id;
+
+        return (
+          <div 
+            key={roteiro.id} 
+            className="roteiro-item"
+          >
+            <div 
+              className="roteiro-item-header"
+              onClick={() => setSelectedRoteiro(isExpanded ? null : roteiro.id)}
+            >
+              <div className="roteiro-item-info">
+                <span className="roteiro-item-title">
+                  {roteiro.source_title || roteiro.video_title || 'Roteiro'}
+                </span>
+                <span className="roteiro-item-meta">
+                  {segments.length} segmentos · 
+                  {roteiro.duration_seconds ? ` ${Math.round(roteiro.duration_seconds / 60)}min` : ''} · 
+                  {new Date(roteiro.created_at).toLocaleDateString('pt-BR')}
+                </span>
+              </div>
+              <span className="roteiro-item-toggle">
+                {isExpanded ? '▲' : '▼'}
               </span>
             </div>
-            <span className="roteiro-item-toggle">
-              {selectedRoteiro === roteiro.id ? '▲' : '▼'}
-            </span>
+            
+            {isExpanded && (
+              <div className="roteiro-item-content">
+                <div className="roteiro-minutagem">
+                  <strong>⏱️ Minutagem:</strong> {roteiro.minutagem || 'Não especificada'}
+                </div>
+                
+                {/* Timestamps clicáveis */}
+                {segments.length > 0 && (
+                  <div className="roteiro-timestamps">
+                    <div className="roteiro-timestamps-grid">
+                      {segments.map((seg, idx) => (
+                        <div key={idx} className="roteiro-timestamp-item">
+                          <span className="roteiro-timestamp-time">{seg.time}</span>
+                          <span className="roteiro-timestamp-text">{seg.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-          
-          {selectedRoteiro === roteiro.id && (
-            <div className="roteiro-item-content">
-              <div className="roteiro-minutagem">
-                <strong>⏱️ Minutagem:</strong> {roteiro.minutagem || 'Não especificada'}
-              </div>
-              <div className="roteiro-texto">
-                <pre>{roteiro.roteiro}</pre>
-              </div>
-            </div>
-          )}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
