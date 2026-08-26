@@ -1,84 +1,169 @@
-/**
- * Analisa o impacto da mudança nas views com mais detalhes
- */
-export function analyzeViewImpactDetailed(
-  changes: { field: string; oldValue: string | null; newValue: string }[],
-  previousViews: number | null,
-  currentViews: number,
-  daysSinceLastSnapshot: number,
-  previousSnapshots: { view_count: number; captured_at: string }[] = []
-): { 
-  field: string; 
-  viewsBefore: number; 
-  viewsAfter: number; 
-  growth: number; 
-  growthPerDay: number;
-  trend: string;
-  impact: string;
-  recommendation: string;
-}[] {
-  if (!previousViews) return [];
+import { NextRequest, NextResponse } from "next/server";
+import { getServiceSupabase } from "@/lib/supabase";
+import { 
+  fetchMultipleYouTubeVideos, 
+  detectChanges, 
+  analyzeViewImpact 
+} from "@/lib/youtube-api";
 
-  const viewGrowth = currentViews - previousViews;
-  const growthPerDay = daysSinceLastSnapshot > 0 ? viewGrowth / daysSinceLastSnapshot : viewGrowth;
+export const dynamic = 'force-dynamic';
 
-  // Calcula média de crescimento antes da mudança (últimos 7 dias)
-  let previousAverageGrowth = 0;
-  if (previousSnapshots.length >= 2) {
-    const sorted = previousSnapshots.sort((a, b) => 
-      new Date(a.captured_at).getTime() - new Date(b.captured_at).getTime()
+// ✅ GET - Sincronizar vídeos
+export async function GET(req: NextRequest) {
+  try {
+    // Verifica se tem a chave secreta (para segurança)
+    const authHeader = req.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    const cronSecret = process.env.CRON_SECRET;
+    
+    if (cronSecret && token !== cronSecret && process.env.NODE_ENV === 'production') {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    }
+
+    const supabase = getServiceSupabase();
+
+    // 1. Busca todos os vídeos cadastrados
+    const { data: videos, error: videosError } = await supabase
+      .from("videos")
+      .select("id, youtube_video_id, channel_label")
+      .order("published_at", { ascending: true });
+
+    if (videosError) throw videosError;
+
+    if (!videos || videos.length === 0) {
+      return NextResponse.json({ 
+        success: false, 
+        message: "Nenhum vídeo cadastrado para sincronizar" 
+      });
+    }
+
+    console.log(`📹 Sincronizando ${videos.length} vídeos...`);
+
+    // 2. Busca dados atualizados do YouTube
+    const videoIds = videos.map(v => v.youtube_video_id);
+    const youtubeData = await fetchMultipleYouTubeVideos(videoIds);
+
+    if (youtubeData.length === 0) {
+      return NextResponse.json({ 
+        success: false, 
+        message: "Nenhum dado retornado da API do YouTube" 
+      });
+    }
+
+    console.log(`✅ ${youtubeData.length} vídeos encontrados no YouTube`);
+
+    const results = [];
+    const changesDetected = [];
+
+    // 3. Para cada vídeo, processa os dados
+    for (const video of videos) {
+      const currentData = youtubeData.find(y => y.id === video.youtube_video_id);
+      if (!currentData) continue;
+
+      // Busca o último snapshot
+      const { data: snapshots } = await supabase
+        .from("video_snapshots")
+        .select("*")
+        .eq("video_id", video.id)
+        .order("captured_at", { ascending: false })
+        .limit(1);
+
+      const previousSnapshot = snapshots?.[0] || null;
+
+      // 4. Detecta mudanças
+      const changes = detectChanges(previousSnapshot, currentData);
+      
+      // 5. Calcula impacto nas views
+      let impact = null;
+      if (previousSnapshot && previousSnapshot.view_count !== null) {
+        const daysSince = previousSnapshot.captured_at 
+          ? (new Date().getTime() - new Date(previousSnapshot.captured_at).getTime()) / (1000 * 60 * 60 * 24)
+          : 1;
+        
+        impact = analyzeViewImpact(
+          changes,
+          previousSnapshot.view_count,
+          currentData.viewCount,
+          Math.max(daysSince, 1)
+        );
+      }
+
+      // 6. Salva o novo snapshot
+      const { data: newSnapshot, error: insertError } = await supabase
+        .from("video_snapshots")
+        .insert({
+          video_id: video.id,
+          captured_at: new Date().toISOString(),
+          title: currentData.title,
+          description: currentData.description,
+          thumbnail_url: currentData.thumbnailUrl,
+          view_count: currentData.viewCount,
+          like_count: currentData.likeCount,
+          comment_count: currentData.commentCount,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error(`❌ Erro ao salvar snapshot para ${video.youtube_video_id}:`, insertError);
+        continue;
+      }
+
+      // 7. Se houve mudanças, registra no change_log
+      if (changes.length > 0) {
+        for (const change of changes) {
+          const { error: changeError } = await supabase
+            .from("change_log")
+            .insert({
+              video_id: video.id,
+              changed_field: change.field,
+              old_value: change.oldValue,
+              new_value: change.newValue,
+              detected_at: new Date().toISOString(),
+            });
+
+          if (changeError) {
+            console.error(`❌ Erro ao registrar mudança:`, changeError);
+          }
+        }
+
+        changesDetected.push({
+          video_id: video.youtube_video_id,
+          video_title: video.channel_label,
+          changes: changes,
+          impact: impact,
+        });
+      }
+
+      results.push({
+        video_id: video.youtube_video_id,
+        title: currentData.title,
+        views: currentData.viewCount,
+        has_changes: changes.length > 0,
+        changes: changes,
+        impact: impact,
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      synced_at: new Date().toISOString(),
+      total_videos: videos.length,
+      synced: results.length,
+      changes_detected: changesDetected.length,
+      results: results,
+      changes_detailed: changesDetected,
+    });
+  } catch (error: any) {
+    console.error("❌ Erro na sincronização:", error);
+    return NextResponse.json(
+      { success: false, error: error.message || "Erro interno" },
+      { status: 500 }
     );
-    const recent = sorted.slice(-7); // últimos 7 snapshots
-    
-    if (recent.length >= 2) {
-      const oldestViews = recent[0].view_count;
-      const newestViews = recent[recent.length - 1].view_count;
-      const days = (new Date(recent[recent.length - 1].captured_at).getTime() - 
-                    new Date(recent[0].captured_at).getTime()) / (1000 * 60 * 60 * 24);
-      previousAverageGrowth = days > 0 ? (newestViews - oldestViews) / days : 0;
-    }
   }
+}
 
-  return changes.map((change) => {
-    let trend = "mantido";
-    let impact = "neutro ➡️";
-    let recommendation = "Manter estratégia atual";
-
-    // Compara crescimento atual com a média anterior
-    const growthDifference = growthPerDay - previousAverageGrowth;
-    
-    if (growthPerDay > previousAverageGrowth * 1.2) {
-      trend = "melhorou 🚀";
-      impact = "positivo 📈";
-      recommendation = `A mudança no ${change.field} trouxe um aumento de views! Considere replicar essa estratégia.`;
-    } else if (growthPerDay < previousAverageGrowth * 0.8) {
-      trend = "piorou 📉";
-      impact = "negativo 📉";
-      recommendation = `A mudança no ${change.field} pode ter afetado negativamente as views. Considere reverter ou testar uma nova abordagem.`;
-    } else {
-      recommendation = `A mudança no ${change.field} não teve impacto significativo nas views.`;
-    }
-
-    // Recomendações específicas por campo
-    if (change.field === "thumbnail_url" && trend === "melhorou 🚀") {
-      recommendation = "🖼️ A nova thumbnail está performando bem! Continue testando variações que destacam cores e faces.";
-    } else if (change.field === "thumbnail_url" && trend === "piorou 📉") {
-      recommendation = "🖼️ A nova thumbnail pode estar confundindo os espectadores. Tente algo mais simples ou com mais contraste.";
-    } else if (change.field === "title" && trend === "melhorou 🚀") {
-      recommendation = "📝 O novo título está atraindo mais cliques! Use palavras-chave e gatilhos de curiosidade.";
-    } else if (change.field === "title" && trend === "piorou 📉") {
-      recommendation = "📝 O título pode estar muito longo ou não ter um gancho forte. Tente algo mais direto.";
-    }
-
-    return {
-      field: change.field,
-      viewsBefore: previousViews,
-      viewsAfter: currentViews,
-      growth: viewGrowth,
-      growthPerDay: growthPerDay,
-      trend: trend,
-      impact: impact,
-      recommendation: recommendation,
-    };
-  });
+// ✅ POST - Também executa a sincronização
+export async function POST(req: NextRequest) {
+  return GET(req);
 }
