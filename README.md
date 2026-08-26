@@ -24,6 +24,18 @@ as duas primeiras variáveis automaticamente.
 - `analytics_manual` — CTR, impressões, retenção, RPM (importados manualmente do Studio)
 - `change_log` — histórico de quando título/thumbnail/descrição mudaram
 
+## Importar transcript / roteiro
+
+Na página `/transcripts` dá pra colar o texto exportado do tactiq.io (ou qualquer texto com
+linhas `HH:MM:SS.mmm texto`). O site:
+
+1. Guarda o texto bruto na tabela `transcripts`
+2. Extrai cada linha de timestamp e grava em `transcript_segments` (a "minutagem")
+3. Marca automaticamente linhas tipo `Número 15.` como capítulo, pra navegar rápido
+4. Opcionalmente vincula o transcript a um vídeo já cadastrado em `videos`
+
+Rode a migration `supabase/migrations/0002_transcripts.sql` no projeto Supabase antes de usar.
+
 ## Próximo passo: Edge Function de coleta diária
 
 Ainda falta escrever e agendar a Edge Function que:
