@@ -31,45 +31,72 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
     setMessage(null);
 
     try {
-      // Extrai o título do vídeo do transcript (linha com #)
-      const titleMatch = roteiro.match(/^#\s*(.+)$/m);
-      const extractedTitle = titleMatch ? titleMatch[1] : null;
-
-      // Extrai o ID do YouTube se presente
-      const youtubeIdMatch = roteiro.match(/watch\/([a-zA-Z0-9_-]{6,})/);
-      const youtubeId = youtubeIdMatch ? youtubeIdMatch[1] : null;
-
-      // Conta quantas linhas com timestamp
-      const timestampLines = roteiro.match(/^\d{2}:\d{2}:\d{2}\.\d{3}/gm);
-      const segmentCount = timestampLines ? timestampLines.length : 0;
-
-      // Calcula duração aproximada (último timestamp)
-      const lastTimestamp = roteiro.match(/(\d{2}:\d{2}:\d{2}\.\d{3})\s*[^-]*$/m);
-      let durationSeconds = null;
-      if (lastTimestamp) {
-        const parts = lastTimestamp[1].split(':');
-        durationSeconds = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseFloat(parts[2]);
+      // Extrai informações do transcript
+      const lines = roteiro.split('\n');
+      let sourceTitle = null;
+      let youtubeVideoId = null;
+      
+      // Procura o título e URL nas linhas que começam com #
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('#')) {
+          const content = trimmed.replace(/^#\s*/, '').trim();
+          // Verifica se é URL
+          if (content.includes('youtube.com') || content.includes('youtu.be')) {
+            const match = content.match(/(?:watch\?v=|watch\/|youtu\.be\/)([a-zA-Z0-9_-]{6,})/);
+            if (match) {
+              youtubeVideoId = match[1];
+            }
+          } else if (!content.includes('tactiq.io') && !content.includes('http')) {
+            // Se não for URL e não for "tactiq.io", provavelmente é o título
+            sourceTitle = content;
+          }
+        }
       }
+
+      // Conta segmentos com timestamp
+      const timestampRegex = /^\d{2}:\d{2}:\d{2}\.\d{3}/;
+      const timestampLines = lines.filter(line => timestampRegex.test(line.trim()));
+      const segmentCount = timestampLines.length;
+
+      // Calcula duração (último timestamp)
+      let durationSeconds = null;
+      if (timestampLines.length > 0) {
+        const lastLine = timestampLines[timestampLines.length - 1];
+        const match = lastLine.match(/(\d{2}):(\d{2}):(\d{2})\.(\d{3})/);
+        if (match) {
+          const [_, h, m, s, ms] = match;
+          durationSeconds = parseInt(h) * 3600 + parseInt(m) * 60 + parseInt(s) + parseInt(ms) / 1000;
+        }
+      }
+
+      // Dados para salvar
+      const dataToSave = {
+        video_id: videoId,
+        video_title: videoTitle || sourceTitle || 'Sem título',
+        video_label: videoLabel || 'Vídeo',
+        roteiro: roteiro.trim(),
+        minutagem: sourceTitle || 'Transcript completo',
+        youtube_video_id: youtubeVideoId,
+        source_title: sourceTitle,
+        segment_count: segmentCount,
+        duration_seconds: Math.round(durationSeconds || 0)
+      };
+
+      console.log('Enviando dados:', dataToSave);
 
       const { error } = await supabase
         .from('roteiros')
-        .insert({
-          video_id: videoId,
-          video_title: videoTitle,
-          video_label: videoLabel,
-          roteiro: roteiro.trim(),
-          minutagem: extractedTitle || 'Transcript completo',
-          youtube_video_id: youtubeId,
-          segment_count: segmentCount,
-          duration_seconds: durationSeconds,
-          source_title: extractedTitle
-        });
+        .insert([dataToSave]);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro detalhado do Supabase:', error);
+        throw new Error(error.message || 'Erro ao salvar');
+      }
 
       setMessage({ 
         type: 'success', 
-        text: `✅ Roteiro enviado! ${segmentCount} linhas de minutagem extraídas.` 
+        text: `✅ Roteiro enviado! ${segmentCount} segmentos extraídos.` 
       });
       setRoteiro('');
       
@@ -77,9 +104,12 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
         setShowModal(false);
         setMessage(null);
       }, 3000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao salvar roteiro:', error);
-      setMessage({ type: 'error', text: 'Erro ao enviar roteiro. Tente novamente.' });
+      setMessage({ 
+        type: 'error', 
+        text: `❌ Erro: ${error.message || 'Tente novamente.'}` 
+      });
     } finally {
       setSaving(false);
     }
@@ -120,6 +150,7 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
                   onChange={(e) => setRoteiro(e.target.value)}
                   placeholder={`Cole aqui o transcript exportado do tactiq.io ou qualquer texto com timestamps no formato:\n\n# Título do vídeo\n# https://www.youtube.com/watch/ID\n\n00:00:00.160 Texto do primeiro segmento\n00:00:03.000 Texto do segundo segmento`}
                   required
+                  style={{ minHeight: '200px' }}
                 />
                 <div style={{ 
                   fontSize: '12px', 
@@ -131,7 +162,7 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
                   gap: '4px'
                 }}>
                   <span>📌 O sistema extrai automaticamente os timestamps e capítulos</span>
-                  <span>{roteiro.length}/100000</span>
+                  <span>{roteiro.length} caracteres</span>
                 </div>
               </div>
 
