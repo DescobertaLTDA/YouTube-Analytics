@@ -1,3 +1,4 @@
+import Link from "next/link";  // <-- ADICIONE ESTA LINHA
 import { getDashboardData } from "@/lib/data";
 import { RoteiroButton } from "@/app/components/RoteiroButton";
 import { notFound } from "next/navigation";
