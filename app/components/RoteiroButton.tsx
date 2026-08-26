@@ -16,15 +16,14 @@ interface RoteiroButtonProps {
 export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButtonProps) {
   const [showModal, setShowModal] = useState(false);
   const [roteiro, setRoteiro] = useState("");
-  const [minutagem, setMinutagem] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!roteiro.trim() || !minutagem.trim()) {
-      setMessage({ type: 'error', text: 'Preencha todos os campos!' });
+    if (!roteiro.trim()) {
+      setMessage({ type: 'error', text: 'Cole o roteiro do vídeo!' });
       return;
     }
 
@@ -32,6 +31,26 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
     setMessage(null);
 
     try {
+      // Extrai o título do vídeo do transcript (linha com #)
+      const titleMatch = roteiro.match(/^#\s*(.+)$/m);
+      const extractedTitle = titleMatch ? titleMatch[1] : null;
+
+      // Extrai o ID do YouTube se presente
+      const youtubeIdMatch = roteiro.match(/watch\/([a-zA-Z0-9_-]{6,})/);
+      const youtubeId = youtubeIdMatch ? youtubeIdMatch[1] : null;
+
+      // Conta quantas linhas com timestamp
+      const timestampLines = roteiro.match(/^\d{2}:\d{2}:\d{2}\.\d{3}/gm);
+      const segmentCount = timestampLines ? timestampLines.length : 0;
+
+      // Calcula duração aproximada (último timestamp)
+      const lastTimestamp = roteiro.match(/(\d{2}:\d{2}:\d{2}\.\d{3})\s*[^-]*$/m);
+      let durationSeconds = null;
+      if (lastTimestamp) {
+        const parts = lastTimestamp[1].split(':');
+        durationSeconds = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseFloat(parts[2]);
+      }
+
       const { error } = await supabase
         .from('roteiros')
         .insert({
@@ -39,19 +58,25 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
           video_title: videoTitle,
           video_label: videoLabel,
           roteiro: roteiro.trim(),
-          minutagem: minutagem.trim()
+          minutagem: extractedTitle || 'Transcript completo',
+          youtube_video_id: youtubeId,
+          segment_count: segmentCount,
+          duration_seconds: durationSeconds,
+          source_title: extractedTitle
         });
 
       if (error) throw error;
 
-      setMessage({ type: 'success', text: '✅ Roteiro enviado com sucesso!' });
+      setMessage({ 
+        type: 'success', 
+        text: `✅ Roteiro enviado! ${segmentCount} linhas de minutagem extraídas.` 
+      });
       setRoteiro('');
-      setMinutagem('');
       
       setTimeout(() => {
         setShowModal(false);
         setMessage(null);
-      }, 2000);
+      }, 3000);
     } catch (error) {
       console.error('Erro ao salvar roteiro:', error);
       setMessage({ type: 'error', text: 'Erro ao enviar roteiro. Tente novamente.' });
@@ -86,32 +111,27 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
               </div>
 
               <div className="form-group">
-                <label htmlFor="minutagem">
-                  ⏱️ Minutagem (ex: 00:00 - 05:30)
-                </label>
-                <input
-                  type="text"
-                  id="minutagem"
-                  value={minutagem}
-                  onChange={(e) => setMinutagem(e.target.value)}
-                  placeholder="Ex: 00:00 - 05:30 ou Capítulo 1: Introdução"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
                 <label htmlFor="roteiro">
-                  📄 Roteiro do Vídeo
+                  📄 Cole o transcript completo (formato tactiq.io)
                 </label>
                 <textarea
                   id="roteiro"
                   value={roteiro}
                   onChange={(e) => setRoteiro(e.target.value)}
-                  placeholder="Cole o roteiro completo do vídeo aqui..."
+                  placeholder={`Cole aqui o transcript exportado do tactiq.io ou qualquer texto com timestamps no formato:\n\n# Título do vídeo\n# https://www.youtube.com/watch/ID\n\n00:00:00.160 Texto do primeiro segmento\n00:00:03.000 Texto do segundo segmento`}
                   required
                 />
-                <div className="roteiro-counter">
-                  <span>{roteiro.length}/10000</span>
+                <div style={{ 
+                  fontSize: '12px', 
+                  color: 'var(--text-muted)', 
+                  marginTop: '6px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '4px'
+                }}>
+                  <span>📌 O sistema extrai automaticamente os timestamps e capítulos</span>
+                  <span>{roteiro.length}/100000</span>
                 </div>
               </div>
 
