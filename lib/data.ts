@@ -7,6 +7,7 @@ export type VideoWithStats = {
   viewsPerDay: number | null;
   daysLive: number | null;
   manual: ManualAnalyticsRow | null;
+  revenue: number | null;
   changes: ChangeLogRow[];
   history: SnapshotRow[];
 };
@@ -51,6 +52,14 @@ export async function getDashboardData(): Promise<VideoWithStats[]> {
       .order("report_date", { ascending: false })
       .limit(1);
 
+    const manual = (manualRows && manualRows[0]) || null;
+
+    // Receita estimada = (views totais / 1000) × RPM informado manualmente
+    const revenue =
+      manual?.rpm != null && latest?.view_count != null
+        ? Math.round(((latest.view_count / 1000) * manual.rpm) * 100) / 100
+        : null;
+
     const { data: changeRows } = await supabase
       .from("change_log")
       .select("*")
@@ -64,7 +73,8 @@ export async function getDashboardData(): Promise<VideoWithStats[]> {
       previous,
       viewsPerDay,
       daysLive,
-      manual: (manualRows && manualRows[0]) || null,
+      manual,
+      revenue,
       changes: (changeRows as ChangeLogRow[]) || [],
       history,
     });
