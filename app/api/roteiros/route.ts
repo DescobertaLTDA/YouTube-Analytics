@@ -7,18 +7,13 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
     const videoId = searchParams.get('video_id');
 
-    console.log('📥 GET /api/roteiros - video_id:', videoId);
-
     if (!videoId) {
       return NextResponse.json({ error: 'video_id é obrigatório' }, { status: 400 });
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    
     const supabase = createClient(
-      supabaseUrl,
-      supabaseServiceKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
     const { data, error } = await supabase
@@ -27,19 +22,11 @@ export async function GET(req: NextRequest) {
       .eq('video_id', videoId)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('❌ Erro ao buscar roteiros:', error);
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    if (error) throw error;
 
-    console.log('✅ Roteiros encontrados:', data?.length || 0);
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    console.error('❌ Erro na GET:', error);
-    return NextResponse.json(
-      { error: error.message || 'Erro interno' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
@@ -47,7 +34,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    console.log('📥 POST /api/roteiros - Dados:', body);
 
     const {
       video_id,
@@ -61,20 +47,13 @@ export async function POST(req: NextRequest) {
       duration_seconds
     } = body;
 
-    if (!video_id) {
-      return NextResponse.json({ error: 'video_id é obrigatório' }, { status: 400 });
+    if (!video_id || !roteiro) {
+      return NextResponse.json({ error: 'video_id e roteiro são obrigatórios' }, { status: 400 });
     }
 
-    if (!roteiro || roteiro.trim().length === 0) {
-      return NextResponse.json({ error: 'roteiro é obrigatório' }, { status: 400 });
-    }
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    
     const supabase = createClient(
-      supabaseUrl,
-      supabaseServiceKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
     const { data, error } = await supabase
@@ -92,18 +71,67 @@ export async function POST(req: NextRequest) {
       }])
       .select();
 
-    if (error) {
-      console.error('❌ Erro Supabase:', error);
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+    if (error) throw error;
 
-    console.log('✅ Roteiro salvo com sucesso:', data);
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    console.error('❌ Erro na POST:', error);
-    return NextResponse.json(
-      { error: error.message || 'Erro interno do servidor' },
-      { status: 500 }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// ✅ PUT - Atualizar roteiro
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { id, roteiro, minutagem } = body;
+
+    if (!id || !roteiro) {
+      return NextResponse.json({ error: 'id e roteiro são obrigatórios' }, { status: 400 });
+    }
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
+
+    const { data, error } = await supabase
+      .from('roteiros')
+      .update({ roteiro: roteiro.trim(), minutagem })
+      .eq('id', id)
+      .select();
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, data });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// ✅ DELETE - Deletar roteiro
+export async function DELETE(req: NextRequest) {
+  try {
+    const searchParams = req.nextUrl.searchParams;
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'id é obrigatório' }, { status: 400 });
+    }
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    const { error } = await supabase
+      .from('roteiros')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
