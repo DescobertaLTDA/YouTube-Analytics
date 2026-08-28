@@ -1,29 +1,10 @@
-import { getCreatorEarnings } from "@/lib/data";
-import { SiteNav } from "@/app/components/SiteNav";
-import { CreatorCard } from "@/app/components/CreatorCard";
-import { AtualizarButton } from "@/app/components/AtualizarButton";
-import { RevenueOverrideForm } from "@/app/components/RevenueOverrideForm";
+import Link from "next/link";
+import type { GanhosVideoRow } from "@/lib/data";
 
-export const revalidate = 0;
+const PAGE_SIZE = 10;
 
-function formatDateTime(iso: string | null | undefined) {
-  if (!iso) return "nunca";
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(iso));
-}
-
-function formatDate(iso: string) {
-  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(
-    new Date(iso)
-  );
-}
-
-function formatNumber(n: number) {
+function formatNumber(n: number | null | undefined) {
+  if (n == null) return "—";
   return new Intl.NumberFormat("pt-BR").format(Math.round(n));
 }
 
@@ -31,82 +12,107 @@ function formatCurrency(n: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 }
 
-export default async function GanhosPage() {
-  const {
-    creators,
-    lastSyncedAt,
-    totalVideosScanned,
-    periodStart,
-    periodEnd,
-    periodViews,
-    periodEarnings,
-    isManualRevenue,
-    manualRevenueAmount,
-  } = await getCreatorEarnings();
+function formatDate(iso: string | null) {
+  if (!iso) return "—";
+  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(new Date(iso));
+}
+
+function formatDuration(seconds: number | null) {
+  if (seconds == null) return "—";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+export function GanhosVideoHistory({
+  videos,
+  page,
+}: {
+  videos: GanhosVideoRow[];
+  page: number;
+}) {
+  const totalPages = Math.max(1, Math.ceil(videos.length / PAGE_SIZE));
+  const currentPage = Math.min(Math.max(1, page), totalPages);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageVideos = videos.slice(start, start + PAGE_SIZE);
 
   return (
-    <main className="page">
-      <div className="header-row">
-        <div>
-          <span className="eyebrow">Canal de Pedras e Minerais</span>
-          <h1 className="title">Ganhos por Criador</h1>
-          <p className="subtitle">
-            Views e receita dos últimos 28 dias ({formatDate(periodStart)} –{" "}
-            {formatDate(periodEnd)}, por data de publicação) de cada criador, somando os vídeos
-            marcados com a hashtag dele (#lucas, #matheus, #rafael) — separado entre Shorts e
-            vídeos longos.
-          </p>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-end" }}>
-          <SiteNav active="ganhos" />
-          <div className="sync-pill">
-            última atualização: <strong>{formatDateTime(lastSyncedAt)}</strong>
-          </div>
-          <AtualizarButton />
-        </div>
-      </div>
+    <div className="changes-section">
+      <h2>📼 Histórico de Vídeos · últimos 28 dias</h2>
 
-      {totalVideosScanned === 0 && (
-        <div className="empty facet">
-          <h2>Nenhum vídeo encontrado ainda</h2>
-          <p>
-            Clique em <strong>Atualizar</strong> pra varrer o canal e achar os vídeos com
-            #lucas, #matheus e #rafael no título ou descrição.
-          </p>
+      {videos.length === 0 && <div className="no-changes">Nenhum vídeo no período ainda.</div>}
+
+      {pageVideos.map((v) => (
+        <div className="history-row" key={v.youtubeVideoId}>
+          {v.thumbnailUrl && <img className="history-thumb" src={v.thumbnailUrl} alt={v.title ?? ""} />}
+          <div className="history-main">
+            <a
+              href={`https://youtube.com/watch?v=${v.youtubeVideoId}`}
+              target="_blank"
+              rel="noreferrer"
+              className="history-title"
+            >
+              {v.title ?? "sem título"}
+            </a>
+            <div className="history-meta">
+              <span className="card-label">{v.creatorLabel}</span>
+              <span className="text-muted-small">{v.isShort ? "Short" : "Vídeo longo"}</span>
+              <span className="text-muted-small">{formatDate(v.publishedAt)}</span>
+            </div>
+          </div>
+
+          <div className="history-stats">
+            <div className="history-stat">
+              <span className="history-stat-value malachite">{formatNumber(v.viewCount)}</span>
+              <span className="history-stat-label">views</span>
+            </div>
+            <div className="history-stat">
+              <span className="history-stat-value">{formatNumber(v.likeCount)}</span>
+              <span className="history-stat-label">likes</span>
+            </div>
+            <div className="history-stat">
+              <span className="history-stat-value">{formatNumber(v.commentCount)}</span>
+              <span className="history-stat-label">comentários</span>
+            </div>
+            <div className="history-stat">
+              <span className="history-stat-value">{formatDuration(v.durationSeconds)}</span>
+              <span className="history-stat-label">duração</span>
+            </div>
+            <div className="history-stat">
+              <span className="history-stat-value malachite">{formatCurrency(v.revenue)}</span>
+              <span className="history-stat-label">receita</span>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {totalPages > 1 && (
+        <div className="pagination">
+          <Link
+            href={`/?page=${currentPage - 1}`}
+            className={`pagination-link ${currentPage <= 1 ? "pagination-disabled" : ""}`}
+          >
+            ← anterior
+          </Link>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+            <Link
+              key={n}
+              href={`/?page=${n}`}
+              className={`pagination-link ${n === currentPage ? "pagination-current" : ""}`}
+            >
+              {n}
+            </Link>
+          ))}
+          <Link
+            href={`/?page=${currentPage + 1}`}
+            className={`pagination-link ${currentPage >= totalPages ? "pagination-disabled" : ""}`}
+          >
+            próxima →
+          </Link>
         </div>
       )}
-
-      {totalVideosScanned > 0 && (
-        <>
-          <div className="stats-grid" style={{ marginBottom: 24 }}>
-            <div className="stat-card">
-              <div className="stat-value-large malachite">{formatNumber(periodViews)}</div>
-              <div className="stat-label">Views · últimos 28 dias</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value-large malachite">{formatCurrency(periodEarnings)}</div>
-              <div className="stat-label">
-                Receita total · {isManualRevenue ? "valor real informado" : "estimativa por RPM"}
-              </div>
-            </div>
-            <div className="stat-card">
-              <RevenueOverrideForm currentAmount={manualRevenueAmount} />
-            </div>
-          </div>
-
-          <div className="creator-grid">
-            {creators.map((stats) => (
-              <CreatorCard key={stats.key} stats={stats} />
-            ))}
-          </div>
-        </>
-      )}
-
-      <footer className="page-footer">
-        RPM fixo de R$ 0,32 (usado só quando não há valor real informado) · receita dividida
-        proporcionalmente à % de views de cada criador nos últimos 28 dias · supabase · projeto
-        ildxajnvgoduikxkcxqv
-      </footer>
-    </main>
+    </div>
   );
 }
