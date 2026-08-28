@@ -1564,6 +1564,17 @@ footer.page-footer {
   font-weight: 600;
 }
 
+.creator-cakto {
+  background: #e3f9ea;
+  border: 1px solid #00b341;
+}
+
+.creator-cakto-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #00913a;
+}
+
 /* Botão Atualizar */
 .atualizar-wrap {
   display: flex;

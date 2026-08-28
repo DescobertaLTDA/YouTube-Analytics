@@ -68,6 +68,18 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
             <span className="malachite">{formatCurrency(stats.shortsEarnings)}</span>
           </div>
         </div>
+
+        <div className="creator-breakdown-item creator-cakto">
+          <div className="creator-breakdown-header">
+            <span>💰 Vendas Cakto (28d)</span>
+            <span className="text-muted-small">
+              {stats.caktoOrders != null ? `${stats.caktoOrders} pedido(s)` : "—"}
+            </span>
+          </div>
+          <div className="creator-breakdown-stats">
+            <span className="creator-cakto-value">{formatCurrency(stats.caktoAmount)}</span>
+          </div>
+        </div>
       </div>
     </div>
   );

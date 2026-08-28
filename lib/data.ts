@@ -13,6 +13,7 @@ import {
 } from "./supabase";
 import { isShortVideo } from "./youtube-channel";
 import { CREATORS, CreatorKey, SHORTS_RPM, estimateEarnings } from "./creator-earnings";
+import { getAllOrders, sumPaidAmount } from "./cakto";
 
 export type VideoSource = "manual" | "auto";
 
@@ -280,6 +281,12 @@ export type CreatorStats = {
   // dá pra ratear ele num range de mês diferente).
   monthViews: number;
   monthEarnings: number;
+  // Vendas reais na Cakto nos últimos 28 dias, identificadas por
+  // utm_campaign=<key> (ex: utm_campaign=lucas). null quando a API da Cakto
+  // não está configurada ou a chamada falhou — nesse caso o card mostra "—"
+  // em vez de quebrar a página inteira.
+  caktoOrders: number | null;
+  caktoAmount: number | null;
 };
 
 export type GanhosVideoRow = {
@@ -323,6 +330,39 @@ export type GanhosData = {
 // digitado manualmente quando existir; senão cai na estimativa por RPM.
 // Cada criador recebe a fatia da receita total proporcional à sua % de
 // views no período (não mais um cálculo independente por criador).
+// Busca as vendas pagas na Cakto de cada criador (filtrando por
+// utm_campaign=<key>) dentro do período informado, e soma pedidos + valor.
+// Falha de forma isolada: se a API da Cakto não estiver configurada ou der
+// erro, retorna null pra todos os criadores em vez de derrubar a página
+// inteira de Ganhos (que também depende do Supabase).
+async function getCaktoSalesByCreator(
+  periodStart: Date,
+  periodEnd: Date
+): Promise<Record<CreatorKey, { orders: number; amount: number } | null>> {
+  const result = {} as Record<CreatorKey, { orders: number; amount: number } | null>;
+
+  try {
+    const perCreator = await Promise.all(
+      CREATORS.map(async ({ key }) => {
+        const orders = await getAllOrders({
+          utm_campaign: key,
+          status: "paid",
+          paidAt__gte: periodStart.toISOString(),
+          paidAt__lt: periodEnd.toISOString(),
+        });
+        return { key, orders: orders.length, amount: sumPaidAmount(orders) };
+      })
+    );
+
+    for (const c of perCreator) result[c.key] = { orders: c.orders, amount: c.amount };
+  } catch (error) {
+    console.error("❌ Erro ao buscar vendas na Cakto:", error);
+    for (const { key } of CREATORS) result[key] = null;
+  }
+
+  return result;
+}
+
 export async function getCreatorEarnings(): Promise<GanhosData> {
   // Usa o client com service_role pra não depender de RLS estar liberado
   // pra leitura anônima nessas tabelas.
@@ -360,6 +400,12 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     const published = new Date(r.published_at).getTime();
     return published >= monthStart.getTime() && published <= periodEnd.getTime();
   });
+
+  // Vendas reais na Cakto (28 dias) por criador — identificadas pela UTM
+  // utm_campaign=<key> no link de checkout de cada um. Se a API não estiver
+  // configurada (ou alguma chamada falhar), cai tudo pra null e o card
+  // mostra "—" em vez de derrubar a página de Ganhos inteira.
+  const caktoSales = await getCaktoSalesByCreator(periodStart, periodEnd);
 
   const manualAmount =
     manualRevenueRows && manualRevenueRows[0]
@@ -429,6 +475,8 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     const monthEarnings =
       Math.round((estimateEarnings(monthShortsViews, true) + estimateEarnings(monthLongViews, false)) * 100) / 100;
 
+    const cakto = caktoSales[key];
+
     return {
       key,
       label,
@@ -445,6 +493,8 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
       rpm: Math.round(blendedRpm * 100) / 100,
       monthViews,
       monthEarnings,
+      caktoOrders: cakto ? cakto.orders : null,
+      caktoAmount: cakto ? cakto.amount : null,
     };
   });
 
