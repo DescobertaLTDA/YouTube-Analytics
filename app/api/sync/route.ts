@@ -1,162 +1,104 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase";
-import { 
-  fetchMultipleYouTubeVideos, 
-  detectChanges, 
-  analyzeViewImpact 
-} from "@/lib/youtube-api";
+import { fetchAllChannelVideos, isShortVideo } from "@/lib/youtube-channel";
+import { CREATORS, matchCreators } from "@/lib/creator-earnings";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-// ✅ GET - Sincronizar vídeos
-export async function GET(req: NextRequest) {
+// Chamado pelo botão "Atualizar" da aba Ganhos. Varre TODO o canal, acha
+// os vídeos com #lucas / #matheus / #rafael no título ou descrição, e
+// substitui o conteúdo da tabela `creator_videos` pelo resultado da
+// varredura atual.
+export async function POST() {
   try {
-    // Verifica se tem a chave secreta (para segurança)
-    const authHeader = req.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
-    const cronSecret = process.env.CRON_SECRET;
-    
-    if (cronSecret && token !== cronSecret && process.env.NODE_ENV === 'production') {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-    }
-
     const supabase = getServiceSupabase();
 
-    // 1. Busca todos os vídeos cadastrados
-    const { data: videos, error: videosError } = await supabase
-      .from("videos")
-      .select("id, youtube_video_id, channel_label")
-      .order("published_at", { ascending: true });
+    const channelVideos = await fetchAllChannelVideos();
 
-    if (videosError) throw videosError;
-
-    if (!videos || videos.length === 0) {
-      return NextResponse.json({ 
-        success: false, 
-        message: "Nenhum vídeo cadastrado para sincronizar" 
-      });
+    if (channelVideos.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Nenhum vídeo encontrado no canal. Confira o YOUTUBE_CHANNEL_ID / YOUTUBE_API_KEY.",
+        },
+        { status: 200 }
+      );
     }
 
-    console.log(`📹 Sincronizando ${videos.length} vídeos...`);
+    const now = new Date().toISOString();
+    const rows: {
+      creator: string;
+      youtube_video_id: string;
+      title: string;
+      thumbnail_url: string;
+      view_count: number;
+      like_count: number;
+      comment_count: number;
+      duration_seconds: number;
+      is_short: boolean;
+      published_at: string;
+      synced_at: string;
+    }[] = [];
 
-    // 2. Busca dados atualizados do YouTube
-    const videoIds = videos.map(v => v.youtube_video_id);
-    const youtubeData = await fetchMultipleYouTubeVideos(videoIds);
+    for (const video of channelVideos) {
+      const text = `${video.title} ${video.description}`;
+      const matched = matchCreators(text);
+      const isShort = isShortVideo(video.durationSeconds);
 
-    if (youtubeData.length === 0) {
-      return NextResponse.json({ 
-        success: false, 
-        message: "Nenhum dado retornado da API do YouTube" 
-      });
-    }
+      // Vídeo sem nenhuma hashtag: ainda entra na tabela (creator: "") pra
+      // contar nas views totais do canal no período (aba Ganhos), mas não
+      // é atribuído a nenhum criador nem aparece nas abas Vídeos/Shorts.
+      const creatorsForVideo = matched.length > 0 ? matched : [""];
 
-    console.log(`✅ ${youtubeData.length} vídeos encontrados no YouTube`);
-
-    const results = [];
-    const changesDetected = [];
-
-    // 3. Para cada vídeo, processa os dados
-    for (const video of videos) {
-      const currentData = youtubeData.find(y => y.id === video.youtube_video_id);
-      if (!currentData) continue;
-
-      // Busca o último snapshot
-      const { data: snapshots } = await supabase
-        .from("video_snapshots")
-        .select("*")
-        .eq("video_id", video.id)
-        .order("captured_at", { ascending: false })
-        .limit(1);
-
-      const previousSnapshot = snapshots?.[0] || null;
-
-      // 4. Detecta mudanças
-      const changes = detectChanges(previousSnapshot, currentData);
-      
-      // 5. Calcula impacto nas views
-      let impact = null;
-      if (previousSnapshot && previousSnapshot.view_count !== null) {
-        const daysSince = previousSnapshot.captured_at 
-          ? (new Date().getTime() - new Date(previousSnapshot.captured_at).getTime()) / (1000 * 60 * 60 * 24)
-          : 1;
-        
-        impact = analyzeViewImpact(
-          changes,
-          previousSnapshot.view_count,
-          currentData.viewCount,
-          Math.max(daysSince, 1)
-        );
-      }
-
-      // 6. Salva o novo snapshot
-      const { data: newSnapshot, error: insertError } = await supabase
-        .from("video_snapshots")
-        .insert({
-          video_id: video.id,
-          captured_at: new Date().toISOString(),
-          title: currentData.title,
-          description: currentData.description,
-          thumbnail_url: currentData.thumbnailUrl,
-          view_count: currentData.viewCount,
-          like_count: currentData.likeCount,
-          comment_count: currentData.commentCount,
-          duration_seconds: currentData.durationSeconds,
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        console.error(`❌ Erro ao salvar snapshot para ${video.youtube_video_id}:`, insertError);
-        continue;
-      }
-
-      // 7. Se houve mudanças, registra no change_log
-      if (changes.length > 0) {
-        for (const change of changes) {
-          const { error: changeError } = await supabase
-            .from("change_log")
-            .insert({
-              video_id: video.id,
-              changed_field: change.field,
-              old_value: change.oldValue,
-              new_value: change.newValue,
-              detected_at: new Date().toISOString(),
-            });
-
-          if (changeError) {
-            console.error(`❌ Erro ao registrar mudança:`, changeError);
-          }
-        }
-
-        changesDetected.push({
-          video_id: video.youtube_video_id,
-          video_title: video.channel_label,
-          changes: changes,
-          impact: impact,
+      for (const creator of creatorsForVideo) {
+        rows.push({
+          creator,
+          youtube_video_id: video.id,
+          title: video.title,
+          thumbnail_url: video.thumbnailUrl,
+          view_count: video.viewCount,
+          like_count: video.likeCount,
+          comment_count: video.commentCount,
+          duration_seconds: video.durationSeconds,
+          is_short: isShort,
+          published_at: video.publishedAt,
+          synced_at: now,
         });
       }
-
-      results.push({
-        video_id: video.youtube_video_id,
-        title: currentData.title,
-        views: currentData.viewCount,
-        has_changes: changes.length > 0,
-        changes: changes,
-        impact: impact,
-      });
     }
+
+    // Substitui tudo: apaga o resultado da varredura anterior e insere o
+    // atual. Mais simples e evita ficar com vídeos "fantasma" que
+    // perderam a hashtag ou saíram do canal.
+    const { error: deleteError } = await supabase
+      .from("creator_videos")
+      .delete()
+      .neq("youtube_video_id", "__never_matches__");
+
+    if (deleteError) throw deleteError;
+
+    if (rows.length > 0) {
+      const { error: insertError } = await supabase.from("creator_videos").insert(rows);
+      if (insertError) throw insertError;
+    }
+
+    const perCreatorCount = CREATORS.map(({ key, label }) => ({
+      creator: label,
+      videos: rows.filter((r) => r.creator === key).length,
+    }));
+
+    const matchedCount = rows.filter((r) => r.creator !== "").length;
 
     return NextResponse.json({
       success: true,
-      synced_at: new Date().toISOString(),
-      total_videos: videos.length,
-      synced: results.length,
-      changes_detected: changesDetected.length,
-      results: results,
-      changes_detailed: changesDetected,
+      synced_at: now,
+      channel_videos_scanned: channelVideos.length,
+      matched_videos: matchedCount,
+      per_creator: perCreatorCount,
     });
   } catch (error: any) {
-    console.error("❌ Erro na sincronização:", error);
+    console.error("❌ Erro ao sincronizar ganhos:", error);
     return NextResponse.json(
       { success: false, error: error.message || "Erro interno" },
       { status: 500 }
@@ -164,7 +106,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// ✅ POST - Também executa a sincronização
-export async function POST(req: NextRequest) {
-  return GET(req);
+// Também aceita GET, pra facilitar testar/agendar via cron se quiser.
+export async function GET() {
+  return POST();
 }
