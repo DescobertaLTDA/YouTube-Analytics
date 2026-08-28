@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase";
 import { fetchAllChannelVideos, isShortVideo } from "@/lib/youtube-channel";
 import { CREATORS, matchCreators } from "@/lib/creator-earnings";
+import { getCreatorEarnings } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +78,34 @@ export async function POST() {
     if (rows.length > 0) {
       const { error: insertError } = await supabase.from("creator_videos").insert(rows);
       if (insertError) throw insertError;
+    }
+
+    // Grava um retrato da receita de cada criador nesse instante — é isso
+    // que alimenta o gráfico de linha (histórico) da aba Ganhos. Só INSERT,
+    // nunca apaga o que já tinha, diferente da `creator_videos` acima.
+    try {
+      const earnings = await getCreatorEarnings();
+      const snapshotRows = earnings.creators.map((stats) => ({
+        creator: stats.key,
+        captured_at: now,
+        total_views: stats.totalViews,
+        total_earnings: stats.totalEarnings,
+        shorts_views: stats.shortsViews,
+        shorts_earnings: stats.shortsEarnings,
+        long_views: stats.longViews,
+        long_earnings: stats.longEarnings,
+      }));
+      if (snapshotRows.length > 0) {
+        const { error: snapshotError } = await supabase
+          .from("creator_earnings_snapshots")
+          .insert(snapshotRows);
+        if (snapshotError) {
+          console.error("⚠️ Não consegui gravar o snapshot de histórico:", snapshotError);
+        }
+      }
+    } catch (snapshotErr) {
+      // Não deixa a sincronização falhar por causa do histórico — só loga.
+      console.error("⚠️ Erro ao gravar histórico de receita:", snapshotErr);
     }
 
     const perCreatorCount = CREATORS.map(({ key, label }) => ({
