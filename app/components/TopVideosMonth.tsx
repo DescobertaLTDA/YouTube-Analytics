@@ -1,5 +1,5 @@
 import type { GanhosVideoRow } from "@/lib/data";
-import { averageVphByFormat, computeVph, formatMultiplier, formatVph, vphTier } from "@/lib/vph";
+import { computeVph, formatMultiplier, formatVph, vphTier, VphFormat } from "@/lib/vph";
 
 function formatNumber(n: number | null | undefined) {
   if (n == null) return "—";
@@ -17,11 +17,17 @@ function monthRangeLabel() {
   return `01 a ${day} de ${month}`;
 }
 
-export function TopVideosMonth({ videos }: { videos: GanhosVideoRow[] }) {
-  // Média de VPH de Shorts e de vídeo longo dentro desse Top 10, pra servir
-  // de referência de "quantas vezes acima do normal" cada vídeo está.
-  const avgVph = averageVphByFormat(videos);
-
+export function TopVideosMonth({
+  videos,
+  avgVph,
+}: {
+  videos: GanhosVideoRow[];
+  // Média global de VPH por formato (todo o histórico do canal), calculada
+  // uma vez em lib/data.ts e compartilhada com o Histórico de Vídeos, pra
+  // os dois cards usarem a mesma referência de "quantas vezes acima do
+  // normal" um vídeo está.
+  avgVph: Record<VphFormat, number | null>;
+}) {
   return (
     <div className="changes-section top-videos-section">
       <h2>🏆 Top 10 do Mês · {monthRangeLabel()}</h2>

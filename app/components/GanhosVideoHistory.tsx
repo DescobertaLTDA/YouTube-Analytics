@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { GanhosVideoRow } from "@/lib/data";
-import { averageVphByFormat, computeVph, formatMultiplier, formatVph, vphTier } from "@/lib/vph";
+import { computeVph, formatMultiplier, formatVph, vphTier, VphFormat } from "@/lib/vph";
 
 const PAGE_SIZE = 10;
 
@@ -30,19 +30,20 @@ function formatDuration(seconds: number | null) {
 export function GanhosVideoHistory({
   videos,
   page,
+  avgVph,
 }: {
   videos: GanhosVideoRow[];
   page: number;
+  // Média global de VPH por formato (todo o histórico do canal), calculada
+  // uma vez em lib/data.ts e compartilhada com o Top 10 do Mês, pra os
+  // dois cards usarem a mesma referência de "acima da média" e o mesmo
+  // vídeo não mudar de selo dependendo de qual lista o mostra.
+  avgVph: Record<VphFormat, number | null>;
 }) {
   const totalPages = Math.max(1, Math.ceil(videos.length / PAGE_SIZE));
   const currentPage = Math.min(Math.max(1, page), totalPages);
   const start = (currentPage - 1) * PAGE_SIZE;
   const pageVideos = videos.slice(start, start + PAGE_SIZE);
-
-  // Média de VPH calculada sobre TODOS os vídeos do período (não só a
-  // página atual), pra a referência de "acima da média" não mudar de
-  // página em página.
-  const avgVph = averageVphByFormat(videos);
 
   return (
     <div className="changes-section">

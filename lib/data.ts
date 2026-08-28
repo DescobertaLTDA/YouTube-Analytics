@@ -14,6 +14,7 @@ import {
 import { isShortVideo } from "./youtube-channel";
 import { CREATORS, CreatorKey, SHORTS_RPM, estimateEarnings } from "./creator-earnings";
 import { getAllOrders, sumPaidAmount } from "./cakto";
+import { averageVphByFormat, VphFormat } from "./vph";
 import {
   getAllConversions,
   filterByCreator,
@@ -366,6 +367,12 @@ export type GanhosData = {
   // pela maior receita estimada (RPM) — alimenta o card de destaque
   // "Top 10 do mês" da aba Ganhos.
   topVideosMonth: GanhosVideoRow[];
+  // Média de VPH de Shorts e de vídeo longo calculada sobre TODO o
+  // histórico do canal (não só o período de 28 dias ou o Top 10 do mês) —
+  // usada como referência única do selo "Nx acima da média" tanto no
+  // Histórico de Vídeos quanto no Top 10 do Mês, pra um mesmo vídeo não
+  // mostrar multiplicadores diferentes em cada card.
+  avgVphByFormat: Record<VphFormat, number | null>;
 };
 
 // Lê a tabela `creator_videos` (populada pela varredura por hashtag em
@@ -799,6 +806,24 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 10);
 
+  // Média global de VPH por formato: usa TODO o histórico do canal
+  // (allRows, deduplicado por youtube_video_id — colabs com 2+ hashtags
+  // não podem contar em dobro na média), não só o período de 28 dias nem
+  // só o Top 10 do mês. É a mesma referência usada nos dois cards abaixo,
+  // pra o selo "Nx acima da média" de um vídeo não mudar dependendo de em
+  // qual lista ele aparece.
+  const byVideoIdAll = new Map<string, CreatorVideoRow>();
+  for (const row of allRows) {
+    if (!byVideoIdAll.has(row.youtube_video_id)) byVideoIdAll.set(row.youtube_video_id, row);
+  }
+  const avgVphByFormat = averageVphByFormat(
+    Array.from(byVideoIdAll.values()).map((r) => ({
+      viewCount: r.view_count,
+      publishedAt: r.published_at,
+      isShort: r.is_short,
+    }))
+  );
+
   return {
     creators,
     lastSyncedAt,
@@ -813,6 +838,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     noHashtagVideos,
     periodVideos,
     topVideosMonth,
+    avgVphByFormat,
   };
 }
 

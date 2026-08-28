@@ -87,9 +87,9 @@ export default async function GanhosPage({
         ))}
       </div>
 
-      <TopVideosMonth videos={data.topVideosMonth} />
+      <TopVideosMonth videos={data.topVideosMonth} avgVph={data.avgVphByFormat} />
 
-      <GanhosVideoHistory videos={data.periodVideos} page={page} />
+      <GanhosVideoHistory videos={data.periodVideos} page={page} avgVph={data.avgVphByFormat} />
 
       <footer className="page-footer">
         supabase · projeto ildxajnvgoduikxkcxqv · região sa-east-1
