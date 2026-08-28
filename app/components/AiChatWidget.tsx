@@ -39,8 +39,8 @@ export function AiChatWidget() {
   const [loading, setLoading] = useState(false);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [loadingAudioIndex, setLoadingAudioIndex] = useState<number | null>(null);
-  const [autoSpeak, setAutoSpeak] = useState(true);
   const [listening, setListening] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
   const [micSupported, setMicSupported] = useState(true);
   // "Modo de voz": ativado ao clicar no microfone. O modal fecha, mas o
   // ciclo ouvir -> enviar -> IA responde -> tocar áudio -> ouvir de novo
@@ -127,6 +127,7 @@ export function AiChatWidget() {
     setOpen(false);
     audioRef.current?.pause();
     setSpeakingIndex(null);
+    setAudioError(null);
     resultReceivedRef.current = false;
     setListening(true);
     try {
@@ -221,6 +222,7 @@ export function AiChatWidget() {
 
     audioRef.current?.pause();
     setLoadingAudioIndex(index);
+    setAudioError(null);
 
     try {
       const res = await fetch("/api/tts", {
@@ -231,9 +233,11 @@ export function AiChatWidget() {
 
       if (!res.ok) {
         const errText = await res.text();
-        // No modo automático não interrompemos o usuário com um alert —
-        // só deixamos de tocar o áudio dessa mensagem.
-        if (index !== spokenIndexRef.current) alert(errText || "Não consegui gerar o áudio.");
+        // Antes isso ficava mudo no modo automático/voz — agora sempre
+        // mostra o motivo real (chave ausente, limite atingido etc.) em
+        // vez de fingir que tocou o áudio.
+        setAudioError(errText || "Não consegui gerar o áudio.");
+        if (voiceModeRef.current) restartListening();
         return;
       }
 
@@ -248,15 +252,22 @@ export function AiChatWidget() {
       };
       audio.onerror = () => {
         setSpeakingIndex(null);
+        setAudioError("O navegador não conseguiu tocar o áudio gerado.");
         if (voiceModeRef.current) restartListening();
       };
 
       await audio.play();
       setSpeakingIndex(index);
-    } catch {
-      if (index !== spokenIndexRef.current) {
-        alert("Não consegui gerar o áudio agora. Confere o GOOGLE_TTS_API_KEY e tenta de novo.");
-      }
+      setAudioError(null);
+    } catch (err) {
+      // Autoplay bloqueado pelo navegador cai aqui também (NotAllowedError)
+      // — mostra isso em vez de fingir que funcionou.
+      const message = err instanceof Error ? err.message : "";
+      setAudioError(
+        message.toLowerCase().includes("play") || message.toLowerCase().includes("allow")
+          ? "O navegador bloqueou o áudio automático. Toque na tela e tente de novo."
+          : "Não consegui gerar o áudio agora. Confere o GOOGLE_TTS_API_KEY e tenta de novo."
+      );
       if (voiceModeRef.current) restartListening();
     } finally {
       setLoadingAudioIndex(null);
@@ -266,7 +277,7 @@ export function AiChatWidget() {
   // Assim que uma resposta da IA termina de chegar (parou de "streamar"),
   // toca o áudio dela automaticamente — sem precisar clicar em "ouvir".
   useEffect(() => {
-    if ((!autoSpeak && !voiceMode) || loading || messages.length === 0) return;
+    if (loading || messages.length === 0) return;
     const lastIndex = messages.length - 1;
     const last = messages[lastIndex];
     if (last.role !== "assistant" || !last.content) return;
@@ -275,12 +286,13 @@ export function AiChatWidget() {
     spokenIndexRef.current = lastIndex;
     toggleSpeak(lastIndex, last.content);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, messages, autoSpeak, voiceMode]);
+  }, [loading, messages]);
 
   return (
     <>
       {!open && voiceMode && (
         <div className="ai-chat-voice-indicator">
+          {audioError && <div className="ai-chat-voice-error">{audioError}</div>}
           <span className="ai-chat-voice-status">
             {listening ? "ouvindo…" : loading ? "pensando…" : speakingIndex !== null ? "falando…" : "no ar…"}
           </span>
@@ -312,17 +324,6 @@ export function AiChatWidget() {
             <div className="ai-chat-subtitle">Pergunte sobre views, receita e projeções</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <label
-              style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, cursor: "pointer" }}
-              title="Tocar a resposta em áudio automaticamente"
-            >
-              <input
-                type="checkbox"
-                checked={autoSpeak}
-                onChange={(e) => setAutoSpeak(e.target.checked)}
-              />
-              falar sozinho
-            </label>
             <button className="ai-chat-close" onClick={() => setOpen(false)} aria-label="Fechar">
               ×
             </button>
@@ -330,6 +331,7 @@ export function AiChatWidget() {
         </div>
 
         <div className="ai-chat-messages" ref={scrollRef}>
+          {audioError && <div className="ai-chat-audio-error">🔇 {audioError}</div>}
           {messages.length === 0 && (
             <div className="ai-chat-empty">Olá <strong>Criador</strong>! Pergunte sobre views, receita e projeções do canal.</div>
           )}

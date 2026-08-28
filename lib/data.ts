@@ -553,8 +553,10 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
   // utm_campaign=<key> no link de checkout de cada um. Se a API não estiver
   // configurada (ou alguma chamada falhar), cai tudo pra null e o card
   // mostra "—" em vez de derrubar a página de Ganhos inteira.
-  const caktoSales = await getCaktoSalesByCreator(periodStart, periodEnd);
-  const shopeeSales = await getShopeeSalesByCreator(periodStart, periodEnd);
+  const [caktoSales, shopeeSales] = await Promise.all([
+    getCaktoSalesByCreator(periodStart, periodEnd),
+    getShopeeSalesByCreator(periodStart, periodEnd),
+  ]);
 
   const manualAmount =
     manualRevenueRows && manualRevenueRows[0]

@@ -2560,6 +2560,28 @@ footer.page-footer {
   white-space: nowrap;
 }
 
+.ai-chat-voice-error {
+  font-size: 11px;
+  color: #fff;
+  background: #b91c1c;
+  padding: 6px 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  max-width: 220px;
+  text-align: center;
+  line-height: 1.35;
+}
+
+.ai-chat-audio-error {
+  font-size: 12px;
+  color: #b91c1c;
+  background: color-mix(in srgb, #b91c1c 10%, transparent);
+  border: 1px solid color-mix(in srgb, #b91c1c 30%, transparent);
+  padding: 8px 10px;
+  border-radius: 8px;
+  line-height: 1.4;
+}
+
 .ai-chat-fab-voice {
   position: static;
   font-size: 28px;

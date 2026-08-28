@@ -25,7 +25,28 @@ function num(n: number | null | undefined) {
  * e deixar ELA fazer as contas e projeções na conversa, em vez de a gente
  * pré-calcular uma resposta fixa aqui.
  */
+// Cache em memória do processo: montar esse contexto envolve várias
+// consultas pesadas no Supabase + chamadas às APIs da Cakto e Shopee, e
+// antes disso era refeito do zero a CADA mensagem do chat (mesmo perguntas
+// simples), causando um delay grande antes da IA sequer começar a
+// responder. Os dados de negócio não mudam segundo a segundo — só quando
+// os syncs rodam — então cachear por alguns minutos é seguro e deixa a
+// segunda+ mensagem da conversa praticamente instantânea nessa etapa. Em
+// serverless (Vercel) isso persiste enquanto a função ficar "quente".
+let cachedContext: { value: string; expiresAt: number } | null = null;
+const CONTEXT_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutos
+
 export async function buildBusinessContext(): Promise<string> {
+  if (cachedContext && cachedContext.expiresAt > Date.now()) {
+    return cachedContext.value;
+  }
+
+  const value = await buildBusinessContextUncached();
+  cachedContext = { value, expiresAt: Date.now() + CONTEXT_CACHE_TTL_MS };
+  return value;
+}
+
+async function buildBusinessContextUncached(): Promise<string> {
   const data = await getCreatorEarnings();
 
   const now = new Date();
