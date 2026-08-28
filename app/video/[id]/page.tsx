@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getDashboardData } from "@/lib/data";
+import { getAllVideoRows } from "@/lib/data";
 import { RoteiroButton } from "@/app/components/RoteiroButton";
 import { RoteirosList } from "@/app/components/RoteirosList";
 import { notFound } from "next/navigation";
@@ -38,7 +38,7 @@ function formatChartDate(iso: string | null | undefined) {
 }
 
 async function getVideoData(videoId: string) {
-  const allData = await getDashboardData();
+  const allData = await getAllVideoRows();
   return allData.find(item => item.video.id === videoId);
 }
 
@@ -49,7 +49,7 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
     notFound();
   }
 
-  const { video, latest, viewsPerDay, daysLive, manual, revenue, history, changes, isShort } =
+  const { video, latest, viewsPerDay, daysLive, manual, revenue, history, changes, isShort, source } =
     videoData;
   const backHref = isShort ? "/shorts" : "/videos";
   const backLabel = isShort ? "← Voltar aos Shorts" : "← Voltar aos Vídeos";
@@ -77,6 +77,12 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
           <p className="subtitle">
             ID: {youtubeVideoId} · Publicado em {formatDate(video.published_at)}
           </p>
+          {source === "auto" && (
+            <p className="subtitle" style={{ marginTop: 4 }}>
+              🔎 Achado automaticamente pela varredura de hashtag da aba Ganhos — ainda não
+              cadastrado manualmente, então não tem histórico de views nem dados do Studio ainda.
+            </p>
+          )}
         </div>
         <div className="sync-pill">
           último snapshot: <strong>{formatDate(latest?.captured_at)}</strong>
