@@ -15,6 +15,12 @@
     },
     "app/api/ganhos/sync/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/chat/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/tts/route.ts": {
+      "maxDuration": 30
     }
   }
 }

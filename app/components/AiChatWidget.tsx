@@ -49,11 +49,48 @@ export function AiChatWidget() {
   const voiceModeRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUnlockedRef = useRef(false);
+  const prevAudioUrlRef = useRef<string | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const spokenIndexRef = useRef<number | null>(null);
   // Marca se o reconhecimento atual chegou a captar alguma fala, para saber
   // se deve reiniciar a escuta sozinho (silêncio) no modo de voz.
   const resultReceivedRef = useRef(false);
+
+  // Cria UM único elemento de áudio pra vida toda do componente, em vez de
+  // um `new Audio()` novo a cada resposta. Isso é essencial pra funcionar
+  // em celular (Safari/iOS principalmente): esses navegadores só permitem
+  // tocar áudio automaticamente se ele foi "desbloqueado" dentro de um
+  // toque/clique real do usuário — e esse desbloqueio vale pro elemento
+  // específico, não pro app inteiro. Criar um Audio() novo depois da
+  // resposta da IA chegar (de forma assíncrona, fora do toque original)
+  // é bloqueado silenciosamente, sem lançar erro nenhum.
+  useEffect(() => {
+    const audio = new Audio();
+    audioRef.current = audio;
+    return () => {
+      audio.pause();
+      if (prevAudioUrlRef.current) URL.revokeObjectURL(prevAudioUrlRef.current);
+    };
+  }, []);
+
+  // "Destrava" o elemento de áudio compartilhado — precisa rodar de forma
+  // síncrona dentro de um clique/toque real (mic, enviar, Enter). Só
+  // precisa acontecer uma vez por sessão da página.
+  function unlockAudio() {
+    if (audioUnlockedRef.current) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+    audioUnlockedRef.current = true;
+    const playPromise = audio.play();
+    if (playPromise) {
+      playPromise.then(() => audio.pause()).catch(() => {
+        // Se nem esse toque conseguiu destravar, deixa como não destravado
+        // pra tentar de novo no próximo toque do usuário.
+        audioUnlockedRef.current = false;
+      });
+    }
+  }
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -156,11 +193,19 @@ export function AiChatWidget() {
     if (overrideText === undefined) setInput("");
     setLoading(true);
 
+    // Corta a espera em 65s (um pouco acima do maxDuration de 60s da
+    // função /api/chat na Vercel) — sem isso, se o servidor travar ou cair
+    // no meio da resposta, o chat ficava com a bolinha girando pra sempre,
+    // sem nenhum erro aparecer.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 65_000);
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: nextMessages }),
+        signal: controller.signal,
       });
 
       if (!res.body) throw new Error("sem resposta");
@@ -183,6 +228,7 @@ export function AiChatWidget() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        clearTimeout(timeoutId); // já está recebendo dados, não precisa mais do timeout
         acc += decoder.decode(value, { stream: true });
         const finalText = acc;
         setMessages((prev) => {
@@ -191,16 +237,20 @@ export function AiChatWidget() {
           return copy;
         });
       }
-    } catch {
+    } catch (err) {
+      const timedOut = err instanceof Error && err.name === "AbortError";
       setMessages((prev) => {
         const copy = [...prev];
         copy[copy.length - 1] = {
           role: "assistant",
-          content: "Não consegui falar com a IA agora. Confere se a ANTHROPIC_API_KEY está certa e tenta de novo.",
+          content: timedOut
+            ? "Demorou demais pra responder e eu cancelei a espera. Tenta de novo — se continuar assim, os dados podem estar demorando muito pra carregar no servidor."
+            : "Não consegui falar com a IA agora. Confere se a ANTHROPIC_API_KEY está certa e tenta de novo.",
         };
         return copy;
       });
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   }
@@ -208,19 +258,23 @@ export function AiChatWidget() {
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+      unlockAudio();
       sendMessage();
     }
   }
 
   async function toggleSpeak(index: number, text: string) {
+    const audio = audioRef.current;
+    if (!audio) return;
+
     // Clicou de novo na mesma mensagem que já está tocando -> para o áudio.
     if (speakingIndex === index) {
-      audioRef.current?.pause();
+      audio.pause();
       setSpeakingIndex(null);
       return;
     }
 
-    audioRef.current?.pause();
+    audio.pause();
     setLoadingAudioIndex(index);
     setAudioError(null);
 
@@ -243,9 +297,10 @@ export function AiChatWidget() {
 
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audioRef.current = audio;
+      if (prevAudioUrlRef.current) URL.revokeObjectURL(prevAudioUrlRef.current);
+      prevAudioUrlRef.current = url;
 
+      audio.src = url;
       audio.onended = () => {
         setSpeakingIndex(null);
         if (voiceModeRef.current) restartListening();
@@ -310,7 +365,14 @@ export function AiChatWidget() {
       )}
 
       {!open && !voiceMode && (
-        <button className="ai-chat-fab" onClick={() => setOpen(true)} aria-label="Abrir chat com a IA">
+        <button
+          className="ai-chat-fab"
+          onClick={() => {
+            unlockAudio();
+            setOpen(true);
+          }}
+          aria-label="Abrir chat com a IA"
+        >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
           </svg>
@@ -371,7 +433,10 @@ export function AiChatWidget() {
             <button
               type="button"
               className="ai-chat-mic-btn"
-              onClick={startVoiceMode}
+              onClick={() => {
+                unlockAudio();
+                startVoiceMode();
+              }}
               aria-label="Falar com a IA por voz (fecha o chat e continua em segundo plano)"
               title="Falar por voz — o chat fecha e continua ouvindo em segundo plano"
             >
@@ -387,7 +452,14 @@ export function AiChatWidget() {
             rows={1}
             disabled={loading}
           />
-          <button className="ai-chat-send" onClick={() => sendMessage()} disabled={loading || !input.trim()}>
+          <button
+            className="ai-chat-send"
+            onClick={() => {
+              unlockAudio();
+              sendMessage();
+            }}
+            disabled={loading || !input.trim()}
+          >
             Enviar
           </button>
         </div>
