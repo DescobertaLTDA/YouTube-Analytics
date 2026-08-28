@@ -5,11 +5,10 @@
 // (vendas) via GraphQL.
 //
 // Identificação do criador: a Shopee usa 5 slots de sub_id no link
-// personalizado. Na sua conta, o sub_id 1 é fixo ("clubeshopee" — identifica
-// a conta/marca) e o sub_id 2 é o nome do criador (lucas/matheus/rafael).
-// Por isso a gente busca TODAS as vendas do período de uma vez e separa por
-// criador comparando o campo subId2 no código, em vez de filtrar direto na
-// API (que filtra pelo sub_id 1, não pelo 2).
+// personalizado (o slot exato varia dependendo de como o link foi montado —
+// pode ser o sub_id 2, o 3, etc). Por isso a gente busca TODAS as vendas do
+// período de uma vez e procura o nome do criador (lucas/matheus/rafael) em
+// QUALQUER um dos 5 slots, em vez de depender de uma posição fixa.
 //
 // ⚠️ IMPORTANTE: os nomes exatos dos campos do schema GraphQL (ex: nomes de
 // filtros e campos de retorno do conversionReport) podem variar pela versão
@@ -30,8 +29,11 @@ function buildAuthHeader(appId: string, secretKey: string, payload: string): str
 
 export type ShopeeConversionNode = {
   orderId: string;
-  subId1: string | null; // fixo: "clubeshopee"
-  subId2: string | null; // criador: lucas / matheus / rafael
+  subId1: string | null;
+  subId2: string | null;
+  subId3: string | null;
+  subId4: string | null;
+  subId5: string | null;
   purchaseTime: string; // ISO
   orderStatus: string; // ex: "COMPLETED" | "PENDING" | "UNPAID" ...
   actualAmount: number; // valor da venda
@@ -98,6 +100,9 @@ const CONVERSION_REPORT_QUERY = `
         orderId
         subId1
         subId2
+        subId3
+        subId4
+        subId5
         purchaseTime
         orderStatus
         actualAmount
@@ -147,13 +152,20 @@ export async function getAllConversions(
 // ajuste os valores aceitos aqui conforme o que a sua conta retorna.
 const PAID_STATUSES = new Set(["COMPLETED", "PENDING"]);
 
-// Filtra as vendas de um criador específico comparando subId2 (case
-// insensitive, por segurança) — ex: creatorKey = "lucas".
+// Filtra as vendas de um criador específico procurando o nome dele em
+// QUALQUER um dos 5 slots de sub_id (case insensitive) — assim funciona
+// não importa em qual slot a pessoa escreveu o nome (sub_id 2, 3, ou
+// qualquer outro), sem depender de convenção fixa de posição.
 export function filterByCreator(
   orders: ShopeeConversionNode[],
   creatorKey: string
 ): ShopeeConversionNode[] {
-  return orders.filter((o) => (o.subId2 || "").toLowerCase() === creatorKey.toLowerCase());
+  const key = creatorKey.toLowerCase();
+  return orders.filter((o) =>
+    [o.subId1, o.subId2, o.subId3, o.subId4, o.subId5].some(
+      (sub) => (sub || "").toLowerCase() === key
+    )
+  );
 }
 
 export function sumPaidCommission(orders: ShopeeConversionNode[]): number {
