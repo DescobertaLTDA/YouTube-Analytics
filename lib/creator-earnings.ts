@@ -19,6 +19,19 @@ export const LONG_RPM = 5.5;
 // (ex: mostrar no rodapé). Aponta pro RPM de Shorts.
 export const FIXED_RPM = SHORTS_RPM;
 
+// Metas mensais por criador (dia 01 até o fim do mês), usadas no card e no
+// drawer "Ver metas". Cada formato (Shorts / vídeo longo) tem sua própria
+// meta de quantidade e de receita — a meta de views é derivada da meta de
+// receita, invertendo a fórmula de estimateEarnings pro RPM daquele formato.
+export const SHORTS_COUNT_GOAL = 30;
+export const LONG_COUNT_GOAL = 15;
+export const SHORTS_REVENUE_GOAL = 1700;
+export const LONG_REVENUE_GOAL = 1700;
+
+// views = receita * 1000 * 2 / rpm (inverso de estimateEarnings)
+export const SHORTS_VIEWS_GOAL = Math.round((SHORTS_REVENUE_GOAL * 2000) / SHORTS_RPM);
+export const LONG_VIEWS_GOAL = Math.round((LONG_REVENUE_GOAL * 2000) / LONG_RPM);
+
 /**
  * Ganhos estimados = views * RPM / 1000 / 2
  * (o /2 é a divisão fixa entre os 2 lados combinada com você — ex: parceria

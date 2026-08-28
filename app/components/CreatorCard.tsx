@@ -1,5 +1,6 @@
 import type { CreatorStats } from "@/lib/data";
 import { ShopeeSalesDetail } from "@/app/components/ShopeeSalesDetail";
+import { CreatorGoalsButton } from "@/app/components/CreatorGoalsButton";
 import { LONG_RPM, SHORTS_RPM } from "@/lib/creator-earnings";
 
 const SHORTS_GOAL = 30;
@@ -80,6 +81,8 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
           </div>
           <ProgressBar value={stats.monthEarnings} goal={REVENUE_GOAL} />
         </div>
+
+        <CreatorGoalsButton stats={stats} />
       </div>
 
       <div className="creator-breakdown-item creator-month">

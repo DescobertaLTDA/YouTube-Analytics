@@ -296,6 +296,12 @@ export type CreatorStats = {
   // Quantidade de vídeos publicados do dia 01 do mês atual até hoje.
   monthCount: number;
   monthShortsCount: number;
+  // Breakdown do mês por formato — usado no drawer "Ver metas".
+  monthLongCount: number;
+  monthShortsViews: number;
+  monthLongViews: number;
+  monthShortsEarnings: number;
+  monthLongEarnings: number;
   // Vendas reais na Cakto nos últimos 28 dias, identificadas por
   // utm_campaign=<key> (ex: utm_campaign=lucas). null quando a API da Cakto
   // não está configurada ou a chamada falhou — nesse caso o card mostra "—"
@@ -662,10 +668,12 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
       .filter((r) => !r.is_short)
       .reduce((sum, r) => sum + (r.view_count || 0), 0);
     const monthViews = monthShortsViews + monthLongViews;
-    const monthEarnings =
-      Math.round((estimateEarnings(monthShortsViews, true) + estimateEarnings(monthLongViews, false)) * 100) / 100;
+    const monthShortsEarnings = estimateEarnings(monthShortsViews, true);
+    const monthLongEarnings = estimateEarnings(monthLongViews, false);
+    const monthEarnings = Math.round((monthShortsEarnings + monthLongEarnings) * 100) / 100;
     const monthCount = monthCreatorRows.length;
     const monthShortsCount = monthCreatorRows.filter((r) => r.is_short).length;
+    const monthLongCount = monthCount - monthShortsCount;
 
     const cakto = caktoSales[key];
     const shopee = shopeeSales[key];
@@ -689,6 +697,11 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
       periodCount: shorts.length + longs.length,
       monthCount,
       monthShortsCount,
+      monthLongCount,
+      monthShortsViews,
+      monthLongViews,
+      monthShortsEarnings,
+      monthLongEarnings,
       caktoOrders: cakto ? cakto.orders : null,
       caktoAmount: cakto ? cakto.amount : null,
       shopeeOrders: shopee ? shopee.orders : null,
