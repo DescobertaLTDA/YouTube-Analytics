@@ -14,7 +14,7 @@ import {
 import { isShortVideo } from "./youtube-channel";
 import { CREATORS, CreatorKey, SHORTS_RPM, estimateEarnings } from "./creator-earnings";
 import { getAllOrders, sumPaidAmount } from "./cakto";
-import { getAllConversions, sumPaidCommission, countPaidOrders } from "./shopee";
+import { getAllConversions, filterByCreator, sumPaidCommission, countPaidOrders } from "./shopee";
 
 export type VideoSource = "manual" | "auto";
 
@@ -370,8 +370,9 @@ async function getCaktoSalesByCreator(
   return result;
 }
 
-// Busca as vendas pagas na Shopee de cada criador (filtrando por
-// sub_id=<key>) dentro do período informado, e soma pedidos + comissão.
+// Busca as vendas pagas na Shopee de cada criador. Traz TODAS as vendas do
+// período de uma vez (a API só filtra pelo sub_id 1, que é fixo pra conta
+// toda) e separa por criador comparando subId2 no código.
 // Falha de forma isolada, igual a getCaktoSalesByCreator.
 async function getShopeeSalesByCreator(
   periodStart: Date,
@@ -380,18 +381,18 @@ async function getShopeeSalesByCreator(
   const result = {} as Record<CreatorKey, { orders: number; amount: number } | null>;
 
   try {
-    const perCreator = await Promise.all(
-      CREATORS.map(async ({ key }) => {
-        const orders = await getAllConversions({
-          subId: key,
-          purchaseTimeStart: periodStart,
-          purchaseTimeEnd: periodEnd,
-        });
-        return { key, orders: countPaidOrders(orders), amount: sumPaidCommission(orders) };
-      })
-    );
+    const allOrders = await getAllConversions({
+      purchaseTimeStart: periodStart,
+      purchaseTimeEnd: periodEnd,
+    });
 
-    for (const c of perCreator) result[c.key] = { orders: c.orders, amount: c.amount };
+    for (const { key } of CREATORS) {
+      const creatorOrders = filterByCreator(allOrders, key);
+      result[key] = {
+        orders: countPaidOrders(creatorOrders),
+        amount: sumPaidCommission(creatorOrders),
+      };
+    }
   } catch (error) {
     console.error("❌ Erro ao buscar vendas na Shopee:", error);
     for (const { key } of CREATORS) result[key] = null;

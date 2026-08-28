@@ -2,10 +2,14 @@
 //
 // Autentica via assinatura SHA256 (SHOPEE_APP_ID + SHOPEE_SECRET_KEY,
 // configurados como env vars na Vercel) e busca o relatório de conversões
-// (vendas) via GraphQL, filtrando por sub_id — é assim que a gente separa
-// "venda do Lucas" de "venda do Matheus" etc., igual já é feito com
-// utm_campaign na Cakto. Convenção: o link de afiliado de cada criador leva
-// o sub_id igual ao nome dele (ex: ...?sub_id=lucas).
+// (vendas) via GraphQL.
+//
+// Identificação do criador: a Shopee usa 5 slots de sub_id no link
+// personalizado. Na sua conta, o sub_id 1 é fixo ("clubeshopee" — identifica
+// a conta/marca) e o sub_id 2 é o nome do criador (lucas/matheus/rafael).
+// Por isso a gente busca TODAS as vendas do período de uma vez e separa por
+// criador comparando o campo subId2 no código, em vez de filtrar direto na
+// API (que filtra pelo sub_id 1, não pelo 2).
 //
 // ⚠️ IMPORTANTE: os nomes exatos dos campos do schema GraphQL (ex: nomes de
 // filtros e campos de retorno do conversionReport) podem variar pela versão
@@ -26,7 +30,8 @@ function buildAuthHeader(appId: string, secretKey: string, payload: string): str
 
 export type ShopeeConversionNode = {
   orderId: string;
-  subId1: string | null;
+  subId1: string | null; // fixo: "clubeshopee"
+  subId2: string | null; // criador: lucas / matheus / rafael
   purchaseTime: string; // ISO
   orderStatus: string; // ex: "COMPLETED" | "PENDING" | "UNPAID" ...
   actualAmount: number; // valor da venda
@@ -79,10 +84,11 @@ async function shopeeGraphQL<T>(query: string, variables: Record<string, unknown
   return json;
 }
 
+// Sem filtro de sub_id na query — traz tudo do período e a gente separa por
+// subId2 no código (ver comentário no topo do arquivo).
 const CONVERSION_REPORT_QUERY = `
-  query ConversionReport($subId: String, $purchaseTimeStart: Int, $purchaseTimeEnd: Int, $page: Int, $limit: Int) {
+  query ConversionReport($purchaseTimeStart: Int, $purchaseTimeEnd: Int, $page: Int, $limit: Int) {
     conversionReport(
-      subId: $subId
       purchaseTimeStart: $purchaseTimeStart
       purchaseTimeEnd: $purchaseTimeEnd
       page: $page
@@ -91,6 +97,7 @@ const CONVERSION_REPORT_QUERY = `
       nodes {
         orderId
         subId1
+        subId2
         purchaseTime
         orderStatus
         actualAmount
@@ -104,14 +111,12 @@ const CONVERSION_REPORT_QUERY = `
 `;
 
 export type GetConversionsParams = {
-  // sub_id usado pra identificar o criador (ex: "lucas"). Deixe vazio pra
-  // trazer tudo.
-  subId?: string;
   purchaseTimeStart: Date;
   purchaseTimeEnd: Date;
 };
 
-// Busca TODAS as páginas de conversões (vendas) que batem com o filtro.
+// Busca TODAS as páginas de conversões (vendas) do período — sem separar
+// por criador ainda.
 export async function getAllConversions(
   params: GetConversionsParams,
   maxPages = 20
@@ -121,7 +126,6 @@ export async function getAllConversions(
 
   while (page <= maxPages) {
     const data = await shopeeGraphQL<ConversionReportResponse>(CONVERSION_REPORT_QUERY, {
-      subId: params.subId,
       purchaseTimeStart: Math.floor(params.purchaseTimeStart.getTime() / 1000),
       purchaseTimeEnd: Math.floor(params.purchaseTimeEnd.getTime() / 1000),
       page,
@@ -142,6 +146,15 @@ export async function getAllConversions(
 // Considera venda confirmada quando o status não é "UNPAID"/cancelado —
 // ajuste os valores aceitos aqui conforme o que a sua conta retorna.
 const PAID_STATUSES = new Set(["COMPLETED", "PENDING"]);
+
+// Filtra as vendas de um criador específico comparando subId2 (case
+// insensitive, por segurança) — ex: creatorKey = "lucas".
+export function filterByCreator(
+  orders: ShopeeConversionNode[],
+  creatorKey: string
+): ShopeeConversionNode[] {
+  return orders.filter((o) => (o.subId2 || "").toLowerCase() === creatorKey.toLowerCase());
+}
 
 export function sumPaidCommission(orders: ShopeeConversionNode[]): number {
   return orders
