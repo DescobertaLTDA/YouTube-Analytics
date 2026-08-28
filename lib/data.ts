@@ -9,6 +9,7 @@ import {
   TranscriptSegmentRow,
   CreatorVideoRow,
   ManualRevenueRow,
+  CreatorEarningsSnapshotRow,
 } from "./supabase";
 import { isShortVideo } from "./youtube-channel";
 import { CREATORS, CreatorKey, SHORTS_RPM, estimateEarnings } from "./creator-earnings";
@@ -481,4 +482,40 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     manualRevenueAmount: manualAmount,
     periodVideos,
   };
+}
+
+export type EarningsHistoryPoint = {
+  capturedAt: string;
+  creator: CreatorKey;
+  totalEarnings: number;
+  totalViews: number;
+};
+
+// Histórico de receita por criador — um ponto por sincronização (clique em
+// "Atualizar"), gravado em `creator_earnings_snapshots` pela rota
+// /api/ganhos/sync. Alimenta o gráfico de linha da aba Ganhos.
+export async function getCreatorEarningsHistory(limit = 60): Promise<EarningsHistoryPoint[]> {
+  const db = getServiceSupabase();
+
+  const { data, error } = await db
+    .from("creator_earnings_snapshots")
+    .select("*")
+    .order("captured_at", { ascending: true })
+    .limit(limit * CREATORS.length);
+
+  if (error) {
+    console.error("❌ Erro ao ler creator_earnings_snapshots:", error);
+    return [];
+  }
+
+  const rows = (data as CreatorEarningsSnapshotRow[]) || [];
+
+  return rows
+    .filter((r) => CREATORS.some((c) => c.key === r.creator))
+    .map((r) => ({
+      capturedAt: r.captured_at,
+      creator: r.creator as CreatorKey,
+      totalEarnings: r.total_earnings,
+      totalViews: r.total_views,
+    }));
 }
