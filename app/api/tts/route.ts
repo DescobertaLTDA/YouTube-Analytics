@@ -48,6 +48,17 @@ export async function POST(req: NextRequest) {
     if (!elevenResponse.ok || !elevenResponse.body) {
       const errText = await elevenResponse.text().catch(() => "");
       console.error("❌ Erro na API da ElevenLabs:", elevenResponse.status, errText);
+
+      // Sem crédito/saldo na conta ElevenLabs.
+      if (elevenResponse.status === 402) {
+        return new Response("Sua conta do ElevenLabs está sem saldo. Adicione créditos ou faça upgrade do plano em elevenlabs.io.", { status: 502 });
+      }
+
+      // Chave inválida ou sem permissão.
+      if (elevenResponse.status === 401) {
+        return new Response("Chave da ElevenLabs inválida. Confere o ELEVENLABS_API nas env vars do Vercel.", { status: 502 });
+      }
+
       return new Response("Erro ao gerar áudio. Tente de novo em instantes.", { status: 502 });
     }
 
