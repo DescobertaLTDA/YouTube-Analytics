@@ -107,3 +107,21 @@ export type ManualRevenueRow = {
   amount: number | null;
   updated_at: string;
 };
+
+/**
+ * Um "retrato" da receita de um criador no momento de uma sincronização
+ * (botão Atualizar). Diferente de `creator_videos`, essa tabela só recebe
+ * INSERT — nunca é apagada — pra dar pra desenhar o histórico no gráfico
+ * de linha da aba Ganhos.
+ */
+export type CreatorEarningsSnapshotRow = {
+  id: string;
+  creator: string;
+  captured_at: string;
+  total_views: number;
+  total_earnings: number;
+  shorts_views: number;
+  shorts_earnings: number;
+  long_views: number;
+  long_earnings: number;
+};
