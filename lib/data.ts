@@ -11,7 +11,7 @@ import {
   ManualRevenueRow,
 } from "./supabase";
 import { isShortVideo } from "./youtube-channel";
-import { CREATORS, CreatorKey, FIXED_RPM, estimateEarnings } from "./creator-earnings";
+import { CREATORS, CreatorKey, SHORTS_RPM, estimateEarnings } from "./creator-earnings";
 
 export type VideoSource = "manual" | "auto";
 
@@ -187,7 +187,7 @@ async function getAutoDiscoveredRows(): Promise<VideoWithStats[]> {
       viewsPerDay,
       daysLive,
       manual: null,
-      revenue: estimateEarnings(first.view_count),
+      revenue: estimateEarnings(first.view_count, first.is_short),
       changes: [],
       history: [fakeSnapshot],
       isShort: first.is_short,
@@ -356,11 +356,16 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
   // hashtags (colab) conta pra cada criador separadamente — de propósito,
   // igual já era antes.
   const periodViews = rows.reduce((sum, r) => sum + (r.view_count || 0), 0);
+  const periodShortsViews = rows.filter((r) => r.is_short).reduce((sum, r) => sum + (r.view_count || 0), 0);
+  const periodLongViews = rows.filter((r) => !r.is_short).reduce((sum, r) => sum + (r.view_count || 0), 0);
 
   const isManualRevenue = manualAmount != null;
-  const periodEarnings = isManualRevenue
-    ? (manualAmount as number)
-    : estimateEarnings(periodViews);
+  // Estimativa por RPM: Shorts e vídeos longos usam RPM diferente (longos
+  // rendem bem mais — R$5,50 contra R$0,32 dos Shorts), então soma cada um
+  // separado em vez de aplicar um RPM único pra tudo.
+  const estimatedPeriodEarnings =
+    estimateEarnings(periodShortsViews, true) + estimateEarnings(periodLongViews, false);
+  const periodEarnings = isManualRevenue ? (manualAmount as number) : estimatedPeriodEarnings;
 
   const creators: CreatorStats[] = CREATORS.map(({ key, label, hashtag }) => {
     const creatorRows = rows.filter((r) => r.creator === key);
@@ -371,17 +376,31 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     const longViews = longs.reduce((sum, r) => sum + (r.view_count || 0), 0);
     const totalViews = shortsViews + longViews;
 
-    // Fatia da receita total do período proporcional à % de views desse
-    // criador — é aqui que o valor real (quando existe) entra na conta.
     const viewsSharePct = periodViews > 0 ? (totalViews / periodViews) * 100 : 0;
-    const totalEarnings =
-      periodViews > 0 ? Math.round(periodEarnings * (totalViews / periodViews) * 100) / 100 : 0;
 
-    // Dentro da fatia do criador, Shorts x longos dividem proporcional às
-    // views de cada um (mantém a mesma lógica pro breakdown do card).
-    const shortsEarnings =
-      totalViews > 0 ? Math.round(totalEarnings * (shortsViews / totalViews) * 100) / 100 : 0;
-    const longEarnings = Math.round((totalEarnings - shortsEarnings) * 100) / 100;
+    let shortsEarnings: number;
+    let longEarnings: number;
+
+    if (isManualRevenue) {
+      // Com valor real digitado, não dá pra saber o real breakdown por
+      // tipo — mantém a fatia proporcional à % de views do período.
+      const totalEarnings =
+        periodViews > 0 ? Math.round(periodEarnings * (totalViews / periodViews) * 100) / 100 : 0;
+      shortsEarnings =
+        totalViews > 0 ? Math.round(totalEarnings * (shortsViews / totalViews) * 100) / 100 : 0;
+      longEarnings = Math.round((totalEarnings - shortsEarnings) * 100) / 100;
+    } else {
+      // Estimativa: aplica o RPM certo de cada tipo direto nas views do
+      // criador — bem mais preciso que dividir por % de views quando os
+      // RPMs são tão diferentes entre si.
+      shortsEarnings = estimateEarnings(shortsViews, true);
+      longEarnings = estimateEarnings(longViews, false);
+    }
+
+    const totalEarnings = Math.round((shortsEarnings + longEarnings) * 100) / 100;
+    // RPM médio efetivo do criador — mistura os dois RPMs de acordo com o
+    // quanto de cada tipo ele tem, só pra exibir no card.
+    const blendedRpm = totalViews > 0 ? ((totalEarnings * 2 * 1000) / totalViews) : SHORTS_RPM;
 
     return {
       key,
@@ -396,7 +415,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
       totalViews,
       totalEarnings,
       viewsSharePct: Math.round(viewsSharePct * 10) / 10,
-      rpm: FIXED_RPM,
+      rpm: Math.round(blendedRpm * 100) / 100,
     };
   });
 
@@ -424,8 +443,11 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
           ? taggedGroup.map((r) => CREATORS.find((c) => c.key === r.creator)?.label || r.creator).join(" + ")
           : "sem hashtag";
 
-      const revenue =
-        periodViews > 0 ? Math.round(periodEarnings * (first.view_count / periodViews) * 100) / 100 : 0;
+      const revenue = isManualRevenue
+        ? periodViews > 0
+          ? Math.round(periodEarnings * (first.view_count / periodViews) * 100) / 100
+          : 0
+        : estimateEarnings(first.view_count, first.is_short);
 
       return {
         youtubeVideoId,
