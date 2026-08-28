@@ -4,6 +4,7 @@ import { AtualizarButton } from "@/app/components/AtualizarButton";
 import { CreatorCard } from "@/app/components/CreatorCard";
 import { RevenueStatCard } from "@/app/components/RevenueStatCard";
 import { GanhosVideoHistory } from "@/app/components/GanhosVideoHistory";
+import { TopVideosMonth } from "@/app/components/TopVideosMonth";
 
 export const revalidate = 0;
 
@@ -76,6 +77,8 @@ export default async function GanhosPage({
           <CreatorCard key={stats.key} stats={stats} />
         ))}
       </div>
+
+      <TopVideosMonth videos={data.topVideosMonth} />
 
       <GanhosVideoHistory videos={data.periodVideos} page={page} />
 

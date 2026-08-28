@@ -344,6 +344,10 @@ export type GanhosData = {
   // Um vídeo por linha (dedupe de colabs com 2+ hashtags), mais recente
   // primeiro — alimenta o histórico paginado da aba Ganhos.
   periodVideos: GanhosVideoRow[];
+  // Top 10 vídeos publicados do dia 01 do mês atual até hoje, ordenados
+  // pela maior receita estimada (RPM) — alimenta o card de destaque
+  // "Top 10 do mês" da aba Ganhos.
+  topVideosMonth: GanhosVideoRow[];
 };
 
 // Lê a tabela `creator_videos` (populada pela varredura por hashtag em
@@ -616,6 +620,44 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
       return bTime - aTime;
     });
 
+  // Top 10 do mês (dia 01 até hoje), por maior receita estimada. Reusa
+  // monthRows (já filtrado pro range do mês) e a mesma dedupe por
+  // youtube_video_id dos colabs. A receita aqui é sempre a estimativa por
+  // RPM — igual ao "Ganhos do mês" de cada card — já que o valor manual só
+  // é escopado à janela de 28 dias, não dá pra ratear num range de mês.
+  const byVideoIdMonth = new Map<string, CreatorVideoRow[]>();
+  for (const row of monthRows) {
+    const list = byVideoIdMonth.get(row.youtube_video_id) || [];
+    list.push(row);
+    byVideoIdMonth.set(row.youtube_video_id, list);
+  }
+
+  const topVideosMonth: GanhosVideoRow[] = Array.from(byVideoIdMonth.entries())
+    .map(([youtubeVideoId, group]) => {
+      const first = group[0];
+      const taggedGroup = group.filter((r) => r.creator !== "");
+      const creatorLabel =
+        taggedGroup.length > 0
+          ? taggedGroup.map((r) => CREATORS.find((c) => c.key === r.creator)?.label || r.creator).join(" + ")
+          : "sem hashtag";
+
+      return {
+        youtubeVideoId,
+        title: first.title,
+        thumbnailUrl: first.thumbnail_url,
+        creatorLabel,
+        isShort: first.is_short,
+        viewCount: first.view_count,
+        likeCount: first.like_count,
+        commentCount: first.comment_count,
+        durationSeconds: first.duration_seconds,
+        publishedAt: first.published_at,
+        revenue: estimateEarnings(first.view_count, first.is_short),
+      };
+    })
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 10);
+
   return {
     creators,
     lastSyncedAt,
@@ -628,6 +670,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     manualRevenueAmount: manualAmount,
     noHashtagCount,
     periodVideos,
+    topVideosMonth,
   };
 }
 
