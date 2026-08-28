@@ -24,7 +24,8 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
       <div className="creator-total">
         <div className="creator-total-value malachite">{formatCurrency(stats.totalEarnings)}</div>
         <div className="creator-total-label">
-          ganhos estimados · {formatNumber(stats.totalViews)} views
+          {formatNumber(stats.totalViews)} views · {stats.viewsSharePct.toFixed(1)}% do total do
+          período
         </div>
       </div>
 
