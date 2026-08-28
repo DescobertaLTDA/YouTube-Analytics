@@ -9,9 +9,9 @@ export const CREATORS: { key: CreatorKey; label: string; hashtag: string }[] = [
   { key: "rafael", label: "Rafael", hashtag: "#rafael" },
 ];
 
-// RPM fixo (R$ por mil views) usado pra estimar ganhos, tanto pra Shorts
-// quanto pra vídeos longos.
-export const FIXED_RPM = 0.22;
+// RPM fixo (R$ por mil views) usado pra estimar ganhos quando não há valor
+// real informado manualmente — tanto pra Shorts quanto pra vídeos longos.
+export const FIXED_RPM = 0.32;
 
 /**
  * Ganhos estimados = views * RPM / 1000 / 2
