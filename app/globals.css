@@ -1,24 +1,29 @@
 :root {
-  --bg: #ffffff;
-  --surface: #f9f9fa;
-  --surface-raised: #f1f3f4;
-  --border: #e0e0e0;
-  --text: #0f0f0f;
-  --text-muted: #606060;
-  --text-faint: #909090;
-  --text-secondary: #3f3f3f;
+  /* Paleta inspirada no claude.ai: fundo creme quente, "tinta" quase preta
+     e terracota como cor de destaque — no lugar do branco/azul frio que o
+     site usava antes. Os NOMES das variáveis foram mantidos (--malachite,
+     --amber etc.) pra não precisar reescrever todo o resto do CSS. */
+  --bg: #faf9f5;
+  --surface: #f0eee6;
+  --surface-raised: #e8e3d8;
+  --border: #ddd6c7;
+  --text: #1f1e1d;
+  --text-muted: #6b6459;
+  --text-faint: #9c9384;
+  --text-secondary: #4a453d;
 
-  --malachite: #065fd4;
-  --malachite-dim: #e8f0fe;
-  --ink: #0f0f0f;
-  --ink-dim: #f1f3f4;
-  --amber: #476282;
-  --amber-dim: #eef2f6;
-  --rose: #d93025;
+  --malachite: #c2603d;
+  --malachite-hover: #a84f32;
+  --malachite-dim: #f3e3d9;
+  --ink: #1f1e1d;
+  --ink-dim: #ede9de;
+  --amber: #8a6c4f;
+  --amber-dim: #f1e9dc;
+  --rose: #b3261e;
 
-  --font-display: "Roboto", -apple-system, "Segoe UI", sans-serif;
-  --font-body: "Roboto", -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "Roboto", -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-body: "Inter", -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
 }
 
 * {
@@ -53,11 +58,11 @@ a {
 
 /* Cantos retos, estilo app de gestão — sem corte diagonal */
 .facet {
-  border-radius: 8px;
+  border-radius: 12px;
 }
 
 .facet-sm {
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .page {
@@ -138,7 +143,7 @@ a {
   background: var(--surface);
   border: 1px solid var(--border);
   padding: 8px 14px;
-  border-radius: 6px;
+  border-radius: 20px;
   white-space: nowrap;
 }
 
@@ -209,6 +214,7 @@ a {
   flex-direction: column;
   gap: 12px;
   height: 100%;
+  box-shadow: 0 1px 2px rgba(31, 30, 29, 0.04);
 }
 
 .card-clickable {
@@ -218,7 +224,7 @@ a {
 
 .card-clickable:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 12px 24px rgba(31, 30, 29, 0.1);
   border-color: var(--malachite);
 }
 
@@ -280,7 +286,7 @@ a {
 }
 
 .stat-row-2 .stat-value.malachite {
-  color: #0b57d0;
+  color: var(--malachite);
 }
 
 .stat-row-2 .stat-value.amber {
@@ -326,16 +332,23 @@ a {
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 16px;
-  margin: 24px 0 32px;
+  gap: 20px;
+  margin: 28px 0 36px;
 }
 
 .stat-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  padding: 16px;
+  padding: 22px 20px;
   text-align: center;
-  border-radius: 8px;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(31, 30, 29, 0.04);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.stat-card:hover {
+  border-color: #cfc6b3;
+  box-shadow: 0 4px 14px rgba(31, 30, 29, 0.07);
 }
 
 /* Página de Ganhos: 4 cards (3 números + o form de valor real ao lado de
@@ -359,7 +372,7 @@ a {
 }
 
 .stat-value-large.malachite {
-  color: #0b57d0;
+  color: var(--malachite);
 }
 
 .stat-value-large.amber {
@@ -421,7 +434,7 @@ a {
   background: var(--surface);
   border: 1px solid var(--border);
   padding: 24px;
-  border-radius: 8px;
+  border-radius: 12px;
   margin-bottom: 32px;
 }
 
@@ -486,7 +499,7 @@ a {
   background: var(--surface);
   border: 1px solid var(--border);
   padding: 24px;
-  border-radius: 8px;
+  border-radius: 12px;
   margin-bottom: 32px;
 }
 
@@ -674,7 +687,7 @@ a {
 }
 
 .roteiro-timestamps::-webkit-scrollbar-thumb {
-  background: #c1c7cd;
+  background: #cdc4b1;
   border-radius: 3px;
 }
 
@@ -683,7 +696,7 @@ a {
   background: var(--surface);
   border: 1px solid var(--border);
   padding: 24px;
-  border-radius: 8px;
+  border-radius: 12px;
   margin-bottom: 32px;
 }
 
@@ -734,7 +747,7 @@ a {
 }
 
 .change-new {
-  color: #0b57d0;
+  color: var(--malachite);
   font-weight: 500;
 }
 
@@ -795,7 +808,7 @@ a {
 }
 
 .change-trend.up {
-  color: #0b57d0;
+  color: var(--malachite);
   background: var(--malachite-dim);
 }
 
@@ -870,7 +883,7 @@ a {
 }
 
 .change-new-value {
-  color: #0b57d0;
+  color: var(--malachite);
   font-weight: 500;
   font-size: 13px;
   max-width: 200px;
@@ -908,10 +921,10 @@ a {
   background: var(--bg);
   border: 1px solid var(--border);
   color: var(--ink);
-  padding: 6px 8px;
+  padding: 7px 10px;
   font-family: var(--font-mono);
   font-size: 13px;
-  border-radius: 2px;
+  border-radius: 6px;
 }
 
 .rpm-input:focus {
@@ -923,16 +936,16 @@ a {
   background: var(--malachite);
   color: #ffffff;
   border: 1px solid var(--malachite);
-  padding: 6px 12px;
+  padding: 7px 14px;
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
-  border-radius: 2px;
+  border-radius: 6px;
   cursor: pointer;
 }
 
 .rpm-save:hover:not(:disabled) {
-  background: #0a4bb5;
+  background: var(--malachite-hover);
 }
 
 .rpm-save:disabled {
@@ -942,7 +955,7 @@ a {
 
 .rpm-saved {
   font-size: 12px;
-  color: #0b57d0;
+  color: var(--malachite);
 }
 
 /* ===== ROTEIRO BUTTON ===== */
@@ -952,7 +965,7 @@ a {
   background: var(--malachite);
   color: #ffffff;
   border: 1px solid var(--malachite);
-  border-radius: 4px;
+  border-radius: 8px;
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 600;
@@ -961,9 +974,9 @@ a {
 }
 
 .btn-roteiro:hover {
-  background: #0a4bb5;
+  background: var(--malachite-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(6, 95, 212, 0.3);
+  box-shadow: 0 4px 12px rgba(194, 96, 61, 0.3);
 }
 
 /* ===== MODAL ===== */
@@ -1092,7 +1105,7 @@ a {
 .form-group input:focus {
   outline: none;
   border-color: var(--malachite);
-  box-shadow: 0 0 0 3px rgba(6, 95, 212, 0.1);
+  box-shadow: 0 0 0 3px rgba(194, 96, 61, 0.1);
 }
 
 .form-group textarea {
@@ -1138,7 +1151,7 @@ a {
   display: inline-block;
   padding: 10px 20px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -1165,9 +1178,9 @@ a {
 }
 
 .btn-success:hover:not(:disabled) {
-  background: #0a4bb5;
+  background: var(--malachite-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(6, 95, 212, 0.3);
+  box-shadow: 0 4px 12px rgba(194, 96, 61, 0.3);
 }
 
 .btn-success:disabled {
@@ -1192,7 +1205,7 @@ a {
   font-family: var(--font-mono);
   font-size: 12.5px;
   line-height: 1.6;
-  border-radius: 3px;
+  border-radius: 8px;
   resize: vertical;
 }
 
@@ -1208,7 +1221,7 @@ a {
   padding: 8px 10px;
   font-family: var(--font-mono);
   font-size: 12.5px;
-  border-radius: 2px;
+  border-radius: 8px;
 }
 
 .transcript-actions {
@@ -1226,12 +1239,12 @@ a {
   font-family: var(--font-mono);
   font-size: 12.5px;
   font-weight: 600;
-  border-radius: 2px;
+  border-radius: 8px;
   cursor: pointer;
 }
 
 .transcript-submit:hover:not(:disabled) {
-  background: #2b2b2b;
+  background: #000000;
 }
 
 .transcript-submit:disabled {
@@ -1245,7 +1258,7 @@ a {
 }
 
 .transcript-status.ok {
-  color: #0b57d0;
+  color: var(--malachite);
 }
 
 .transcript-status.error {
@@ -1326,7 +1339,7 @@ a {
   background: var(--ink);
   color: #fff;
   border: 1px solid var(--ink);
-  border-radius: 6px;
+  border-radius: 8px;
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 600;
@@ -1335,7 +1348,7 @@ a {
 }
 
 .btn-sync:hover {
-  background: #2b2b2b;
+  background: #000000;
   transform: translateY(-1px);
 }
 
@@ -1364,12 +1377,12 @@ footer.page-footer {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c7cd;
+  background: #cdc4b1;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8afb6;
+  background: #b3a890;
 }
 
 /* ===== RESPONSIVO ===== */
@@ -1500,7 +1513,7 @@ footer.page-footer {
 
 /* ===== ABA GANHOS (criadores) ===== */
 .malachite {
-  color: #0b57d0;
+  color: var(--malachite);
 }
 
 .amber {
@@ -1517,10 +1530,12 @@ footer.page-footer {
 .creator-card {
   background: var(--surface);
   border: 1px solid var(--border);
+  border-top: 3px solid var(--malachite);
   padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  box-shadow: 0 1px 3px rgba(31, 30, 29, 0.05);
 }
 
 .creator-card-top {
@@ -1544,8 +1559,8 @@ footer.page-footer {
   color: var(--text-muted);
   background: var(--surface-raised);
   border: 1px solid var(--border);
-  padding: 5px 10px;
-  border-radius: 3px;
+  padding: 6px 12px;
+  border-radius: 20px;
   white-space: nowrap;
 }
 
@@ -1576,8 +1591,8 @@ footer.page-footer {
 .creator-breakdown-item {
   background: var(--surface-raised);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 10px 12px;
+  border-radius: 8px;
+  padding: 12px 14px;
 }
 
 .creator-breakdown-header {
@@ -1696,8 +1711,8 @@ footer.page-footer {
   color: var(--ink);
   background: var(--malachite-dim);
   border: 1px solid var(--malachite);
-  padding: 8px 16px;
-  border-radius: 3px;
+  padding: 9px 16px;
+  border-radius: 20px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -1720,7 +1735,7 @@ footer.page-footer {
 }
 
 .atualizar-message.success {
-  color: #0b57d0;
+  color: var(--malachite);
 }
 
 .atualizar-message.error {
