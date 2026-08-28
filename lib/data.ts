@@ -33,66 +33,72 @@ export async function getDashboardData(): Promise<VideoWithStats[]> {
 
   if (!videos || videos.length === 0) return [];
 
-  const results: VideoWithStats[] = [];
+  // As 3 consultas de cada vídeo (snapshots, analytics_manual, change_log)
+  // não dependem umas das outras, então rodam em paralelo com Promise.all —
+  // e todos os vídeos também são processados em paralelo entre si. Isso
+  // troca N×3 idas sequenciais ao banco por uma única "onda" de requests,
+  // o que é o principal motivo do site demorar pra carregar as páginas.
+  const results = await Promise.all(
+    (videos as VideoRow[]).map(async (video) => {
+      const [{ data: snapshots }, { data: manualRows }, { data: changeRows }] =
+        await Promise.all([
+          supabase
+            .from("video_snapshots")
+            .select("*")
+            .eq("video_id", video.id)
+            .order("captured_at", { ascending: false })
+            .limit(30),
+          supabase
+            .from("analytics_manual")
+            .select("*")
+            .eq("video_id", video.id)
+            .order("report_date", { ascending: false })
+            .limit(1),
+          supabase
+            .from("change_log")
+            .select("*")
+            .eq("video_id", video.id)
+            .order("detected_at", { ascending: false })
+            .limit(10),
+        ]);
 
-  for (const video of videos as VideoRow[]) {
-    const { data: snapshots } = await supabase
-      .from("video_snapshots")
-      .select("*")
-      .eq("video_id", video.id)
-      .order("captured_at", { ascending: false })
-      .limit(30);
+      const history = ((snapshots as SnapshotRow[]) || []).slice().reverse();
+      const latest = history.length > 0 ? history[history.length - 1] : null;
+      const previous = history.length > 1 ? history[history.length - 2] : null;
 
-    const history = ((snapshots as SnapshotRow[]) || []).slice().reverse();
-    const latest = history.length > 0 ? history[history.length - 1] : null;
-    const previous = history.length > 1 ? history[history.length - 2] : null;
+      let viewsPerDay: number | null = null;
+      let daysLive: number | null = null;
 
-    let viewsPerDay: number | null = null;
-    let daysLive: number | null = null;
+      if (video.published_at && latest?.view_count != null) {
+        const published = new Date(video.published_at).getTime();
+        const now = new Date(latest.captured_at).getTime();
+        const days = Math.max((now - published) / (1000 * 60 * 60 * 24), 1);
+        daysLive = Math.round(days * 10) / 10;
+        viewsPerDay = Math.round((latest.view_count / days) * 10) / 10;
+      }
 
-    if (video.published_at && latest?.view_count != null) {
-      const published = new Date(video.published_at).getTime();
-      const now = new Date(latest.captured_at).getTime();
-      const days = Math.max((now - published) / (1000 * 60 * 60 * 24), 1);
-      daysLive = Math.round(days * 10) / 10;
-      viewsPerDay = Math.round((latest.view_count / days) * 10) / 10;
-    }
+      const manual = (manualRows && manualRows[0]) || null;
 
-    const { data: manualRows } = await supabase
-      .from("analytics_manual")
-      .select("*")
-      .eq("video_id", video.id)
-      .order("report_date", { ascending: false })
-      .limit(1);
+      // Receita estimada = (views totais / 1000) × RPM informado manualmente
+      const revenue =
+        manual?.rpm != null && latest?.view_count != null
+          ? Math.round(((latest.view_count / 1000) * manual.rpm) * 100) / 100
+          : null;
 
-    const manual = (manualRows && manualRows[0]) || null;
-
-    // Receita estimada = (views totais / 1000) × RPM informado manualmente
-    const revenue =
-      manual?.rpm != null && latest?.view_count != null
-        ? Math.round(((latest.view_count / 1000) * manual.rpm) * 100) / 100
-        : null;
-
-    const { data: changeRows } = await supabase
-      .from("change_log")
-      .select("*")
-      .eq("video_id", video.id)
-      .order("detected_at", { ascending: false })
-      .limit(10);
-
-    results.push({
-      video,
-      latest,
-      previous,
-      viewsPerDay,
-      daysLive,
-      manual,
-      revenue,
-      changes: (changeRows as ChangeLogRow[]) || [],
-      history,
-      isShort: isShortVideo(latest?.duration_seconds),
-    });
-  }
+      return {
+        video,
+        latest,
+        previous,
+        viewsPerDay,
+        daysLive,
+        manual,
+        revenue,
+        changes: (changeRows as ChangeLogRow[]) || [],
+        history,
+        isShort: isShortVideo(latest?.duration_seconds),
+      };
+    })
+  );
 
   return results;
 }
