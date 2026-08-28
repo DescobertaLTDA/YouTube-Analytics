@@ -28,21 +28,24 @@ export const LONG_COUNT_GOAL = 15;
 export const SHORTS_REVENUE_GOAL = 1700;
 export const LONG_REVENUE_GOAL = 1700;
 
-// views = receita * 1000 * 2 / rpm (inverso de estimateEarnings)
+// views = receita * 1000 * 2 / rpm pra Shorts (tem o /2);
+// views = receita * 1000 / rpm pra vídeo longo (sem o /2).
+// Inverso de estimateEarnings pro RPM de cada formato.
 export const SHORTS_VIEWS_GOAL = Math.round((SHORTS_REVENUE_GOAL * 2000) / SHORTS_RPM);
-export const LONG_VIEWS_GOAL = Math.round((LONG_REVENUE_GOAL * 2000) / LONG_RPM);
+export const LONG_VIEWS_GOAL = Math.round((LONG_REVENUE_GOAL * 1000) / LONG_RPM);
 
 /**
- * Ganhos estimados = views * RPM / 1000 / 2
- * (o /2 é a divisão fixa entre os 2 lados combinada com você — ex: parceria
- * de canal, split entre editor/criador, etc.)
+ * Ganhos estimados:
+ * - Shorts: views * RPM / 1000 / 2 (o /2 é a divisão fixa entre os 2 lados
+ *   combinada com você — ex: parceria de canal, split entre editor/criador).
+ * - Vídeo longo: views * RPM / 1000 (sem o /2).
  *
  * `isShort` decide qual RPM usar — Shorts (R$0,32) ou vídeo longo (R$5,50).
  */
 export function estimateEarnings(views: number, isShort: boolean = true): number {
   if (!views) return 0;
   const rpm = isShort ? SHORTS_RPM : LONG_RPM;
-  const raw = (views * rpm) / 1000 / 2;
+  const raw = isShort ? (views * rpm) / 1000 / 2 : (views * rpm) / 1000;
   return Math.round(raw * 100) / 100;
 }
 
