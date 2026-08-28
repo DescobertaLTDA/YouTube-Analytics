@@ -2375,13 +2375,21 @@ footer.page-footer {
   flex-direction: column;
 }
 
+/* Grid em vez de flex: cada célula (rank/thumb/título/stats) tem sua
+   própria área garantida, então nada "some" por falta de espaço — na
+   pior das hipóteses o conteúdo quebra linha ou estoura, mas continua
+   visível. Rank e thumb ocupam as duas linhas (título + stats). */
 .top-video-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 26px 60px minmax(0, 1fr);
+  grid-template-areas:
+    "rank thumb title"
+    "rank thumb stats";
   align-items: center;
-  gap: 16px;
+  column-gap: 12px;
+  row-gap: 6px;
   padding: 12px 0;
   border-bottom: 1px dashed var(--border);
-  flex-wrap: wrap;
 }
 
 .top-video-row:last-child {
@@ -2389,13 +2397,13 @@ footer.page-footer {
 }
 
 .top-video-rank {
+  grid-area: rank;
   font-family: var(--font-mono);
   font-size: 15px;
   font-weight: 700;
   color: var(--text-muted);
-  width: 24px;
-  flex-shrink: 0;
   text-align: center;
+  align-self: center;
 }
 
 .top-video-row.rank-1 .top-video-rank,
@@ -2405,20 +2413,54 @@ footer.page-footer {
   font-size: 17px;
 }
 
-/* linha de cabeçalho da "tabela" — mesmas colunas da linha de dados, só
-   com rótulos em vez de valores. Some no mobile, onde cada linha já
-   mostra os rótulos junto do valor via .history-stat-label. */
+.top-video-row .history-thumb {
+  grid-area: thumb;
+  width: 60px;
+  height: 34px;
+  align-self: center;
+}
+
+.top-video-thumb-col {
+  grid-area: thumb;
+}
+
+.top-video-row .history-main {
+  grid-area: title;
+  min-width: 0;
+}
+
+.top-video-row .history-main .history-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.top-video-row .top-video-stats {
+  grid-area: stats;
+  min-width: 0;
+}
+
+/* linha de cabeçalho da "tabela" — mesma grade das linhas de dados (por
+   padrão herda o template de 2 linhas de .top-video-row, incluindo a
+   área "stats"), só com rótulos em vez de valores nas colunas de rank e
+   thumb (que ficam vazias). */
 .top-video-header {
   padding: 0 0 10px;
   border-bottom: 1px solid var(--border);
 }
 
 .top-video-header .top-video-title-col {
+  grid-area: title;
   font-family: var(--font-mono);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-faint);
+}
+
+.top-video-stats-header {
+  grid-area: stats;
 }
 
 .top-video-stats-header .history-stat {
@@ -2452,5 +2494,24 @@ footer.page-footer {
     display: none;
   }
 }
+
+@media (min-width: 700px) {
+  /* espaço de sobra: título e stats voltam a caber lado a lado numa
+     única linha, com as stats alinhadas à direita. */
+  .top-video-row {
+    grid-template-columns: 26px 64px minmax(160px, 1fr) auto;
+    grid-template-areas: "rank thumb title stats";
+  }
+
+  .top-video-row .top-video-stats {
+    justify-self: end;
+  }
+
+  .top-video-header {
+    grid-template-columns: 26px 64px minmax(160px, 1fr) auto;
+    grid-template-areas: "rank thumb title stats";
+  }
+}
+
 
 
