@@ -2607,6 +2607,33 @@ footer.page-footer {
   color: var(--ink);
 }
 
+.ai-chat-speak-btn {
+  margin-top: 8px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--amber);
+  cursor: pointer;
+}
+
+.ai-chat-speak-btn:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.ai-chat-speak-btn-active {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.ai-chat-speak-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .ai-chat-input-row {
   display: flex;
   align-items: flex-end;

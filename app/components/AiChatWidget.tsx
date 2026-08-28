@@ -19,7 +19,10 @@ export function AiChatWidget() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
+  const [loadingAudioIndex, setLoadingAudioIndex] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -90,6 +93,47 @@ export function AiChatWidget() {
     }
   }
 
+  async function toggleSpeak(index: number, text: string) {
+    // Clicou de novo na mesma mensagem que já está tocando -> para o áudio.
+    if (speakingIndex === index) {
+      audioRef.current?.pause();
+      setSpeakingIndex(null);
+      return;
+    }
+
+    audioRef.current?.pause();
+    setLoadingAudioIndex(index);
+
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        alert(errText || "Não consegui gerar o áudio.");
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+
+      audio.onended = () => setSpeakingIndex(null);
+      audio.onerror = () => setSpeakingIndex(null);
+
+      await audio.play();
+      setSpeakingIndex(index);
+    } catch {
+      alert("Não consegui falar com a ElevenLabs agora. Confere a ELEVENLABS_API e tenta de novo.");
+    } finally {
+      setLoadingAudioIndex(null);
+    }
+  }
+
   return (
     <>
       {!open && (
@@ -113,16 +157,33 @@ export function AiChatWidget() {
 
         <div className="ai-chat-messages" ref={scrollRef}>
           {messages.length === 0 && (
-            <div className="ai-chat-empty">
-              Ex: &quot;quanto de receita o Lucas pode fazer até o fim do mês?&quot; — a IA calcula com base
-              nos dados reais do dashboard.
-            </div>
+            <div className="ai-chat-empty">Olá <strong>Criador</strong>! Pergunte sobre views, receita e projeções do canal.</div>
           )}
-          {messages.map((m, i) => (
-            <div key={i} className={`ai-chat-bubble ai-chat-bubble-${m.role}`}>
-              {m.content ? renderRichText(m.content) : loading && i === messages.length - 1 ? "…" : ""}
-            </div>
-          ))}
+          {messages.map((m, i) => {
+            const isStreamingThis = loading && i === messages.length - 1;
+            const canSpeak = m.role === "assistant" && !!m.content && !isStreamingThis;
+            return (
+              <div key={i} className={`ai-chat-bubble ai-chat-bubble-${m.role}`}>
+                <div>{m.content ? renderRichText(m.content) : isStreamingThis ? "…" : ""}</div>
+                {canSpeak && (
+                  <button
+                    className={`ai-chat-speak-btn ${speakingIndex === i ? "ai-chat-speak-btn-active" : ""}`}
+                    onClick={() => toggleSpeak(i, m.content)}
+                    disabled={loadingAudioIndex === i}
+                    aria-label={speakingIndex === i ? "Parar áudio" : "Ouvir resposta"}
+                  >
+                    {loadingAudioIndex === i ? (
+                      "carregando…"
+                    ) : speakingIndex === i ? (
+                      <>⏸ parar</>
+                    ) : (
+                      <>🔊 ouvir</>
+                    )}
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="ai-chat-input-row">
