@@ -33,7 +33,7 @@ export function RevenueOverrideForm({ currentAmount }: { currentAmount: number |
 
   return (
     <div className="rpm-form">
-      <span className="rpm-label">Valor real (28 dias, R$)</span>
+      <span className="rpm-label">Valor real (28d)</span>
       <input
         type="number"
         step="0.01"
