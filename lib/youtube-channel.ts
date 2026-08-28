@@ -72,7 +72,7 @@ export async function getAllPlaylistVideoIds(playlistId: string): Promise<string
   const MAX_PAGES = 80;
 
   do {
-    const url = `${YOUTUBE_API_URL}/playlistItems?part=contentDetails&maxResults=50&playlistId=${playlistId}&key=${YOUTUBE_API_KEY}${
+    const url: string = `${YOUTUBE_API_URL}/playlistItems?part=contentDetails&maxResults=50&playlistId=${playlistId}&key=${YOUTUBE_API_KEY}${
       pageToken ? `&pageToken=${pageToken}` : ""
     }`;
     const response = await fetch(url);
