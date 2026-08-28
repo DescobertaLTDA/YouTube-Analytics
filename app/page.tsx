@@ -2,7 +2,7 @@ import { getCreatorEarnings } from "@/lib/data";
 import { SiteNav } from "@/app/components/SiteNav";
 import { AtualizarButton } from "@/app/components/AtualizarButton";
 import { CreatorCard } from "@/app/components/CreatorCard";
-import { RevenueOverrideForm } from "@/app/components/RevenueOverrideForm";
+import { RevenueStatCard } from "@/app/components/RevenueStatCard";
 import { GanhosVideoHistory } from "@/app/components/GanhosVideoHistory";
 
 export const revalidate = 0;
@@ -10,11 +10,6 @@ export const revalidate = 0;
 function formatNumber(n: number | null | undefined) {
   if (n == null) return "—";
   return new Intl.NumberFormat("pt-BR").format(Math.round(n));
-}
-
-function formatCurrency(n: number | null | undefined) {
-  if (n == null) return "—";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 }
 
 function formatDate(iso: string | null | undefined) {
@@ -46,11 +41,13 @@ export default async function GanhosPage({
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-end" }}>
-          <SiteNav active="ganhos" />
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <AtualizarButton />
+            <SiteNav active="ganhos" />
+          </div>
           <div className="sync-pill">
             última sincronização: <strong>{formatDate(data.lastSyncedAt)}</strong>
           </div>
-          <AtualizarButton />
         </div>
       </div>
 
@@ -59,18 +56,18 @@ export default async function GanhosPage({
           <div className="stat-value-large amber">{formatNumber(data.periodViews)}</div>
           <div className="stat-label">Views · 28d</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-value-large malachite">{formatCurrency(data.periodEarnings)}</div>
-          <div className="stat-label">
-            {data.isManualRevenue ? "Receita real · 28d" : "Receita estimada · 28d"}
-          </div>
-        </div>
+        <RevenueStatCard
+          periodEarnings={data.periodEarnings}
+          isManualRevenue={data.isManualRevenue}
+          manualRevenueAmount={data.manualRevenueAmount}
+        />
         <div className="stat-card">
           <div className="stat-value-large">{formatNumber(data.totalVideosScanned)}</div>
           <div className="stat-label">Vídeos escaneados</div>
         </div>
-        <div className="stat-card stat-card-form">
-          <RevenueOverrideForm currentAmount={data.manualRevenueAmount} />
+        <div className="stat-card">
+          <div className="stat-value-large">{formatNumber(data.noHashtagCount)}</div>
+          <div className="stat-label">Vídeos sem Hashtags</div>
         </div>
       </div>
 

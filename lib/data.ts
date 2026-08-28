@@ -337,6 +337,10 @@ export type GanhosData = {
   // false quando é estimativa por RPM.
   isManualRevenue: boolean;
   manualRevenueAmount: number | null;
+  // Quantos vídeos publicados no período (28d) não têm nenhuma hashtag de
+  // criador (#lucas / #matheus / #rafael) — contam nas views totais do
+  // canal mas não em nenhum card de criador.
+  noHashtagCount: number;
   // Um vídeo por linha (dedupe de colabs com 2+ hashtags), mais recente
   // primeiro — alimenta o histórico paginado da aba Ganhos.
   periodVideos: GanhosVideoRow[];
@@ -475,8 +479,11 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
   const periodViews = rows.reduce((sum, r) => sum + (r.view_count || 0), 0);
   const periodShortsViews = rows.filter((r) => r.is_short).reduce((sum, r) => sum + (r.view_count || 0), 0);
   const periodLongViews = rows.filter((r) => !r.is_short).reduce((sum, r) => sum + (r.view_count || 0), 0);
+  const noHashtagCount = rows.filter((r) => r.creator === "").length;
 
-  const isManualRevenue = manualAmount != null;
+  // Zero ou não preenchido conta como "sem valor manual" — volta a usar a
+  // estimativa por RPM automaticamente, sem precisar de um botão separado.
+  const isManualRevenue = manualAmount != null && manualAmount > 0;
   // Estimativa por RPM: Shorts e vídeos longos usam RPM diferente (longos
   // rendem bem mais — R$5,50 contra R$0,32 dos Shorts), então soma cada um
   // separado em vez de aplicar um RPM único pra tudo.
@@ -619,6 +626,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     periodEarnings,
     isManualRevenue,
     manualRevenueAmount: manualAmount,
+    noHashtagCount,
     periodVideos,
   };
 }

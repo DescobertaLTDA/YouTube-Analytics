@@ -373,6 +373,49 @@ a {
   letter-spacing: 0.06em;
 }
 
+.stat-card-revenue {
+  position: relative;
+}
+
+.stat-edit-pencil {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px;
+  line-height: 1;
+}
+
+.stat-edit-pencil:hover {
+  color: var(--ink);
+}
+
+.stat-card-revenue-editing {
+  text-align: left;
+}
+
+.revenue-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.rpm-cancel {
+  background: transparent;
+  color: inherit;
+}
+
+.revenue-edit-hint {
+  display: block;
+  margin-top: 8px;
+}
+
 /* ===== GRÁFICO DE LINHA ===== */
 .chart-section {
   background: var(--surface);
