@@ -1,4 +1,5 @@
 import type { CreatorStats } from "@/lib/data";
+import { ShopeeSalesDetail } from "@/app/components/ShopeeSalesDetail";
 
 function formatNumber(n: number | null | undefined) {
   if (n == null) return "—";
@@ -91,6 +92,7 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
           <div className="creator-breakdown-stats">
             <span className="creator-shopee-value">{formatCurrency(stats.shopeeAmount)}</span>
           </div>
+          {stats.shopeeSales && <ShopeeSalesDetail sales={stats.shopeeSales} />}
         </div>
       </div>
     </div>

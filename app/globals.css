@@ -1586,6 +1586,59 @@ footer.page-footer {
   color: #ee4d2d;
 }
 
+.shopee-sales-detail {
+  margin-top: 8px;
+}
+
+.shopee-sales-toggle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #ee4d2d;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.shopee-sales-toggle:hover {
+  text-decoration: underline;
+}
+
+.shopee-sales-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #ee4d2d;
+}
+
+.shopee-sale-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shopee-sale-product {
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
+.shopee-sale-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.shopee-sale-commission {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #ee4d2d;
+  white-space: nowrap;
+}
+
 /* Botão Atualizar */
 .atualizar-wrap {
   display: flex;

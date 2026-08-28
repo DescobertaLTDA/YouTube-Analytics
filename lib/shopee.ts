@@ -233,6 +233,62 @@ function isNodePaid(node: ShopeeConversionNode): boolean {
   return node.orders.some((o) => PAID_STATUSES.has(o.orderStatus));
 }
 
+export type ShopeeSaleDetail = {
+  conversionId: string;
+  purchaseTime: string; // ISO
+  clickTime: string; // ISO
+  daysSinceClick: number;
+  commission: number;
+  status: string;
+  products: { itemName: string; shopName: string; qty: number }[];
+};
+
+function unixSecondsToIso(value: string | number): string | null {
+  const n = typeof value === "string" ? Number(value) : value;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return new Date(n * 1000).toISOString();
+}
+
+// Monta o detalhe de cada venda paga (produto, loja, comissão e as duas
+// datas — clique e compra) pra dar pra mostrar no dashboard quais compras
+// compõem o total, mesmo quando o produto comprado é diferente do que foi
+// divulgado no link (compra dentro da janela do cookie de atribuição).
+export function paidSaleDetails(orders: ShopeeConversionNode[]): ShopeeSaleDetail[] {
+  return orders
+    .filter(isNodePaid)
+    .map((node): ShopeeSaleDetail => {
+      const paidOrders = node.orders.filter((o) => PAID_STATUSES.has(o.orderStatus));
+      const products = paidOrders.flatMap((o) =>
+        o.items.map((i) => ({ itemName: i.itemName, shopName: i.shopName, qty: i.qty }))
+      );
+
+      const purchaseIso = unixSecondsToIso(node.purchaseTime);
+      const clickIso = unixSecondsToIso(node.clickTime);
+      const daysSinceClick =
+        purchaseIso && clickIso
+          ? Math.max(
+              0,
+              Math.round(
+                (new Date(purchaseIso).getTime() - new Date(clickIso).getTime()) / (1000 * 60 * 60 * 24)
+              )
+            )
+          : 0;
+
+      const commissionValue = Number(node.totalCommission);
+
+      return {
+        conversionId: node.conversionId,
+        purchaseTime: purchaseIso ?? "",
+        clickTime: clickIso ?? "",
+        daysSinceClick,
+        commission: Number.isFinite(commissionValue) ? commissionValue : 0,
+        status: paidOrders[0]?.orderStatus ?? "",
+        products,
+      };
+    })
+    .sort((a, b) => (a.purchaseTime < b.purchaseTime ? 1 : -1));
+}
+
 export function sumPaidCommission(orders: ShopeeConversionNode[]): number {
   return orders
     .filter(isNodePaid)

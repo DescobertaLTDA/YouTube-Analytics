@@ -14,7 +14,14 @@ import {
 import { isShortVideo } from "./youtube-channel";
 import { CREATORS, CreatorKey, SHORTS_RPM, estimateEarnings } from "./creator-earnings";
 import { getAllOrders, sumPaidAmount } from "./cakto";
-import { getAllConversions, filterByCreator, sumPaidCommission, countPaidOrders } from "./shopee";
+import {
+  getAllConversions,
+  filterByCreator,
+  sumPaidCommission,
+  countPaidOrders,
+  paidSaleDetails,
+  type ShopeeSaleDetail,
+} from "./shopee";
 
 export type VideoSource = "manual" | "auto";
 
@@ -294,6 +301,11 @@ export type CreatorStats = {
   // de quebrar a página inteira.
   shopeeOrders: number | null;
   shopeeAmount: number | null;
+  // Detalhe de cada venda paga (produto, loja, comissão, data do clique e
+  // da compra) — pra dar pra ver no dashboard quais compras compõem o
+  // total, mesmo quando o produto é diferente do que foi divulgado
+  // (compra dentro da janela do cookie de atribuição).
+  shopeeSales: ShopeeSaleDetail[] | null;
 };
 
 export type GanhosVideoRow = {
@@ -377,8 +389,13 @@ async function getCaktoSalesByCreator(
 async function getShopeeSalesByCreator(
   periodStart: Date,
   periodEnd: Date
-): Promise<Record<CreatorKey, { orders: number; amount: number } | null>> {
-  const result = {} as Record<CreatorKey, { orders: number; amount: number } | null>;
+): Promise<
+  Record<CreatorKey, { orders: number; amount: number; sales: ShopeeSaleDetail[] } | null>
+> {
+  const result = {} as Record<
+    CreatorKey,
+    { orders: number; amount: number; sales: ShopeeSaleDetail[] } | null
+  >;
 
   try {
     const allOrders = await getAllConversions({
@@ -391,6 +408,7 @@ async function getShopeeSalesByCreator(
       result[key] = {
         orders: countPaidOrders(creatorOrders),
         amount: sumPaidCommission(creatorOrders),
+        sales: paidSaleDetails(creatorOrders),
       };
     }
   } catch (error) {
@@ -537,6 +555,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
       caktoAmount: cakto ? cakto.amount : null,
       shopeeOrders: shopee ? shopee.orders : null,
       shopeeAmount: shopee ? shopee.amount : null,
+      shopeeSales: shopee ? shopee.sales : null,
     };
   });
 
