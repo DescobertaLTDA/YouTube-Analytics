@@ -140,8 +140,14 @@ async function getAutoDiscoveredRows(): Promise<VideoWithStats[]> {
   const results: VideoWithStats[] = [];
 
   for (const [youtubeVideoId, group] of byVideoId) {
-    const first = group[0];
-    const creatorLabel = group
+    // Vídeos sem hashtag (creator: "") entram em creator_videos só pra
+    // contar nas views totais do período da aba Ganhos — não devem
+    // aparecer automaticamente aqui em Vídeos/Shorts.
+    const taggedGroup = group.filter((r) => r.creator !== "");
+    if (taggedGroup.length === 0) continue;
+
+    const first = taggedGroup[0];
+    const creatorLabel = taggedGroup
       .map((r) => CREATORS.find((c) => c.key === r.creator)?.label || r.creator)
       .join(" + ");
 
