@@ -2297,22 +2297,24 @@ footer.page-footer {
   line-height: 1.6;
 }
 
-/* >=20x a média do formato (Short vs. vídeo longo) — bem viral */
+/* >=20x a média do formato (Short vs. vídeo longo) — bem viral.
+   Preto sólido é o "mais forte" da escala preto-e-branco. */
 .vph-badge-explosive {
-  background: var(--vph-explosive);
+  background: var(--ink);
   color: #ffffff;
 }
 
 /* >=5x a média — em alta */
 .vph-badge-hot {
-  background: var(--vph-hot);
+  background: var(--text-muted);
   color: #ffffff;
 }
 
 /* >=2x a média — acima do normal */
 .vph-badge-warm {
-  background: var(--vph-warm);
-  color: #ffffff;
+  background: #ffffff;
+  color: var(--ink);
+  border: 1px solid var(--ink);
 }
 
 /* abaixo de 2x — dentro do esperado */
@@ -2367,27 +2369,28 @@ footer.page-footer {
 
 /* ===== TOP 10 DO MÊS (tabela) ===== */
 .top-videos-section {
-  border-top: 3px solid var(--malachite);
+  border-top: 3px solid var(--ink);
+}
+
+/* Container com scroll horizontal: a linha NUNCA empilha — se não
+   couber, o usuário arrasta/rola pros lados, mas rank, thumb, título,
+   views, VPH e receita continuam sempre lado a lado, na mesma linha. */
+.top-video-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .top-video-table {
   display: flex;
   flex-direction: column;
+  min-width: 640px;
 }
 
-/* Grid em vez de flex: cada célula (rank/thumb/título/stats) tem sua
-   própria área garantida, então nada "some" por falta de espaço — na
-   pior das hipóteses o conteúdo quebra linha ou estoura, mas continua
-   visível. Rank e thumb ocupam as duas linhas (título + stats). */
 .top-video-row {
   display: grid;
-  grid-template-columns: 26px 60px minmax(0, 1fr);
-  grid-template-areas:
-    "rank thumb title"
-    "rank thumb stats";
+  grid-template-columns: 26px 60px minmax(200px, 1fr) 100px 130px 110px;
   align-items: center;
-  column-gap: 12px;
-  row-gap: 6px;
+  column-gap: 14px;
   padding: 12px 0;
   border-bottom: 1px dashed var(--border);
 }
@@ -2397,61 +2400,82 @@ footer.page-footer {
 }
 
 .top-video-rank {
-  grid-area: rank;
   font-family: var(--font-mono);
   font-size: 15px;
   font-weight: 700;
   color: var(--text-muted);
   text-align: center;
-  align-self: center;
 }
 
 .top-video-row.rank-1 .top-video-rank,
 .top-video-row.rank-2 .top-video-rank,
 .top-video-row.rank-3 .top-video-rank {
-  color: var(--malachite);
+  color: var(--ink);
   font-size: 17px;
 }
 
-.top-video-row .history-thumb {
-  grid-area: thumb;
-  width: 60px;
-  height: 34px;
-  align-self: center;
+.top-video-thumb-col {
+  display: flex;
+  align-items: center;
 }
 
-.top-video-thumb-col {
-  grid-area: thumb;
+.top-video-row .history-thumb {
+  width: 60px;
+  height: 34px;
 }
 
 .top-video-row .history-main {
-  grid-area: title;
   min-width: 0;
 }
 
 .top-video-row .history-main .history-title {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.top-video-row .top-video-stats {
-  grid-area: stats;
-  min-width: 0;
+.top-video-views-col,
+.top-video-vph-col,
+.top-video-revenue-col {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink);
+  white-space: nowrap;
 }
 
-/* linha de cabeçalho da "tabela" — mesma grade das linhas de dados (por
-   padrão herda o template de 2 linhas de .top-video-row, incluindo a
-   área "stats"), só com rótulos em vez de valores nas colunas de rank e
-   thumb (que ficam vazias). */
+.top-video-views-col {
+  text-align: right;
+  font-weight: 600;
+}
+
+.top-video-vph-col {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.top-video-vph-col .vph-tag {
+  gap: 8px;
+}
+
+.top-video-revenue-col {
+  text-align: right;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.top-video-row.rank-1 .top-video-revenue-col {
+  font-size: 21px;
+}
+
+/* linha de cabeçalho — mesma grade, só com rótulos */
 .top-video-header {
   padding: 0 0 10px;
   border-bottom: 1px solid var(--border);
 }
 
-.top-video-header .top-video-title-col {
-  grid-area: title;
+.top-video-header > span {
   font-family: var(--font-mono);
   font-size: 10px;
   text-transform: uppercase;
@@ -2459,59 +2483,11 @@ footer.page-footer {
   color: var(--text-faint);
 }
 
-.top-video-stats-header {
-  grid-area: stats;
+.top-video-header .top-video-views-col,
+.top-video-header .top-video-vph-col,
+.top-video-header .top-video-revenue-col {
+  text-align: right;
+  justify-content: flex-end;
 }
-
-.top-video-stats-header .history-stat {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-faint);
-  align-items: flex-end;
-}
-
-/* views antes da receita, e a receita segue em destaque no fim */
-.top-video-revenue {
-  font-family: var(--font-mono);
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--malachite);
-  white-space: nowrap;
-}
-
-.top-video-row.rank-1 .top-video-revenue {
-  font-size: 22px;
-}
-
-.top-video-revenue-stat {
-  min-width: 76px;
-}
-
-@media (max-width: 640px) {
-  .top-video-header {
-    display: none;
-  }
-}
-
-@media (min-width: 700px) {
-  /* espaço de sobra: título e stats voltam a caber lado a lado numa
-     única linha, com as stats alinhadas à direita. */
-  .top-video-row {
-    grid-template-columns: 26px 64px minmax(160px, 1fr) auto;
-    grid-template-areas: "rank thumb title stats";
-  }
-
-  .top-video-row .top-video-stats {
-    justify-self: end;
-  }
-
-  .top-video-header {
-    grid-template-columns: 26px 64px minmax(160px, 1fr) auto;
-    grid-template-areas: "rank thumb title stats";
-  }
-}
-
 
 

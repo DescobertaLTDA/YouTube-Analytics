@@ -37,73 +37,68 @@ export function TopVideosMonth({
       )}
 
       {videos.length > 0 && (
-        <div className="top-video-table">
-          <div className="top-video-row top-video-header">
-            <span className="top-video-rank" />
-            <span className="top-video-thumb-col" />
-            <span className="top-video-title-col">Vídeo</span>
-            <span className="history-stats top-video-stats top-video-stats-header">
-              <span className="history-stat">Views</span>
-              <span className="history-stat">VPH</span>
-              <span className="history-stat">Receita</span>
-            </span>
-          </div>
+        <div className="top-video-scroll">
+          <div className="top-video-table">
+            <div className="top-video-row top-video-header">
+              <span className="top-video-rank" />
+              <span className="top-video-thumb-col" />
+              <span className="top-video-title-col">Vídeo</span>
+              <span className="top-video-views-col">Views</span>
+              <span className="top-video-vph-col">VPH</span>
+              <span className="top-video-revenue-col">Receita</span>
+            </div>
 
-          {videos.map((v, i) => {
-            const vph = computeVph(v.viewCount, v.publishedAt);
-            const avg = v.isShort ? avgVph.short : avgVph.long;
-            const multiplier = vph != null && avg ? vph / avg : null;
-            const tier = vphTier(multiplier);
+            {videos.map((v, i) => {
+              const vph = computeVph(v.viewCount, v.publishedAt);
+              const avg = v.isShort ? avgVph.short : avgVph.long;
+              const multiplier = vph != null && avg ? vph / avg : null;
+              const tier = vphTier(multiplier);
 
-            return (
-              <div className={`top-video-row rank-${i + 1}`} key={v.youtubeVideoId}>
-                <div className="top-video-rank">{i + 1}º</div>
+              return (
+                <div className={`top-video-row rank-${i + 1}`} key={v.youtubeVideoId}>
+                  <div className="top-video-rank">{i + 1}º</div>
 
-                {v.thumbnailUrl && (
-                  <img className="history-thumb" src={v.thumbnailUrl} alt={v.title ?? ""} />
-                )}
-
-                <div className="history-main">
-                  <a
-                    href={`https://youtube.com/watch?v=${v.youtubeVideoId}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="history-title"
-                  >
-                    {v.title ?? "sem título"}
-                  </a>
-                  <div className="history-meta">
-                    <span className="card-label">{v.creatorLabel}</span>
-                    <span className="text-muted-small">{v.isShort ? "Short" : "Vídeo longo"}</span>
+                  <div className="top-video-thumb-col">
+                    {v.thumbnailUrl && (
+                      <img className="history-thumb" src={v.thumbnailUrl} alt={v.title ?? ""} />
+                    )}
                   </div>
-                </div>
 
-                <div className="history-stats top-video-stats">
-                  <div className="history-stat">
-                    <span className="history-stat-value malachite">{formatNumber(v.viewCount)}</span>
-                    <span className="history-stat-label">views</span>
+                  <div className="history-main">
+                    <a
+                      href={`https://youtube.com/watch?v=${v.youtubeVideoId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="history-title"
+                    >
+                      {v.title ?? "sem título"}
+                    </a>
+                    <div className="history-meta">
+                      <span className="card-label">{v.creatorLabel}</span>
+                      <span className="text-muted-small">{v.isShort ? "Short" : "Vídeo longo"}</span>
+                    </div>
                   </div>
-                  <div className="history-stat">
+
+                  <div className="top-video-views-col">{formatNumber(v.viewCount)}</div>
+
+                  <div className="top-video-vph-col">
                     {vph != null ? (
-                      <>
-                        <span className="history-stat-value">{formatVph(vph)}</span>
+                      <span className="vph-tag">
+                        <span className="vph-tag-value">{formatVph(vph)}</span>
                         <span className={`vph-badge ${tier.className}`}>
                           {tier.emoji} {formatMultiplier(multiplier)}
                         </span>
-                      </>
+                      </span>
                     ) : (
-                      <span className="history-stat-value">—</span>
+                      "—"
                     )}
-                    <span className="history-stat-label">vph</span>
                   </div>
-                  <div className="history-stat top-video-revenue-stat">
-                    <span className="top-video-revenue">{formatCurrency(v.revenue)}</span>
-                    <span className="history-stat-label">receita</span>
-                  </div>
+
+                  <div className="top-video-revenue-col">{formatCurrency(v.revenue)}</div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
