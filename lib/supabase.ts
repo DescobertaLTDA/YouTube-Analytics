@@ -94,3 +94,14 @@ export type CreatorVideoRow = {
   published_at: string | null;
   synced_at: string;
 };
+
+/**
+ * Valor real de receita (todos os criadores somados) digitado manualmente
+ * a partir do resumo do YouTube Studio. Linha única (id = 'current').
+ * `amount: null` = sem valor real ainda, usa a estimativa por RPM.
+ */
+export type ManualRevenueRow = {
+  id: string;
+  amount: number | null;
+  updated_at: string;
+};
