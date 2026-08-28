@@ -110,7 +110,7 @@ async function shopeeGraphQL<T>(query: string, variables: Record<string, unknown
 // Query no formato real da API — sem `page`, com `scrollId` opcional pra
 // continuar a paginação.
 const CONVERSION_REPORT_QUERY = `
-  query ConversionReport($purchaseTimeStart: Int, $purchaseTimeEnd: Int, $scrollId: String, $limit: Int) {
+  query ConversionReport($purchaseTimeStart: Int64, $purchaseTimeEnd: Int64, $scrollId: String, $limit: Int) {
     conversionReport(
       purchaseTimeStart: $purchaseTimeStart
       purchaseTimeEnd: $purchaseTimeEnd
