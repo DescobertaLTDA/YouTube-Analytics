@@ -12,6 +12,8 @@ import {
 import { isShortVideo } from "./youtube-channel";
 import { CREATORS, CreatorKey, FIXED_RPM, estimateEarnings } from "./creator-earnings";
 
+export type VideoSource = "manual" | "auto";
+
 export type VideoWithStats = {
   video: VideoRow;
   latest: SnapshotRow | null;
@@ -23,6 +25,10 @@ export type VideoWithStats = {
   changes: ChangeLogRow[];
   history: SnapshotRow[];
   isShort: boolean;
+  // "manual" = cadastrado na tabela `videos` (tem histórico de snapshots,
+  // CTR/retenção do Studio, change log). "auto" = achado só pela varredura
+  // por hashtag da aba Ganhos (tabela `creator_videos`), sem esse histórico.
+  source: VideoSource;
 };
 
 export async function getDashboardData(): Promise<VideoWithStats[]> {
@@ -96,11 +102,114 @@ export async function getDashboardData(): Promise<VideoWithStats[]> {
         changes: (changeRows as ChangeLogRow[]) || [],
         history,
         isShort: isShortVideo(latest?.duration_seconds),
+        source: "manual" as const,
       };
     })
   );
 
   return results;
+}
+
+// Vídeos que existem em `creator_videos` (achados pela varredura por
+// hashtag da aba Ganhos) mas nunca foram cadastrados manualmente na tabela
+// `videos`. Cada um vira um VideoWithStats "leve": sem histórico de
+// snapshots, CTR/retenção do Studio ou change log — só o snapshot mais
+// recente da última sincronização de Ganhos. A receita usa a mesma fórmula
+// (RPM fixo) da aba Ganhos, pra ficar consistente.
+async function getAutoDiscoveredRows(): Promise<VideoWithStats[]> {
+  const db = getServiceSupabase();
+  const { data, error } = await db.from("creator_videos").select("*");
+
+  if (error) {
+    console.error("❌ Erro ao ler creator_videos p/ Vídeos/Shorts:", error);
+    return [];
+  }
+
+  const rows = (data as CreatorVideoRow[]) || [];
+
+  // Um vídeo pode ter mais de uma hashtag (ex: colab #lucas + #matheus) —
+  // agrupa por youtube_video_id pra não listar o mesmo vídeo duas vezes.
+  const byVideoId = new Map<string, CreatorVideoRow[]>();
+  for (const row of rows) {
+    const list = byVideoId.get(row.youtube_video_id) || [];
+    list.push(row);
+    byVideoId.set(row.youtube_video_id, list);
+  }
+
+  const results: VideoWithStats[] = [];
+
+  for (const [youtubeVideoId, group] of byVideoId) {
+    const first = group[0];
+    const creatorLabel = group
+      .map((r) => CREATORS.find((c) => c.key === r.creator)?.label || r.creator)
+      .join(" + ");
+
+    let viewsPerDay: number | null = null;
+    let daysLive: number | null = null;
+    if (first.published_at) {
+      const published = new Date(first.published_at).getTime();
+      const now = new Date(first.synced_at).getTime();
+      const days = Math.max((now - published) / (1000 * 60 * 60 * 24), 1);
+      daysLive = Math.round(days * 10) / 10;
+      viewsPerDay = Math.round((first.view_count / days) * 10) / 10;
+    }
+
+    const syntheticId = `auto-${youtubeVideoId}`;
+    const fakeSnapshot: SnapshotRow = {
+      id: syntheticId,
+      video_id: syntheticId,
+      captured_at: first.synced_at,
+      title: first.title,
+      description: null,
+      thumbnail_url: first.thumbnail_url,
+      view_count: first.view_count,
+      like_count: null,
+      comment_count: null,
+      duration_seconds: first.duration_seconds,
+    };
+
+    results.push({
+      video: {
+        id: syntheticId,
+        youtube_video_id: youtubeVideoId,
+        channel_label: creatorLabel,
+        published_at: first.published_at,
+      },
+      latest: fakeSnapshot,
+      previous: null,
+      viewsPerDay,
+      daysLive,
+      manual: null,
+      revenue: estimateEarnings(first.view_count),
+      changes: [],
+      history: [fakeSnapshot],
+      isShort: first.is_short,
+      source: "auto" as const,
+    });
+  }
+
+  return results;
+}
+
+// Usada pelas abas Vídeos e Shorts: junta os vídeos cadastrados manualmente
+// (`videos`, com histórico completo) com os achados automaticamente pela
+// varredura de hashtag da aba Ganhos (`creator_videos`) que ainda não foram
+// cadastrados manualmente — sem duplicar quando o mesmo vídeo está nos dois
+// lugares (o cadastro manual, mais completo, sempre vence).
+export async function getAllVideoRows(): Promise<VideoWithStats[]> {
+  const [manualRows, autoRows] = await Promise.all([
+    getDashboardData(),
+    getAutoDiscoveredRows(),
+  ]);
+
+  const manualYoutubeIds = new Set(manualRows.map((r) => r.video.youtube_video_id));
+  const autoOnly = autoRows.filter((r) => !manualYoutubeIds.has(r.video.youtube_video_id));
+
+  return [...manualRows, ...autoOnly].sort((a, b) => {
+    const aTime = a.video.published_at ? new Date(a.video.published_at).getTime() : 0;
+    const bTime = b.video.published_at ? new Date(b.video.published_at).getTime() : 0;
+    return aTime - bTime;
+  });
 }
 
 export type TranscriptWithSegments = {
