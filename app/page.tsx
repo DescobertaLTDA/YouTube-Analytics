@@ -87,7 +87,7 @@ export default async function GanhosPage({
         ))}
       </div>
 
-      <TopVideosMonth videos={data.topVideosMonth} avgVph={data.avgVphByFormat} />
+      <TopVideosMonth videos={data.topVideosMonth} />
 
       <GanhosVideoHistory videos={data.periodVideos} page={page} avgVph={data.avgVphByFormat} />
 

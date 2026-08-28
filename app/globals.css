@@ -2374,7 +2374,7 @@ footer.page-footer {
 
 /* Container com scroll horizontal: a linha NUNCA empilha — se não
    couber, o usuário arrasta/rola pros lados, mas rank, thumb, título,
-   views, VPH e receita continuam sempre lado a lado, na mesma linha. */
+   views e receita continuam sempre lado a lado, na mesma linha. */
 .top-video-scroll {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -2383,12 +2383,12 @@ footer.page-footer {
 .top-video-table {
   display: flex;
   flex-direction: column;
-  min-width: 640px;
+  min-width: 520px;
 }
 
 .top-video-row {
   display: grid;
-  grid-template-columns: 26px 60px minmax(200px, 1fr) 100px 130px 110px;
+  grid-template-columns: 26px 60px minmax(200px, 1fr) 100px 110px;
   align-items: center;
   column-gap: 14px;
   padding: 12px 0;
@@ -2436,7 +2436,6 @@ footer.page-footer {
 }
 
 .top-video-views-col,
-.top-video-vph-col,
 .top-video-revenue-col {
   font-family: var(--font-mono);
   font-size: 13px;
@@ -2447,15 +2446,6 @@ footer.page-footer {
 .top-video-views-col {
   text-align: right;
   font-weight: 600;
-}
-
-.top-video-vph-col {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.top-video-vph-col .vph-tag {
-  gap: 8px;
 }
 
 .top-video-revenue-col {
@@ -2484,10 +2474,8 @@ footer.page-footer {
 }
 
 .top-video-header .top-video-views-col,
-.top-video-header .top-video-vph-col,
 .top-video-header .top-video-revenue-col {
   text-align: right;
-  justify-content: flex-end;
 }
 
 

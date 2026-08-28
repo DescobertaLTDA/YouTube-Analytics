@@ -1,5 +1,4 @@
 import type { GanhosVideoRow } from "@/lib/data";
-import { computeVph, formatMultiplier, formatVph, vphTier, VphFormat } from "@/lib/vph";
 
 function formatNumber(n: number | null | undefined) {
   if (n == null) return "—";
@@ -17,17 +16,7 @@ function monthRangeLabel() {
   return `01 a ${day} de ${month}`;
 }
 
-export function TopVideosMonth({
-  videos,
-  avgVph,
-}: {
-  videos: GanhosVideoRow[];
-  // Média global de VPH por formato (todo o histórico do canal), calculada
-  // uma vez em lib/data.ts e compartilhada com o Histórico de Vídeos, pra
-  // os dois cards usarem a mesma referência de "quantas vezes acima do
-  // normal" um vídeo está.
-  avgVph: Record<VphFormat, number | null>;
-}) {
+export function TopVideosMonth({ videos }: { videos: GanhosVideoRow[] }) {
   return (
     <div className="changes-section top-videos-section">
       <h2>🏆 Top 10 do Mês · {monthRangeLabel()}</h2>
@@ -44,16 +33,10 @@ export function TopVideosMonth({
               <span className="top-video-thumb-col" />
               <span className="top-video-title-col">Vídeo</span>
               <span className="top-video-views-col">Views</span>
-              <span className="top-video-vph-col">VPH</span>
               <span className="top-video-revenue-col">Receita</span>
             </div>
 
             {videos.map((v, i) => {
-              const vph = computeVph(v.viewCount, v.publishedAt);
-              const avg = v.isShort ? avgVph.short : avgVph.long;
-              const multiplier = vph != null && avg ? vph / avg : null;
-              const tier = vphTier(multiplier);
-
               return (
                 <div className={`top-video-row rank-${i + 1}`} key={v.youtubeVideoId}>
                   <div className="top-video-rank">{i + 1}º</div>
@@ -80,19 +63,6 @@ export function TopVideosMonth({
                   </div>
 
                   <div className="top-video-views-col">{formatNumber(v.viewCount)}</div>
-
-                  <div className="top-video-vph-col">
-                    {vph != null ? (
-                      <span className="vph-tag">
-                        <span className="vph-tag-value">{formatVph(vph)}</span>
-                        <span className={`vph-badge ${tier.className}`}>
-                          {tier.emoji} {formatMultiplier(multiplier)}
-                        </span>
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </div>
 
                   <div className="top-video-revenue-col">{formatCurrency(v.revenue)}</div>
                 </div>
