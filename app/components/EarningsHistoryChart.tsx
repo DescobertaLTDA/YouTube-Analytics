@@ -1,19 +1,23 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import { CREATORS, CreatorKey } from "@/lib/creator-earnings";
 import type { EarningsHistoryPoint } from "@/lib/data";
 
-// Uma cor por criador — dentro da paleta preto/azul/cinza do resto do app.
+// Uma cor por criador — vivas e bem distintas entre si, de propósito, pra
+// ficar fácil de diferenciar as linhas de longe.
 const CREATOR_COLORS: Record<CreatorKey, string> = {
-  lucas: "#065fd4",
-  matheus: "#34a1eb",
-  rafael: "#5f6b7a",
+  lucas: "#e21e2c", // vermelho
+  matheus: "#0057ff", // azul
+  rafael: "#00b341", // verde
 };
 
-const WIDTH = 600;
 const HEIGHT = 220;
 const PAD_TOP = 16;
 const PAD_BOTTOM = 28;
-const PAD_LEFT = 8;
-const PAD_RIGHT = 8;
+const PAD_LEFT = 4;
+const PAD_RIGHT = 4;
+const FALLBACK_WIDTH = 700;
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
@@ -33,6 +37,24 @@ function formatDateTime(iso: string) {
 }
 
 export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoint[] }) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  // Largura real do container em px — medida no cliente pra o SVG ir de
+  // ponta a ponta sem esticar/distorcer linhas, pontos e texto (o que
+  // acontecia usando preserveAspectRatio com um viewBox de largura fixa).
+  const [width, setWidth] = useState(FALLBACK_WIDTH);
+
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+
+    const update = () => setWidth(el.clientWidth || FALLBACK_WIDTH);
+    update();
+
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const timestamps = Array.from(new Set(history.map((h) => h.capturedAt))).sort(
     (a, b) => new Date(a).getTime() - new Date(b).getTime()
   );
@@ -51,7 +73,7 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
   }
 
   const maxEarnings = Math.max(1, ...history.map((h) => h.totalEarnings));
-  const chartWidth = WIDTH - PAD_LEFT - PAD_RIGHT;
+  const chartWidth = width - PAD_LEFT - PAD_RIGHT;
   const chartHeight = HEIGHT - PAD_TOP - PAD_BOTTOM;
 
   const xFor = (i: number) =>
@@ -64,10 +86,16 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
     <div className="chart-section">
       <h2>📈 Receita ao longo do tempo</h2>
 
-      <div className="chart-line-wrapper">
-        <svg className="chart-line" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet">
+      <div className="chart-line-wrapper" ref={wrapperRef}>
+        <svg
+          className="chart-line"
+          viewBox={`0 0 ${width} ${HEIGHT}`}
+          width={width}
+          height={HEIGHT}
+          preserveAspectRatio="none"
+        >
           {gridLines.map((y, i) => (
-            <line key={i} x1={PAD_LEFT} y1={y} x2={WIDTH - PAD_RIGHT} y2={y} stroke="#e9ecef" strokeWidth={1} />
+            <line key={i} x1={PAD_LEFT} y1={y} x2={width - PAD_RIGHT} y2={y} stroke="#e9ecef" strokeWidth={1} />
           ))}
 
           {CREATORS.map(({ key }) => {
@@ -102,7 +130,7 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
           <text x={PAD_LEFT} y={HEIGHT - 8} fontSize="11" fill="#909090">
             {formatDateShort(timestamps[0])}
           </text>
-          <text x={WIDTH - PAD_RIGHT} y={HEIGHT - 8} fontSize="11" fill="#909090" textAnchor="end">
+          <text x={width - PAD_RIGHT} y={HEIGHT - 8} fontSize="11" fill="#909090" textAnchor="end">
             {formatDateShort(timestamps[timestamps.length - 1])}
           </text>
         </svg>

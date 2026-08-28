@@ -56,7 +56,7 @@ export default async function GanhosPage({
         </div>
       </div>
 
-      <div className="stats-grid">
+      <div className="stats-grid stats-grid-ganhos">
         <div className="stat-card">
           <div className="stat-value-large amber">{formatNumber(data.periodViews)}</div>
           <div className="stat-label">Views · 28d</div>
@@ -71,11 +71,12 @@ export default async function GanhosPage({
           <div className="stat-value-large">{formatNumber(data.totalVideosScanned)}</div>
           <div className="stat-label">Vídeos escaneados</div>
         </div>
+        <div className="stat-card stat-card-form">
+          <RevenueOverrideForm currentAmount={data.manualRevenueAmount} />
+        </div>
       </div>
 
       <EarningsHistoryChart history={history} />
-
-      <RevenueOverrideForm currentAmount={data.manualRevenueAmount} />
 
       <div className="creator-grid">
         {data.creators.map((stats) => (

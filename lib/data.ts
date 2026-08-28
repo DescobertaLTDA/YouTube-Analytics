@@ -275,6 +275,11 @@ export type CreatorStats = {
   totalEarnings: number;
   viewsSharePct: number; // % das views totais do período que são desse criador
   rpm: number;
+  // Ganhos estimados do dia 01 do mês atual até hoje (sempre por RPM — o
+  // valor real digitado manualmente é escopado aos últimos 28 dias, não
+  // dá pra ratear ele num range de mês diferente).
+  monthViews: number;
+  monthEarnings: number;
 };
 
 export type GanhosVideoRow = {
@@ -348,6 +353,14 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     return published >= periodStart.getTime() && published <= periodEnd.getTime();
   });
 
+  // Dia 01 do mês atual até agora — usado pro "ganhos do mês" de cada card.
+  const monthStart = new Date(periodEnd.getFullYear(), periodEnd.getMonth(), 1);
+  const monthRows = allRows.filter((r) => {
+    if (!r.published_at) return false;
+    const published = new Date(r.published_at).getTime();
+    return published >= monthStart.getTime() && published <= periodEnd.getTime();
+  });
+
   const manualAmount =
     manualRevenueRows && manualRevenueRows[0]
       ? (manualRevenueRows[0] as ManualRevenueRow).amount
@@ -403,6 +416,19 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     // quanto de cada tipo ele tem, só pra exibir no card.
     const blendedRpm = totalViews > 0 ? ((totalEarnings * 2 * 1000) / totalViews) : SHORTS_RPM;
 
+    // Ganhos do mês (dia 01 até hoje) — sempre estimado por RPM, direto
+    // pelas views de cada tipo, igual à estimativa dos 28 dias.
+    const monthCreatorRows = monthRows.filter((r) => r.creator === key);
+    const monthShortsViews = monthCreatorRows
+      .filter((r) => r.is_short)
+      .reduce((sum, r) => sum + (r.view_count || 0), 0);
+    const monthLongViews = monthCreatorRows
+      .filter((r) => !r.is_short)
+      .reduce((sum, r) => sum + (r.view_count || 0), 0);
+    const monthViews = monthShortsViews + monthLongViews;
+    const monthEarnings =
+      Math.round((estimateEarnings(monthShortsViews, true) + estimateEarnings(monthLongViews, false)) * 100) / 100;
+
     return {
       key,
       label,
@@ -417,6 +443,8 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
       totalEarnings,
       viewsSharePct: Math.round(viewsSharePct * 10) / 10,
       rpm: Math.round(blendedRpm * 100) / 100,
+      monthViews,
+      monthEarnings,
     };
   });
 

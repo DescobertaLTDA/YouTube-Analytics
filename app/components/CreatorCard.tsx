@@ -10,6 +10,13 @@ function formatCurrency(n: number | null | undefined) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 }
 
+function monthRangeLabel() {
+  const now = new Date();
+  const month = new Intl.DateTimeFormat("pt-BR", { month: "short" }).format(now);
+  const day = now.getDate();
+  return `01 a ${day} de ${month}`;
+}
+
 export function CreatorCard({ stats }: { stats: CreatorStats }) {
   return (
     <div className="creator-card facet">
@@ -26,6 +33,16 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
         <div className="creator-total-label">
           {formatNumber(stats.totalViews)} views · {stats.viewsSharePct.toFixed(1)}% do total do
           período
+        </div>
+      </div>
+
+      <div className="creator-breakdown-item creator-month">
+        <div className="creator-breakdown-header">
+          <span>📅 Ganhos do mês ({monthRangeLabel()})</span>
+          <span className="text-muted-small">{formatNumber(stats.monthViews)} views</span>
+        </div>
+        <div className="creator-breakdown-stats">
+          <span className="malachite creator-month-value">{formatCurrency(stats.monthEarnings)}</span>
         </div>
       </div>
 

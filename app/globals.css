@@ -338,6 +338,18 @@ a {
   border-radius: 8px;
 }
 
+/* Página de Ganhos: 4 cards (3 números + o form de valor real ao lado de
+   "Vídeos escaneados"), então usa 4 colunas em vez das 6 padrão. */
+.stats-grid-ganhos {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.stat-card-form {
+  text-align: left;
+  display: flex;
+  align-items: center;
+}
+
 .stat-value-large {
   font-family: var(--font-mono);
   font-size: 28px;
@@ -1325,6 +1337,10 @@ footer.page-footer {
   .stats-grid {
     grid-template-columns: repeat(3, 1fr);
   }
+
+  .stats-grid-ganhos {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 992px) {
@@ -1348,6 +1364,10 @@ footer.page-footer {
   
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stats-grid-ganhos {
+    grid-template-columns: 1fr;
   }
   
   .stat-value-large {
@@ -1532,6 +1552,16 @@ footer.page-footer {
   align-items: baseline;
   font-family: var(--font-mono);
   font-size: 14px;
+}
+
+.creator-month {
+  background: var(--malachite-dim);
+  border: 1px solid var(--malachite);
+}
+
+.creator-month-value {
+  font-size: 18px;
+  font-weight: 600;
 }
 
 /* Botão Atualizar */
