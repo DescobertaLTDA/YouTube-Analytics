@@ -3,18 +3,18 @@ import { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Voz padrão da ElevenLabs (multilíngue, funciona bem em PT-BR com o
-// modelo eleven_multilingual_v2). Dá pra trocar sem mexer no código
-// cadastrando ELEVENLABS_VOICE_ID nas env vars do projeto.
-const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
+// Voz padrão do Google Cloud TTS em PT-BR (neural, natural). Dá pra trocar
+// sem mexer no código cadastrando GOOGLE_TTS_VOICE nas env vars do projeto.
+// Outras opções boas: "pt-BR-Wavenet-B" (masculina), "pt-BR-Neural2-C" (feminina).
+const DEFAULT_VOICE = "pt-BR-Wavenet-A";
 
-// Recebe o texto de uma resposta da IA e devolve o áudio (mp3) gerado pela
-// ElevenLabs, pra tocar direto no navegador.
+// Recebe o texto de uma resposta da IA e devolve o áudio (mp3) gerado pelo
+// Google Cloud Text-to-Speech, pra tocar direto no navegador.
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.ELEVENLABS_API;
+    const apiKey = process.env.GOOGLE_TTS_API_KEY;
     if (!apiKey) {
-      return new Response("ELEVENLABS_API não configurada no projeto.", { status: 500 });
+      return new Response("GOOGLE_TTS_API_KEY não configurada no projeto.", { status: 500 });
     }
 
     const { text } = (await req.json()) as { text: string };
@@ -22,47 +22,51 @@ export async function POST(req: NextRequest) {
       return new Response("Nenhum texto enviado.", { status: 400 });
     }
 
-    // A ElevenLabs não lida bem com marcações markdown (fala os asteriscos
-    // em voz alta) — tira o negrito **texto** antes de mandar pra fala.
+    // O Google também fala os asteriscos em voz alta se não tirarmos as
+    // marcações markdown antes de mandar pra síntese.
     const cleanText = text.replace(/\*\*(.+?)\*\*/g, "$1").trim();
 
-    const voiceId = process.env.ELEVENLABS_VOICE_ID || DEFAULT_VOICE_ID;
+    const voiceName = process.env.GOOGLE_TTS_VOICE || DEFAULT_VOICE;
 
-    const elevenResponse = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+    const googleResponse = await fetch(
+      `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "audio/mpeg",
-          "xi-api-key": apiKey,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text: cleanText,
-          model_id: "eleven_multilingual_v2",
-          voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+          input: { text: cleanText },
+          voice: { languageCode: "pt-BR", name: voiceName },
+          audioConfig: { audioEncoding: "MP3" },
         }),
       }
     );
 
-    if (!elevenResponse.ok || !elevenResponse.body) {
-      const errText = await elevenResponse.text().catch(() => "");
-      console.error("❌ Erro na API da ElevenLabs:", elevenResponse.status, errText);
+    if (!googleResponse.ok) {
+      const errText = await googleResponse.text().catch(() => "");
+      console.error("❌ Erro na API do Google TTS:", googleResponse.status, errText);
 
-      // Sem crédito/saldo na conta ElevenLabs.
-      if (elevenResponse.status === 402) {
-        return new Response("Sua conta do ElevenLabs está sem saldo. Adicione créditos ou faça upgrade do plano em elevenlabs.io.", { status: 502 });
+      if (googleResponse.status === 403) {
+        return new Response("Chave do Google TTS inválida ou API não ativada. Confere o GOOGLE_TTS_API_KEY e se a API 'Cloud Text-to-Speech' está ativa no projeto do Google Cloud.", { status: 502 });
       }
 
-      // Chave inválida ou sem permissão.
-      if (elevenResponse.status === 401) {
-        return new Response("Chave da ElevenLabs inválida. Confere o ELEVENLABS_API nas env vars do Vercel.", { status: 502 });
+      if (googleResponse.status === 429) {
+        return new Response("Limite gratuito do Google TTS atingido por agora. Tente de novo em instantes.", { status: 502 });
       }
 
       return new Response("Erro ao gerar áudio. Tente de novo em instantes.", { status: 502 });
     }
 
-    return new Response(elevenResponse.body, {
+    const data = (await googleResponse.json()) as { audioContent?: string };
+    if (!data.audioContent) {
+      console.error("❌ Google TTS não retornou audioContent:", data);
+      return new Response("Erro ao gerar áudio. Tente de novo em instantes.", { status: 502 });
+    }
+
+    // O Google devolve o áudio em base64 dentro do JSON — decodifica pra
+    // bytes puros de mp3 antes de devolver pro navegador.
+    const audioBuffer = Buffer.from(data.audioContent, "base64");
+
+    return new Response(audioBuffer, {
       headers: { "Content-Type": "audio/mpeg" },
     });
   } catch (err: unknown) {
