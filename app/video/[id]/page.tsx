@@ -155,7 +155,7 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
                     }).join(' ');
                   })()}
                   fill="none"
-                  stroke="#3ecf8e"
+                  stroke="#4a90e2"
                   strokeWidth="3"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -164,8 +164,8 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
                 {/* Gradient */}
                 <defs>
                   <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3ecf8e" stopOpacity="0.8" />
-                    <stop offset="100%" stopColor="#3ecf8e" stopOpacity="0" />
+                    <stop offset="0%" stopColor="#4a90e2" stopOpacity="0.8" />
+                    <stop offset="100%" stopColor="#4a90e2" stopOpacity="0" />
                   </linearGradient>
                 </defs>
                 
@@ -180,7 +180,7 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
                       cx={x}
                       cy={y}
                       r="5"
-                      fill="#3ecf8e"
+                      fill="#4a90e2"
                       stroke="#ffffff"
                       strokeWidth="2"
                     />
