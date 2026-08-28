@@ -89,6 +89,8 @@ export type CreatorVideoRow = {
   title: string | null;
   thumbnail_url: string | null;
   view_count: number;
+  like_count: number | null;
+  comment_count: number | null;
   duration_seconds: number | null;
   is_short: boolean;
   published_at: string | null;
