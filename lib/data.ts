@@ -8,6 +8,7 @@ import {
   TranscriptRow,
   TranscriptSegmentRow,
   CreatorVideoRow,
+  ManualRevenueRow,
 } from "./supabase";
 import { isShortVideo } from "./youtube-channel";
 import { CREATORS, CreatorKey, FIXED_RPM, estimateEarnings } from "./creator-earnings";
@@ -265,6 +266,7 @@ export type CreatorStats = {
   longEarnings: number;
   totalViews: number;
   totalEarnings: number;
+  viewsSharePct: number; // % das views totais do período que são desse criador
   rpm: number;
 };
 
@@ -272,25 +274,70 @@ export type GanhosData = {
   creators: CreatorStats[];
   lastSyncedAt: string | null;
   totalVideosScanned: number;
+  // Janela de 28 dias usada pra filtrar quais vídeos entram no cálculo —
+  // baseada na data de publicação do vídeo (é a forma mais simples de
+  // aproximar "últimos 28 dias" sem precisar de snapshot diário de views).
+  periodStart: string;
+  periodEnd: string;
+  periodViews: number;
+  periodEarnings: number;
+  // true quando periodEarnings veio do valor real digitado manualmente,
+  // false quando é estimativa por RPM.
+  isManualRevenue: boolean;
+  manualRevenueAmount: number | null;
 };
 
 // Lê a tabela `creator_videos` (populada pela varredura por hashtag em
-// /api/ganhos/sync) e agrega em estatísticas por criador — views e ganhos
-// estimados, separados entre Shorts e vídeos longos.
+// /api/ganhos/sync), filtra pelos últimos 28 dias (por data de publicação)
+// e agrega em estatísticas por criador — views e ganhos, separados entre
+// Shorts e vídeos longos. A receita total do período usa o valor real
+// digitado manualmente quando existir; senão cai na estimativa por RPM.
+// Cada criador recebe a fatia da receita total proporcional à sua % de
+// views no período (não mais um cálculo independente por criador).
 export async function getCreatorEarnings(): Promise<GanhosData> {
   // Usa o client com service_role pra não depender de RLS estar liberado
-  // pra leitura anônima nessa tabela nova.
+  // pra leitura anônima nessas tabelas.
   const db = getServiceSupabase();
 
-  const { data, error } = await db
-    .from("creator_videos")
-    .select("*");
+  const [{ data, error }, { data: manualRevenueRows, error: manualRevenueError }] =
+    await Promise.all([
+      db.from("creator_videos").select("*"),
+      db.from("manual_revenue").select("*").eq("id", "current").limit(1),
+    ]);
 
   if (error) {
     console.error("❌ Erro ao ler creator_videos:", error);
   }
+  if (manualRevenueError) {
+    console.error("❌ Erro ao ler manual_revenue:", manualRevenueError);
+  }
 
-  const rows = (data as CreatorVideoRow[]) || [];
+  const allRows = (data as CreatorVideoRow[]) || [];
+
+  const periodEnd = new Date();
+  const periodStart = new Date(periodEnd.getTime() - 28 * 24 * 60 * 60 * 1000);
+
+  // Só entram no cálculo os vídeos publicados dentro dos últimos 28 dias.
+  const rows = allRows.filter((r) => {
+    if (!r.published_at) return false;
+    const published = new Date(r.published_at).getTime();
+    return published >= periodStart.getTime() && published <= periodEnd.getTime();
+  });
+
+  const manualAmount =
+    manualRevenueRows && manualRevenueRows[0]
+      ? (manualRevenueRows[0] as ManualRevenueRow).amount
+      : null;
+
+  // Views totais do período, somando os 3 criadores. Um vídeo com 2
+  // hashtags (colab) conta pra cada criador separadamente — de propósito,
+  // igual já era antes.
+  const periodViews = rows.reduce((sum, r) => sum + (r.view_count || 0), 0);
+
+  const isManualRevenue = manualAmount != null;
+  const periodEarnings = isManualRevenue
+    ? (manualAmount as number)
+    : estimateEarnings(periodViews);
 
   const creators: CreatorStats[] = CREATORS.map(({ key, label, hashtag }) => {
     const creatorRows = rows.filter((r) => r.creator === key);
@@ -299,6 +346,19 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
 
     const shortsViews = shorts.reduce((sum, r) => sum + (r.view_count || 0), 0);
     const longViews = longs.reduce((sum, r) => sum + (r.view_count || 0), 0);
+    const totalViews = shortsViews + longViews;
+
+    // Fatia da receita total do período proporcional à % de views desse
+    // criador — é aqui que o valor real (quando existe) entra na conta.
+    const viewsSharePct = periodViews > 0 ? (totalViews / periodViews) * 100 : 0;
+    const totalEarnings =
+      periodViews > 0 ? Math.round(periodEarnings * (totalViews / periodViews) * 100) / 100 : 0;
+
+    // Dentro da fatia do criador, Shorts x longos dividem proporcional às
+    // views de cada um (mantém a mesma lógica pro breakdown do card).
+    const shortsEarnings =
+      totalViews > 0 ? Math.round(totalEarnings * (shortsViews / totalViews) * 100) / 100 : 0;
+    const longEarnings = Math.round((totalEarnings - shortsEarnings) * 100) / 100;
 
     return {
       key,
@@ -306,17 +366,18 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
       hashtag,
       shortsViews,
       shortsCount: shorts.length,
-      shortsEarnings: estimateEarnings(shortsViews),
+      shortsEarnings,
       longViews,
       longCount: longs.length,
-      longEarnings: estimateEarnings(longViews),
-      totalViews: shortsViews + longViews,
-      totalEarnings: estimateEarnings(shortsViews + longViews),
+      longEarnings,
+      totalViews,
+      totalEarnings,
+      viewsSharePct: Math.round(viewsSharePct * 10) / 10,
       rpm: FIXED_RPM,
     };
   });
 
-  const lastSyncedAt = rows.reduce<string | null>((latest, r) => {
+  const lastSyncedAt = allRows.reduce<string | null>((latest, r) => {
     if (!r.synced_at) return latest;
     if (!latest || new Date(r.synced_at) > new Date(latest)) return r.synced_at;
     return latest;
@@ -325,6 +386,12 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
   return {
     creators,
     lastSyncedAt,
-    totalVideosScanned: rows.length,
+    totalVideosScanned: allRows.length,
+    periodStart: periodStart.toISOString(),
+    periodEnd: periodEnd.toISOString(),
+    periodViews,
+    periodEarnings,
+    isManualRevenue,
+    manualRevenueAmount: manualAmount,
   };
 }
