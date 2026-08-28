@@ -80,6 +80,33 @@ export async function POST() {
       if (insertError) throw insertError;
     }
 
+    // Grava (upsert por dia) o view_count atual de CADA vídeo do canal —
+    // inclusive os antigos, sem hashtag, fora da janela de 28 dias etc.
+    // É esse histórico dia-a-dia que permite calcular "views do período"
+    // como um delta real (visualizações recebidas nos últimos 28 dias),
+    // igual o YouTube Analytics faz, em vez de aproximar isso pela data de
+    // publicação do vídeo (que ignora vídeo antigo ainda recebendo views).
+    // onConflict em (youtube_video_id, captured_date) faz apenas 1 registro
+    // por vídeo por dia, mesmo rodando o sync várias vezes no mesmo dia.
+    const historyRows = channelVideos.map((video) => ({
+      youtube_video_id: video.id,
+      view_count: video.viewCount,
+      is_short: isShortVideo(video.durationSeconds),
+      published_at: video.publishedAt,
+      captured_at: now,
+    }));
+
+    const { error: historyError } = await supabase
+      .from("creator_video_view_history")
+      .upsert(historyRows, { onConflict: "youtube_video_id,captured_date" });
+
+    if (historyError) {
+      // Não derruba o sync por causa disso — só loga. Sem o histórico de
+      // hoje, o cálculo do período só fica um pouco menos preciso (vai se
+      // corrigir sozinho no próximo sync que funcionar).
+      console.error("⚠️ Não consegui gravar o histórico diário de views:", historyError);
+    }
+
     // Grava um retrato da receita de cada criador nesse instante — é isso
     // que alimenta o gráfico de linha (histórico) da aba Ganhos. Só INSERT,
     // nunca apaga o que já tinha, diferente da `creator_videos` acima.

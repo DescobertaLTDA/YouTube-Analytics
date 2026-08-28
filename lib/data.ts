@@ -326,9 +326,10 @@ export type GanhosData = {
   creators: CreatorStats[];
   lastSyncedAt: string | null;
   totalVideosScanned: number;
-  // Janela de 28 dias usada pra filtrar quais vídeos entram no cálculo —
-  // baseada na data de publicação do vídeo (é a forma mais simples de
-  // aproximar "últimos 28 dias" sem precisar de snapshot diário de views).
+  // Janela de 28 dias usada no cálculo. periodViews/periodEarnings somam
+  // as views GANHAS nessa janela por todo vídeo do canal (via delta no
+  // histórico diário em creator_video_view_history), não só as views
+  // totais dos vídeos publicados dentro dela.
   periodStart: string;
   periodEnd: string;
   periodViews: number;
@@ -450,14 +451,73 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
   const periodEnd = new Date();
   const periodStart = new Date(periodEnd.getTime() - 28 * 24 * 60 * 60 * 1000);
 
-  // Só entram no cálculo os vídeos publicados dentro dos últimos 28 dias.
-  const rows = allRows.filter((r) => {
-    if (!r.published_at) return false;
-    const published = new Date(r.published_at).getTime();
-    return published >= periodStart.getTime() && published <= periodEnd.getTime();
-  });
+  // Views "do período" = views GANHAS nos últimos 28 dias (igual o YouTube
+  // Analytics), não mais os vídeos publicados nos últimos 28 dias.
+  // Usa o histórico diário gravado em creator_video_view_history (um
+  // view_count por vídeo por dia) pra calcular, por vídeo, o delta entre
+  // o view_count de hoje e o de ~28 dias atrás — incluindo vídeos antigos
+  // que continuam recebendo views, que o filtro por published_at ignorava.
+  const { data: historyData, error: historyError } = await db
+    .from("creator_video_view_history")
+    .select("youtube_video_id, view_count, captured_date")
+    .order("captured_date", { ascending: true });
+
+  if (historyError) {
+    console.error("❌ Erro ao ler creator_video_view_history:", historyError);
+  }
+
+  const periodStartDate = periodStart.toISOString().slice(0, 10);
+  const earliestByVideo = new Map<string, number>();
+  const baselineAtOrBeforePeriod = new Map<string, number>();
+
+  for (const h of (historyData as { youtube_video_id: string; view_count: number; captured_date: string }[]) || []) {
+    if (!earliestByVideo.has(h.youtube_video_id)) {
+      earliestByVideo.set(h.youtube_video_id, h.view_count || 0);
+    }
+    if (h.captured_date <= periodStartDate) {
+      // Ordenado ascendente, então a última sobrescrita é a mais recente
+      // ainda dentro (ou antes) do início do período — a baseline certa.
+      baselineAtOrBeforePeriod.set(h.youtube_video_id, h.view_count || 0);
+    }
+  }
+
+  function periodViewsFor(videoId: string, currentViews: number, publishedAt: string | null): number {
+    // Vídeo publicado dentro da janela: todas as views dele já são "do
+    // período" (não existiam antes), então a baseline é zero.
+    if (publishedAt && new Date(publishedAt).getTime() >= periodStart.getTime()) {
+      return currentViews;
+    }
+    // Vídeo antigo com histórico de antes do período: delta real.
+    if (baselineAtOrBeforePeriod.has(videoId)) {
+      return Math.max(currentViews - (baselineAtOrBeforePeriod.get(videoId) || 0), 0);
+    }
+    // Vídeo antigo mas só passamos a rastreá-lo DEPOIS do início do
+    // período (histórico começa no meio da janela): usa a captura mais
+    // antiga que temos como baseline. Sub-estima um pouco os primeiros
+    // dias, mas converge pro valor certo conforme o histórico acumula.
+    if (earliestByVideo.has(videoId)) {
+      return Math.max(currentViews - (earliestByVideo.get(videoId) || 0), 0);
+    }
+    // Nenhum histórico ainda pra esse vídeo (primeiro sync depois do
+    // deploy dessa mudança) — melhor mostrar 0 do que contar a vida toda
+    // do vídeo como "views dos últimos 28 dias". Se corrige sozinho a
+    // partir do próximo sync diário.
+    return 0;
+  }
+
+  // `rows` mantém o mesmo formato de sempre, só que `view_count` agora é
+  // "views ganhas no período" em vez de "views totais do vídeo" — assim
+  // todo o resto do cálculo (por criador, Shorts x longos, receita,
+  // histórico de vídeos do período) continua igual, mas com o número
+  // certo por baixo.
+  const rows = allRows
+    .map((r) => ({ ...r, view_count: periodViewsFor(r.youtube_video_id, r.view_count || 0, r.published_at) }))
+    .filter((r) => r.view_count > 0);
 
   // Dia 01 do mês atual até agora — usado pro "ganhos do mês" de cada card.
+  // Continua baseado em data de publicação de propósito: aqui a pergunta é
+  // "quanto renderam os vídeos publicados esse mês", não "quantas views o
+  // canal recebeu esse mês" — então o filtro por published_at é o certo.
   const monthStart = new Date(periodEnd.getFullYear(), periodEnd.getMonth(), 1);
   const monthRows = allRows.filter((r) => {
     if (!r.published_at) return false;

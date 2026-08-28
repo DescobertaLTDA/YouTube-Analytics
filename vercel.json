@@ -3,10 +3,17 @@
     {
       "path": "/api/sync",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/ganhos/sync",
+      "schedule": "0 7 * * *"
     }
   ],
   "functions": {
     "app/api/sync/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/ganhos/sync/route.ts": {
       "maxDuration": 60
     }
   }
