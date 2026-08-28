@@ -12,7 +12,7 @@ import {
   CreatorEarningsSnapshotRow,
 } from "./supabase";
 import { isShortVideo } from "./youtube-channel";
-import { CREATORS, CreatorKey, SHORTS_RPM, estimateEarnings } from "./creator-earnings";
+import { CREATORS, CreatorKey, LONG_RPM, SHORTS_RPM, estimateEarnings } from "./creator-earnings";
 import { getAllOrders, sumPaidAmount } from "./cakto";
 import {
   getAllConversions,
@@ -510,12 +510,19 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     let longEarnings: number;
 
     if (isManualRevenue) {
-      // Com valor real digitado, não dá pra saber o real breakdown por
-      // tipo — mantém a fatia proporcional à % de views do período.
+      // Com valor real digitado, não dá pra saber o breakdown exato por
+      // tipo — mas em vez de ratear só pela % de views (o que ignora que
+      // vídeo longo rende ~17x mais por view que Shorts), pesa a fatia de
+      // cada tipo pelo seu RPM fixo × views. Assim o total bate com o
+      // valor real digitado, mas a divisão respeita a diferença de
+      // monetização entre os dois formatos.
       const totalEarnings =
         periodViews > 0 ? Math.round(periodEarnings * (totalViews / periodViews) * 100) / 100 : 0;
+      const shortsWeight = shortsViews * SHORTS_RPM;
+      const longWeight = longViews * LONG_RPM;
+      const totalWeight = shortsWeight + longWeight;
       shortsEarnings =
-        totalViews > 0 ? Math.round(totalEarnings * (shortsViews / totalViews) * 100) / 100 : 0;
+        totalWeight > 0 ? Math.round(totalEarnings * (shortsWeight / totalWeight) * 100) / 100 : 0;
       longEarnings = Math.round((totalEarnings - shortsEarnings) * 100) / 100;
     } else {
       // Estimativa: aplica o RPM certo de cada tipo direto nas views do
