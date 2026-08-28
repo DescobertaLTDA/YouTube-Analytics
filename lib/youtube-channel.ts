@@ -19,6 +19,8 @@ export interface ChannelVideoRaw {
   description: string;
   thumbnailUrl: string;
   viewCount: number;
+  likeCount: number;
+  commentCount: number;
   durationSeconds: number;
   publishedAt: string;
 }
@@ -123,6 +125,8 @@ export async function fetchChannelVideosDetails(videoIds: string[]): Promise<Cha
         thumbnailUrl:
           item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.default?.url || "",
         viewCount: parseInt(item.statistics?.viewCount) || 0,
+        likeCount: parseInt(item.statistics?.likeCount) || 0,
+        commentCount: parseInt(item.statistics?.commentCount) || 0,
         durationSeconds: parseIsoDuration(item.contentDetails?.duration),
         publishedAt: item.snippet?.publishedAt,
       });
