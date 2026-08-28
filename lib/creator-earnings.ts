@@ -10,16 +10,25 @@ export const CREATORS: { key: CreatorKey; label: string; hashtag: string }[] = [
 ];
 
 // RPM fixo (R$ por mil views) usado pra estimar ganhos quando não há valor
-// real informado manualmente — tanto pra Shorts quanto pra vídeos longos.
-export const FIXED_RPM = 0.32;
+// real informado manualmente. Shorts e vídeos longos monetizam bem
+// diferente no YouTube, então cada um tem o seu.
+export const SHORTS_RPM = 0.32;
+export const LONG_RPM = 5.5;
+
+// Mantido por compatibilidade com quem só precisa de "um" RPM de referência
+// (ex: mostrar no rodapé). Aponta pro RPM de Shorts.
+export const FIXED_RPM = SHORTS_RPM;
 
 /**
  * Ganhos estimados = views * RPM / 1000 / 2
  * (o /2 é a divisão fixa entre os 2 lados combinada com você — ex: parceria
  * de canal, split entre editor/criador, etc.)
+ *
+ * `isShort` decide qual RPM usar — Shorts (R$0,32) ou vídeo longo (R$5,50).
  */
-export function estimateEarnings(views: number, rpm: number = FIXED_RPM): number {
+export function estimateEarnings(views: number, isShort: boolean = true): number {
   if (!views) return 0;
+  const rpm = isShort ? SHORTS_RPM : LONG_RPM;
   const raw = (views * rpm) / 1000 / 2;
   return Math.round(raw * 100) / 100;
 }
