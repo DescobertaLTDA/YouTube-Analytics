@@ -2,18 +2,23 @@
 //
 // Autentica via assinatura SHA256 (SHOPEE_APP_ID + SHOPEE_SECRET_KEY,
 // configurados como env vars na Vercel) e busca o relatório de conversões
-// (vendas) via GraphQL.
+// (vendas) via GraphQL — endpoint `conversionReport`.
 //
-// Identificação do criador: a Shopee usa 5 slots de sub_id no link
-// personalizado (o slot exato varia dependendo de como o link foi montado —
-// pode ser o sub_id 2, o 3, etc). Por isso a gente busca TODAS as vendas do
-// período de uma vez e procura o nome do criador (lucas/matheus/rafael) em
-// QUALQUER um dos 5 slots, em vez de depender de uma posição fixa.
+// ⚠️ Schema real da API (confirmado na doc oficial/API playground):
+// - Paginação é por CURSOR (`scrollId`), não por número de página. O
+//   scrollId só vale por ~30s, então cada leva de páginas precisa ser
+//   buscada rapidinho, uma logo depois da outra.
+// - Não existem campos `subId1..subId5` nem `orderId`/`actualAmount`/
+//   `commission` direto no node. Os sub_ids que você define ao criar o
+//   link (ex: "clubeshopee", "lucas") voltam TODOS JUNTOS dentro de um
+//   único campo `utmContent`. A comissão e os pedidos ficam dentro de um
+//   array `orders`, cada um com seus `items`.
 //
-// ⚠️ IMPORTANTE: os nomes exatos dos campos do schema GraphQL (ex: nomes de
-// filtros e campos de retorno do conversionReport) podem variar pela versão
-// da API — confira em Portal de Afiliados > Central de Ajuda > API na sua
-// conta Shopee e ajuste a query abaixo se algum campo vier vazio/der erro.
+// Identificação do criador: como os sub_ids voltam concatenados dentro de
+// `utmContent` (não sabemos ao certo o separador que a Shopee usa —
+// vírgula, pipe, espaço...), a gente checa se o nome do criador aparece
+// como um "token" isolado OU como substring do campo, cobrindo os formatos
+// mais comuns.
 
 import { createHash } from "crypto";
 
@@ -27,24 +32,40 @@ function buildAuthHeader(appId: string, secretKey: string, payload: string): str
   return `SHA256 Credential=${appId}, Timestamp=${timestamp}, Signature=${signature}`;
 }
 
-export type ShopeeConversionNode = {
+export type ShopeeConversionOrderItem = {
+  itemId: string;
+  itemName: string;
+  shopName: string;
+  itemPrice: number;
+  qty: number;
+  itemTotalCommission: number;
+  attributionType: string;
+};
+
+export type ShopeeConversionOrder = {
   orderId: string;
-  subId1: string | null;
-  subId2: string | null;
-  subId3: string | null;
-  subId4: string | null;
-  subId5: string | null;
-  purchaseTime: string; // ISO
-  orderStatus: string; // ex: "COMPLETED" | "PENDING" | "UNPAID" ...
-  actualAmount: number; // valor da venda
-  commission: number; // comissão do afiliado
+  orderStatus: string; // "UNPAID" | "PENDING" | "COMPLETED" | "CANCELLED"
+  items: ShopeeConversionOrderItem[];
+};
+
+export type ShopeeConversionNode = {
+  purchaseTime: string; // Unix timestamp (segundos), como string ou number
+  clickTime: string;
+  conversionId: string;
+  totalCommission: number; // comissão total estimada da conversão
+  sellerCommission: number;
+  shopeeCommissionCapped: number;
+  buyerType: string; // "NEW" | "EXISTING"
+  device: string; // "APP" | "WEB"
+  utmContent: string | null; // sub_ids concatenados (ex: "clubeshopee,lucas")
+  orders: ShopeeConversionOrder[];
 };
 
 type ConversionReportResponse = {
   data?: {
     conversionReport?: {
       nodes: ShopeeConversionNode[];
-      pageInfo?: { hasNextPage: boolean };
+      pageInfo?: { limit: number; hasNextPage: boolean; scrollId?: string | null };
     };
   };
   errors?: { message: string }[];
@@ -86,30 +107,44 @@ async function shopeeGraphQL<T>(query: string, variables: Record<string, unknown
   return json;
 }
 
-// Sem filtro de sub_id na query — traz tudo do período e a gente separa por
-// subId2 no código (ver comentário no topo do arquivo).
+// Query no formato real da API — sem `page`, com `scrollId` opcional pra
+// continuar a paginação.
 const CONVERSION_REPORT_QUERY = `
-  query ConversionReport($purchaseTimeStart: Int, $purchaseTimeEnd: Int, $page: Int, $limit: Int) {
+  query ConversionReport($purchaseTimeStart: Int, $purchaseTimeEnd: Int, $scrollId: String, $limit: Int) {
     conversionReport(
       purchaseTimeStart: $purchaseTimeStart
       purchaseTimeEnd: $purchaseTimeEnd
-      page: $page
+      scrollId: $scrollId
       limit: $limit
     ) {
       nodes {
-        orderId
-        subId1
-        subId2
-        subId3
-        subId4
-        subId5
         purchaseTime
-        orderStatus
-        actualAmount
-        commission
+        clickTime
+        conversionId
+        totalCommission
+        sellerCommission
+        shopeeCommissionCapped
+        buyerType
+        device
+        utmContent
+        orders {
+          orderId
+          orderStatus
+          items {
+            itemId
+            itemName
+            shopName
+            itemPrice
+            qty
+            itemTotalCommission
+            attributionType
+          }
+        }
       }
       pageInfo {
+        limit
         hasNextPage
+        scrollId
       }
     }
   }
@@ -121,27 +156,31 @@ export type GetConversionsParams = {
 };
 
 // Busca TODAS as páginas de conversões (vendas) do período — sem separar
-// por criador ainda.
+// por criador ainda. Usa scrollId pra paginar (cursor válido por ~30s, por
+// isso as páginas são buscadas em sequência sem pausas).
 export async function getAllConversions(
   params: GetConversionsParams,
   maxPages = 20
 ): Promise<ShopeeConversionNode[]> {
   const all: ShopeeConversionNode[] = [];
+  let scrollId: string | undefined;
   let page = 1;
 
   while (page <= maxPages) {
     const data = await shopeeGraphQL<ConversionReportResponse>(CONVERSION_REPORT_QUERY, {
       purchaseTimeStart: Math.floor(params.purchaseTimeStart.getTime() / 1000),
       purchaseTimeEnd: Math.floor(params.purchaseTimeEnd.getTime() / 1000),
-      page,
-      limit: 100,
+      scrollId: scrollId ?? null,
+      limit: 500,
     });
 
     const report = data.data?.conversionReport;
     if (!report) break;
 
     all.push(...report.nodes);
-    if (!report.pageInfo?.hasNextPage) break;
+
+    if (!report.pageInfo?.hasNextPage || !report.pageInfo?.scrollId) break;
+    scrollId = report.pageInfo.scrollId;
     page += 1;
   }
 
@@ -152,28 +191,50 @@ export async function getAllConversions(
 // ajuste os valores aceitos aqui conforme o que a sua conta retorna.
 const PAID_STATUSES = new Set(["COMPLETED", "PENDING"]);
 
-// Filtra as vendas de um criador específico procurando o nome dele em
-// QUALQUER um dos 5 slots de sub_id (case insensitive) — assim funciona
-// não importa em qual slot a pessoa escreveu o nome (sub_id 2, 3, ou
-// qualquer outro), sem depender de convenção fixa de posição.
+// Quebra o campo utmContent (sub_ids concatenados) em "tokens" candidatos,
+// cobrindo os separadores mais comuns (vírgula, pipe, ponto-e-vírgula,
+// espaço). Também mantém a string inteira como candidato, pra pegar o caso
+// de "match por conter" (ex: utmContent = "clubeshopee-lucas").
+function utmTokens(utmContent: string | null): string[] {
+  if (!utmContent) return [];
+  const parts = utmContent
+    .split(/[,|;\s]+/)
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return [...parts, utmContent.toLowerCase()];
+}
+
+// Filtra as vendas de um criador específico procurando o nome dele dentro
+// do campo utmContent (case insensitive) — como token isolado ou como
+// substring, pra funcionar não importa o separador usado.
 export function filterByCreator(
   orders: ShopeeConversionNode[],
   creatorKey: string
 ): ShopeeConversionNode[] {
   const key = creatorKey.toLowerCase();
-  return orders.filter((o) =>
-    [o.subId1, o.subId2, o.subId3, o.subId4, o.subId5].some(
-      (sub) => (sub || "").toLowerCase() === key
-    )
-  );
+  return orders.filter((o) => {
+    const tokens = utmTokens(o.utmContent);
+    return tokens.some((t) => t === key || t.includes(key));
+  });
+}
+
+// Uma conversão é "paga" se pelo menos um dos pedidos dentro dela está
+// COMPLETED ou PENDING.
+function isNodePaid(node: ShopeeConversionNode): boolean {
+  return node.orders.some((o) => PAID_STATUSES.has(o.orderStatus));
 }
 
 export function sumPaidCommission(orders: ShopeeConversionNode[]): number {
   return orders
-    .filter((o) => PAID_STATUSES.has(o.orderStatus))
-    .reduce((sum, o) => sum + (o.commission || 0), 0);
+    .filter(isNodePaid)
+    .reduce((sum, o) => sum + (o.totalCommission || 0), 0);
 }
 
 export function countPaidOrders(orders: ShopeeConversionNode[]): number {
-  return orders.filter((o) => PAID_STATUSES.has(o.orderStatus)).length;
+  // Conta pedidos (não conversões) — uma conversão pode ter mais de um
+  // pedido dentro do array `orders`.
+  return orders.reduce(
+    (count, node) => count + node.orders.filter((o) => PAID_STATUSES.has(o.orderStatus)).length,
+    0
+  );
 }
