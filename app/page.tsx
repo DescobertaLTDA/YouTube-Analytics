@@ -41,8 +41,8 @@ export default async function GanhosPage({
             automaticamente via varredura de hashtag no YouTube Data API v3.
           </p>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-end" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="header-row-actions">
+          <div className="header-row-actions-top">
             <AtualizarButton />
             <SiteNav active="ganhos" />
           </div>

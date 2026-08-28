@@ -1,5 +1,6 @@
 import type { CreatorStats } from "@/lib/data";
 import { ShopeeSalesDetail } from "@/app/components/ShopeeSalesDetail";
+import { LONG_RPM, SHORTS_RPM } from "@/lib/creator-earnings";
 
 function formatNumber(n: number | null | undefined) {
   if (n == null) return "—";
@@ -8,6 +9,10 @@ function formatNumber(n: number | null | undefined) {
 
 function formatCurrency(n: number | null | undefined) {
   if (n == null) return "—";
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
+}
+
+function formatRpm(n: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 }
 
@@ -26,7 +31,10 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
           <span className="card-label">{stats.hashtag}</span>
           <h3 className="creator-name">{stats.label}</h3>
         </div>
-        <span className="rpm-badge">RPM {stats.rpm.toFixed(2)}</span>
+        <div className="rpm-badges">
+          <span className="rpm-badge rpm-badge-long">🎬 RPM {formatRpm(LONG_RPM)}</span>
+          <span className="rpm-badge rpm-badge-shorts">⚡ RPM {formatRpm(SHORTS_RPM)}</span>
+        </div>
       </div>
 
       <div className="creator-total">
