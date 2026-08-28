@@ -31,7 +31,7 @@ export function VideoDashboardGrid({
 
   return (
     <div className="grid-6">
-      {rows.map(({ video, latest, viewsPerDay, manual, revenue }) => (
+      {rows.map(({ video, latest, viewsPerDay, manual, revenue, source }) => (
         <Link href={`/video/${video.id}`} className="card-link" key={video.id}>
           <div className="card facet card-clickable">
             {latest?.thumbnail_url && (
@@ -40,7 +40,10 @@ export function VideoDashboardGrid({
 
             <div className="card-top">
               <div>
-                <span className="card-label">{video.channel_label ?? "vídeo"}</span>
+                <span className="card-label">
+                  {video.channel_label ?? "vídeo"}
+                  {source === "auto" && " · auto"}
+                </span>
                 <h3 className="card-title">{latest?.title ?? "sem título"}</h3>
               </div>
             </div>
