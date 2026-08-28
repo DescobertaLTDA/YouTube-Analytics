@@ -2,6 +2,18 @@ import type { CreatorStats } from "@/lib/data";
 import { ShopeeSalesDetail } from "@/app/components/ShopeeSalesDetail";
 import { LONG_RPM, SHORTS_RPM } from "@/lib/creator-earnings";
 
+const SHORTS_GOAL = 30;
+const REVENUE_GOAL = 1700;
+
+function ProgressBar({ value, goal }: { value: number; goal: number }) {
+  const pct = goal > 0 ? Math.min(Math.max((value / goal) * 100, 0), 100) : 0;
+  return (
+    <div className="progress-track">
+      <div className="progress-fill" style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
 function formatNumber(n: number | null | undefined) {
   if (n == null) return "—";
   return new Intl.NumberFormat("pt-BR").format(Math.round(n));
@@ -42,6 +54,31 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
         <div className="creator-total-label">
           {formatNumber(stats.totalViews)} views · {stats.viewsSharePct.toFixed(1)}% do total do
           período
+        </div>
+        <div className="creator-video-counts">
+          <span>{formatNumber(stats.periodCount)} vídeos no período</span>
+          <span>{formatNumber(stats.monthCount)} vídeos no mês</span>
+        </div>
+      </div>
+
+      <div className="creator-goals">
+        <div className="creator-goal">
+          <div className="creator-goal-header">
+            <span>⚡ Meta de Shorts (mês)</span>
+            <span className="text-muted-small">
+              {formatNumber(stats.monthShortsCount)} / {SHORTS_GOAL}
+            </span>
+          </div>
+          <ProgressBar value={stats.monthShortsCount} goal={SHORTS_GOAL} />
+        </div>
+        <div className="creator-goal">
+          <div className="creator-goal-header">
+            <span>💰 Meta de Receita (mês)</span>
+            <span className="text-muted-small">
+              {formatCurrency(stats.monthEarnings)} / {formatCurrency(REVENUE_GOAL)}
+            </span>
+          </div>
+          <ProgressBar value={stats.monthEarnings} goal={REVENUE_GOAL} />
         </div>
       </div>
 
