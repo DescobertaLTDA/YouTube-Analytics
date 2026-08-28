@@ -236,7 +236,10 @@ function isNodePaid(node: ShopeeConversionNode): boolean {
 export function sumPaidCommission(orders: ShopeeConversionNode[]): number {
   return orders
     .filter(isNodePaid)
-    .reduce((sum, o) => sum + (o.totalCommission || 0), 0);
+    .reduce((sum, o) => {
+      const value = Number(o.totalCommission);
+      return sum + (Number.isFinite(value) ? value : 0);
+    }, 0);
 }
 
 export function countPaidOrders(orders: ShopeeConversionNode[]): number {
