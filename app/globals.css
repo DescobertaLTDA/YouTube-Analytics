@@ -1,28 +1,29 @@
 :root {
-  /* Paleta inspirada no claude.ai: fundo creme quente, "tinta" quase preta
-     e terracota como cor de destaque — no lugar do branco/azul frio que o
-     site usava antes. Os NOMES das variáveis foram mantidos (--malachite,
-     --amber etc.) pra não precisar reescrever todo o resto do CSS. */
-  --bg: #faf9f5;
-  --surface: #f0eee6;
-  --surface-raised: #e8e3d8;
-  --border: #ddd6c7;
-  --text: #1f1e1d;
-  --text-muted: #6b6459;
-  --text-faint: #9c9384;
-  --text-secondary: #4a453d;
+  /* Paleta preto-e-branco, estilo terminal financeiro: fundo branco, tinta
+     quase preta, cinzas neutros pra hierarquia e um único acento vermelho
+     reservado pra erros e valores negativos (como um ticker de bolsa). Os
+     NOMES das variáveis foram mantidos (--malachite, --amber etc.) pra não
+     precisar reescrever todo o resto do CSS. */
+  --bg: #ffffff;
+  --surface: #f7f7f7;
+  --surface-raised: #ededed;
+  --border: #d9d9d9;
+  --text: #111111;
+  --text-muted: #656565;
+  --text-faint: #999999;
+  --text-secondary: #3d3d3d;
 
-  --malachite: #c2603d;
-  --malachite-hover: #a84f32;
-  --malachite-dim: #f3e3d9;
-  --ink: #1f1e1d;
-  --ink-dim: #ede9de;
-  --amber: #8a6c4f;
-  --amber-dim: #f1e9dc;
-  --rose: #b3261e;
+  --malachite: #111111;
+  --malachite-hover: #000000;
+  --malachite-dim: #ececec;
+  --ink: #111111;
+  --ink-dim: #ececec;
+  --amber: #595959;
+  --amber-dim: #f0f0f0;
+  --rose: #c1121f;
 
-  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
-  --font-body: "Inter", -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-body: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
 }
 
@@ -228,7 +229,7 @@ a {
   flex-direction: column;
   gap: 12px;
   height: 100%;
-  box-shadow: 0 1px 2px rgba(31, 30, 29, 0.04);
+  box-shadow: 0 1px 2px rgba(17, 17, 17, 0.04);
 }
 
 .card-clickable {
@@ -238,7 +239,7 @@ a {
 
 .card-clickable:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(31, 30, 29, 0.1);
+  box-shadow: 0 12px 24px rgba(17, 17, 17, 0.1);
   border-color: var(--malachite);
 }
 
@@ -356,13 +357,13 @@ a {
   padding: 22px 20px;
   text-align: center;
   border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(31, 30, 29, 0.04);
+  box-shadow: 0 1px 2px rgba(17, 17, 17, 0.04);
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .stat-card:hover {
-  border-color: #cfc6b3;
-  box-shadow: 0 4px 14px rgba(31, 30, 29, 0.07);
+  border-color: #c2c2c2;
+  box-shadow: 0 4px 14px rgba(17, 17, 17, 0.07);
 }
 
 /* Página de Ganhos: 4 cards (3 números + o form de valor real ao lado de
@@ -701,7 +702,7 @@ a {
 }
 
 .roteiro-timestamps::-webkit-scrollbar-thumb {
-  background: #cdc4b1;
+  background: #c9c9c9;
   border-radius: 3px;
 }
 
@@ -828,7 +829,7 @@ a {
 
 .change-trend.down {
   color: var(--rose);
-  background: #f8d7da;
+  background: #fbe6e6;
 }
 
 .change-trend.neutral {
@@ -990,7 +991,7 @@ a {
 .btn-roteiro:hover {
   background: var(--malachite-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(194, 96, 61, 0.3);
+  box-shadow: 0 4px 12px rgba(17, 17, 17, 0.3);
 }
 
 /* ===== MODAL ===== */
@@ -1119,7 +1120,7 @@ a {
 .form-group input:focus {
   outline: none;
   border-color: var(--malachite);
-  box-shadow: 0 0 0 3px rgba(194, 96, 61, 0.1);
+  box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.1);
 }
 
 .form-group textarea {
@@ -1143,15 +1144,15 @@ a {
 }
 
 .modal-message.success {
-  background: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
+  background: var(--surface-raised);
+  color: var(--ink);
+  border: 1px solid var(--border);
 }
 
 .modal-message.error {
-  background: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+  background: #fbe6e6;
+  color: var(--rose);
+  border: 1px solid var(--rose);
 }
 
 .modal-actions {
@@ -1194,7 +1195,7 @@ a {
 .btn-success:hover:not(:disabled) {
   background: var(--malachite-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(194, 96, 61, 0.3);
+  box-shadow: 0 4px 12px rgba(17, 17, 17, 0.3);
 }
 
 .btn-success:disabled {
@@ -1391,12 +1392,12 @@ footer.page-footer {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cdc4b1;
+  background: #c9c9c9;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #b3a890;
+  background: #a3a3a3;
 }
 
 /* ===== RESPONSIVO ===== */
@@ -1550,7 +1551,7 @@ footer.page-footer {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  box-shadow: 0 1px 3px rgba(31, 30, 29, 0.05);
+  box-shadow: 0 1px 3px rgba(17, 17, 17, 0.05);
 }
 
 .creator-card-top {
@@ -1658,25 +1659,25 @@ footer.page-footer {
 }
 
 .creator-cakto {
-  background: #e3f9ea;
-  border: 1px solid #00b341;
+  background: var(--surface-raised);
+  border: 1px solid var(--ink);
 }
 
 .creator-cakto-value {
   font-size: 18px;
   font-weight: 600;
-  color: #00913a;
+  color: var(--ink);
 }
 
 .creator-shopee {
-  background: #fff1ea;
-  border: 1px solid #ee4d2d;
+  background: var(--surface-raised);
+  border: 1px dashed var(--ink);
 }
 
 .creator-shopee-value {
   font-size: 18px;
   font-weight: 600;
-  color: #ee4d2d;
+  color: var(--ink);
 }
 
 .shopee-sales-detail {
@@ -1686,7 +1687,7 @@ footer.page-footer {
 .shopee-sales-toggle {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: #ee4d2d;
+  color: var(--text-muted);
   background: none;
   border: none;
   padding: 0;
@@ -1695,6 +1696,7 @@ footer.page-footer {
 
 .shopee-sales-toggle:hover {
   text-decoration: underline;
+  color: var(--ink);
 }
 
 .shopee-sales-list {
@@ -1703,7 +1705,7 @@ footer.page-footer {
   gap: 8px;
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px dashed #ee4d2d;
+  border-top: 1px dashed var(--border);
 }
 
 .shopee-sale-row {
@@ -1728,7 +1730,7 @@ footer.page-footer {
   font-family: var(--font-mono);
   font-size: 12.5px;
   font-weight: 600;
-  color: #ee4d2d;
+  color: var(--ink);
   white-space: nowrap;
 }
 
