@@ -42,11 +42,14 @@ export async function POST() {
     for (const video of channelVideos) {
       const text = `${video.title} ${video.description}`;
       const matched = matchCreators(text);
-      if (matched.length === 0) continue;
-
       const isShort = isShortVideo(video.durationSeconds);
 
-      for (const creator of matched) {
+      // Vídeo sem nenhuma hashtag: ainda entra na tabela (creator: "") pra
+      // contar nas views totais do canal no período (aba Ganhos), mas não
+      // é atribuído a nenhum criador nem aparece nas abas Vídeos/Shorts.
+      const creatorsForVideo = matched.length > 0 ? matched : [""];
+
+      for (const creator of creatorsForVideo) {
         rows.push({
           creator,
           youtube_video_id: video.id,
@@ -81,11 +84,13 @@ export async function POST() {
       videos: rows.filter((r) => r.creator === key).length,
     }));
 
+    const matchedCount = rows.filter((r) => r.creator !== "").length;
+
     return NextResponse.json({
       success: true,
       synced_at: now,
       channel_videos_scanned: channelVideos.length,
-      matched_videos: rows.length,
+      matched_videos: matchedCount,
       per_creator: perCreatorCount,
     });
   } catch (error: any) {
