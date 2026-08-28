@@ -3,10 +3,11 @@ import { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Voz padrão do Google Cloud TTS em PT-BR (neural, natural). Dá pra trocar
-// sem mexer no código cadastrando GOOGLE_TTS_VOICE nas env vars do projeto.
-// Outras opções boas: "pt-BR-Wavenet-B" (masculina), "pt-BR-Neural2-C" (feminina).
-const DEFAULT_VOICE = "pt-BR-Wavenet-A";
+// Voz padrão do Google Cloud TTS em PT-BR: masculina, tecnologia Neural2
+// (a mais natural disponível em pt-BR). Dá pra trocar sem mexer no código
+// cadastrando GOOGLE_TTS_VOICE nas env vars do projeto — outras opções
+// masculinas: "pt-BR-Wavenet-B", "pt-BR-Wavenet-C".
+const DEFAULT_VOICE = "pt-BR-Neural2-B";
 
 // Recebe o texto de uma resposta da IA e devolve o áudio (mp3) gerado pelo
 // Google Cloud Text-to-Speech, pra tocar direto no navegador.

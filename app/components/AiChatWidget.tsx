@@ -42,10 +42,18 @@ export function AiChatWidget() {
   const [autoSpeak, setAutoSpeak] = useState(true);
   const [listening, setListening] = useState(false);
   const [micSupported, setMicSupported] = useState(true);
+  // "Modo de voz": ativado ao clicar no microfone. O modal fecha, mas o
+  // ciclo ouvir -> enviar -> IA responde -> tocar áudio -> ouvir de novo
+  // continua rodando em segundo plano até o usuário cancelar.
+  const [voiceMode, setVoiceMode] = useState(false);
+  const voiceModeRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const spokenIndexRef = useRef<number | null>(null);
+  // Marca se o reconhecimento atual chegou a captar alguma fala, para saber
+  // se deve reiniciar a escuta sozinho (silêncio) no modo de voz.
+  const resultReceivedRef = useRef(false);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -71,34 +79,80 @@ export function AiChatWidget() {
 
     recognition.onresult = (e: SpeechRecognitionEventLike) => {
       const transcript = e.results[0][0].transcript;
-      setInput(transcript);
+      resultReceivedRef.current = true;
+      if (voiceModeRef.current) {
+        // Modo de voz: envia direto, sem passar pela caixa de texto.
+        sendMessage(transcript);
+      } else {
+        setInput(transcript);
+      }
     };
-    recognition.onerror = () => setListening(false);
-    recognition.onend = () => setListening(false);
+    recognition.onerror = () => {
+      setListening(false);
+      // Erro comum é "no-speech" (silêncio). No modo de voz, tenta ouvir
+      // de novo em vez de simplesmente desistir.
+      if (voiceModeRef.current && !resultReceivedRef.current) restartListening();
+    };
+    recognition.onend = () => {
+      setListening(false);
+      if (voiceModeRef.current && !resultReceivedRef.current) restartListening();
+    };
 
     recognitionRef.current = recognition;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function toggleListening() {
-    if (!recognitionRef.current) return;
-    if (listening) {
-      recognitionRef.current.stop();
-      setListening(false);
-      return;
-    }
-    audioRef.current?.pause();
-    setSpeakingIndex(null);
-    setListening(true);
-    recognitionRef.current.start();
+  // Reinicia a escuta depois de um pequeno intervalo — usado tanto após
+  // silêncio quanto após a IA terminar de falar, para manter a conversa
+  // por voz fluindo sozinha.
+  function restartListening(delay = 350) {
+    setTimeout(() => {
+      if (!voiceModeRef.current || !recognitionRef.current) return;
+      try {
+        resultReceivedRef.current = false;
+        setListening(true);
+        recognitionRef.current.start();
+      } catch {
+        // Reconhecimento já pode estar ativo; ignora.
+      }
+    }, delay);
   }
 
-  async function sendMessage() {
-    const text = input.trim();
+  // Clicar no microfone do painel: fecha o modal e entra no modo de voz
+  // contínuo, rodando em segundo plano.
+  function startVoiceMode() {
+    if (!recognitionRef.current) return;
+    voiceModeRef.current = true;
+    setVoiceMode(true);
+    setOpen(false);
+    audioRef.current?.pause();
+    setSpeakingIndex(null);
+    resultReceivedRef.current = false;
+    setListening(true);
+    try {
+      recognitionRef.current.start();
+    } catch {
+      // já rodando
+    }
+  }
+
+  // Cancela o modo de voz por completo (botão vira "×" enquanto ativo).
+  function stopVoiceMode() {
+    voiceModeRef.current = false;
+    setVoiceMode(false);
+    recognitionRef.current?.stop();
+    audioRef.current?.pause();
+    setListening(false);
+    setSpeakingIndex(null);
+  }
+
+  async function sendMessage(overrideText?: string) {
+    const text = (overrideText ?? input).trim();
     if (!text || loading) return;
 
     const nextMessages: Message[] = [...messages, { role: "user", content: text }];
     setMessages([...nextMessages, { role: "assistant", content: "" }]);
-    setInput("");
+    if (overrideText === undefined) setInput("");
     setLoading(true);
 
     try {
@@ -188,8 +242,14 @@ export function AiChatWidget() {
       const audio = new Audio(url);
       audioRef.current = audio;
 
-      audio.onended = () => setSpeakingIndex(null);
-      audio.onerror = () => setSpeakingIndex(null);
+      audio.onended = () => {
+        setSpeakingIndex(null);
+        if (voiceModeRef.current) restartListening();
+      };
+      audio.onerror = () => {
+        setSpeakingIndex(null);
+        if (voiceModeRef.current) restartListening();
+      };
 
       await audio.play();
       setSpeakingIndex(index);
@@ -197,6 +257,7 @@ export function AiChatWidget() {
       if (index !== spokenIndexRef.current) {
         alert("Não consegui gerar o áudio agora. Confere o GOOGLE_TTS_API_KEY e tenta de novo.");
       }
+      if (voiceModeRef.current) restartListening();
     } finally {
       setLoadingAudioIndex(null);
     }
@@ -205,7 +266,7 @@ export function AiChatWidget() {
   // Assim que uma resposta da IA termina de chegar (parou de "streamar"),
   // toca o áudio dela automaticamente — sem precisar clicar em "ouvir".
   useEffect(() => {
-    if (!autoSpeak || loading || messages.length === 0) return;
+    if ((!autoSpeak && !voiceMode) || loading || messages.length === 0) return;
     const lastIndex = messages.length - 1;
     const last = messages[lastIndex];
     if (last.role !== "assistant" || !last.content) return;
@@ -214,11 +275,29 @@ export function AiChatWidget() {
     spokenIndexRef.current = lastIndex;
     toggleSpeak(lastIndex, last.content);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, messages, autoSpeak]);
+  }, [loading, messages, autoSpeak, voiceMode]);
 
   return (
     <>
-      {!open && (
+      {!open && voiceMode && (
+        <div className="ai-chat-voice-indicator">
+          <span className="ai-chat-voice-status">
+            {listening ? "ouvindo…" : loading ? "pensando…" : speakingIndex !== null ? "falando…" : "no ar…"}
+          </span>
+          <button
+            className={`ai-chat-fab ai-chat-fab-voice ai-chat-fab-voice-${
+              listening ? "listening" : loading ? "thinking" : speakingIndex !== null ? "speaking" : "idle"
+            }`}
+            onClick={stopVoiceMode}
+            aria-label="Cancelar chat de voz e desligar o microfone"
+            title="Cancelar chat de voz"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {!open && !voiceMode && (
         <button className="ai-chat-fab" onClick={() => setOpen(true)} aria-label="Abrir chat com a IA">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
@@ -289,10 +368,10 @@ export function AiChatWidget() {
           {micSupported && (
             <button
               type="button"
-              className={`ai-chat-mic-btn ${listening ? "ai-chat-mic-btn-active" : ""}`}
-              onClick={toggleListening}
-              aria-label={listening ? "Parar de ouvir" : "Falar com a IA"}
-              title={listening ? "Ouvindo… clique pra parar" : "Falar em vez de digitar"}
+              className="ai-chat-mic-btn"
+              onClick={startVoiceMode}
+              aria-label="Falar com a IA por voz (fecha o chat e continua em segundo plano)"
+              title="Falar por voz — o chat fecha e continua ouvindo em segundo plano"
             >
               <IconMic size={16} />
             </button>
@@ -306,7 +385,7 @@ export function AiChatWidget() {
             rows={1}
             disabled={loading}
           />
-          <button className="ai-chat-send" onClick={sendMessage} disabled={loading || !input.trim()}>
+          <button className="ai-chat-send" onClick={() => sendMessage()} disabled={loading || !input.trim()}>
             Enviar
           </button>
         </div>

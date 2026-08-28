@@ -2537,6 +2537,62 @@ footer.page-footer {
   transform: scale(1.06);
 }
 
+/* Indicador do modo de voz contínuo (mic ativo em segundo plano, modal fechado) */
+.ai-chat-voice-indicator {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-chat-voice-status {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #fff;
+  background: var(--ink);
+  padding: 4px 10px;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+}
+
+.ai-chat-fab-voice {
+  position: static;
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 1;
+  background: var(--ink);
+}
+
+.ai-chat-fab-voice-listening {
+  background: var(--amber);
+  animation: ai-chat-mic-pulse 1.2s ease-in-out infinite;
+}
+
+.ai-chat-fab-voice-thinking {
+  animation: ai-chat-fab-spin 1s linear infinite;
+}
+
+.ai-chat-fab-voice-speaking {
+  background: var(--amber);
+  animation: ai-chat-voice-speak-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes ai-chat-fab-spin {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+@keyframes ai-chat-voice-speak-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
 .ai-chat-backdrop {
   position: fixed;
   inset: 0;
