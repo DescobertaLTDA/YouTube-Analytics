@@ -107,48 +107,59 @@ async function shopeeGraphQL<T>(query: string, variables: Record<string, unknown
   return json;
 }
 
-// Query no formato real da API — sem `page`, com `scrollId` opcional pra
-// continuar a paginação.
-const CONVERSION_REPORT_QUERY = `
-  query ConversionReport($purchaseTimeStart: Int64, $purchaseTimeEnd: Int64, $scrollId: String, $limit: Int) {
-    conversionReport(
-      purchaseTimeStart: $purchaseTimeStart
-      purchaseTimeEnd: $purchaseTimeEnd
-      scrollId: $scrollId
-      limit: $limit
-    ) {
-      nodes {
-        purchaseTime
-        clickTime
-        conversionId
-        totalCommission
-        sellerCommission
-        shopeeCommissionCapped
-        buyerType
-        device
-        utmContent
-        orders {
-          orderId
-          orderStatus
-          items {
-            itemId
-            itemName
-            shopName
-            itemPrice
-            qty
-            itemTotalCommission
-            attributionType
+// Monta a query GraphQL com os valores embutidos diretamente no texto (em
+// vez de usar $variables). A API da Shopee é sensível ao tipo Int64 de
+// purchaseTimeStart/purchaseTimeEnd quando enviado como variável (dá erro
+// de tipo ou "got null for non-null") — o jeito confiável, igual ao
+// exemplo oficial da documentação, é inserir os números direto na query.
+// (Mesmo padrão já validado e funcionando no projeto contadorshopee.)
+function buildConversionReportQuery(
+  purchaseTimeStart: number,
+  purchaseTimeEnd: number,
+  limit: number,
+  scrollId?: string
+): string {
+  const scrollIdArg = scrollId ? `, scrollId: "${scrollId}"` : "";
+  return `
+    {
+      conversionReport(
+        purchaseTimeStart: ${purchaseTimeStart},
+        purchaseTimeEnd: ${purchaseTimeEnd},
+        limit: ${limit}${scrollIdArg}
+      ) {
+        nodes {
+          purchaseTime
+          clickTime
+          conversionId
+          totalCommission
+          sellerCommission
+          shopeeCommissionCapped
+          buyerType
+          device
+          utmContent
+          orders {
+            orderId
+            orderStatus
+            items {
+              itemId
+              itemName
+              shopName
+              itemPrice
+              qty
+              itemTotalCommission
+              attributionType
+            }
           }
         }
-      }
-      pageInfo {
-        limit
-        hasNextPage
-        scrollId
+        pageInfo {
+          limit
+          hasNextPage
+          scrollId
+        }
       }
     }
-  }
-`;
+  `;
+}
 
 export type GetConversionsParams = {
   purchaseTimeStart: Date;
@@ -165,22 +176,12 @@ export async function getAllConversions(
   const all: ShopeeConversionNode[] = [];
   let scrollId: string | undefined;
   let page = 1;
+  const purchaseTimeStart = Math.floor(params.purchaseTimeStart.getTime() / 1000);
+  const purchaseTimeEnd = Math.floor(params.purchaseTimeEnd.getTime() / 1000);
 
   while (page <= maxPages) {
-    // O servidor da Shopee rejeita `scrollId: null` explícito na primeira
-    // página ("got null for non-null") — só inclui a chave quando já
-    // temos um scrollId de verdade (páginas seguintes).
-    const variables: Record<string, unknown> = {
-      // Int64 na Shopee é um scalar customizado — manda como string pra
-      // evitar erro de "wrong type" na coerção (JSON/JS não tem inteiro
-      // de 64 bits nativo).
-      purchaseTimeStart: String(Math.floor(params.purchaseTimeStart.getTime() / 1000)),
-      purchaseTimeEnd: String(Math.floor(params.purchaseTimeEnd.getTime() / 1000)),
-      limit: 500,
-    };
-    if (scrollId) variables.scrollId = scrollId;
-
-    const data = await shopeeGraphQL<ConversionReportResponse>(CONVERSION_REPORT_QUERY, variables);
+    const query = buildConversionReportQuery(purchaseTimeStart, purchaseTimeEnd, 500, scrollId);
+    const data = await shopeeGraphQL<ConversionReportResponse>(query, {});
 
     const report = data.data?.conversionReport;
     if (!report) break;
