@@ -80,6 +80,18 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
             <span className="creator-cakto-value">{formatCurrency(stats.caktoAmount)}</span>
           </div>
         </div>
+
+        <div className="creator-breakdown-item creator-shopee">
+          <div className="creator-breakdown-header">
+            <span>🛒 Vendas Shopee (28d)</span>
+            <span className="text-muted-small">
+              {stats.shopeeOrders != null ? `${stats.shopeeOrders} pedido(s)` : "—"}
+            </span>
+          </div>
+          <div className="creator-breakdown-stats">
+            <span className="creator-shopee-value">{formatCurrency(stats.shopeeAmount)}</span>
+          </div>
+        </div>
       </div>
     </div>
   );

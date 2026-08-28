@@ -14,6 +14,7 @@ import {
 import { isShortVideo } from "./youtube-channel";
 import { CREATORS, CreatorKey, SHORTS_RPM, estimateEarnings } from "./creator-earnings";
 import { getAllOrders, sumPaidAmount } from "./cakto";
+import { getAllConversions, sumPaidCommission, countPaidOrders } from "./shopee";
 
 export type VideoSource = "manual" | "auto";
 
@@ -287,6 +288,12 @@ export type CreatorStats = {
   // em vez de quebrar a página inteira.
   caktoOrders: number | null;
   caktoAmount: number | null;
+  // Vendas reais na Shopee nos últimos 28 dias, identificadas por
+  // sub_id=<key> (ex: sub_id=lucas). null quando a API da Shopee não está
+  // configurada ou a chamada falhou — nesse caso o card mostra "—" em vez
+  // de quebrar a página inteira.
+  shopeeOrders: number | null;
+  shopeeAmount: number | null;
 };
 
 export type GanhosVideoRow = {
@@ -363,6 +370,36 @@ async function getCaktoSalesByCreator(
   return result;
 }
 
+// Busca as vendas pagas na Shopee de cada criador (filtrando por
+// sub_id=<key>) dentro do período informado, e soma pedidos + comissão.
+// Falha de forma isolada, igual a getCaktoSalesByCreator.
+async function getShopeeSalesByCreator(
+  periodStart: Date,
+  periodEnd: Date
+): Promise<Record<CreatorKey, { orders: number; amount: number } | null>> {
+  const result = {} as Record<CreatorKey, { orders: number; amount: number } | null>;
+
+  try {
+    const perCreator = await Promise.all(
+      CREATORS.map(async ({ key }) => {
+        const orders = await getAllConversions({
+          subId: key,
+          purchaseTimeStart: periodStart,
+          purchaseTimeEnd: periodEnd,
+        });
+        return { key, orders: countPaidOrders(orders), amount: sumPaidCommission(orders) };
+      })
+    );
+
+    for (const c of perCreator) result[c.key] = { orders: c.orders, amount: c.amount };
+  } catch (error) {
+    console.error("❌ Erro ao buscar vendas na Shopee:", error);
+    for (const { key } of CREATORS) result[key] = null;
+  }
+
+  return result;
+}
+
 export async function getCreatorEarnings(): Promise<GanhosData> {
   // Usa o client com service_role pra não depender de RLS estar liberado
   // pra leitura anônima nessas tabelas.
@@ -406,6 +443,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
   // configurada (ou alguma chamada falhar), cai tudo pra null e o card
   // mostra "—" em vez de derrubar a página de Ganhos inteira.
   const caktoSales = await getCaktoSalesByCreator(periodStart, periodEnd);
+  const shopeeSales = await getShopeeSalesByCreator(periodStart, periodEnd);
 
   const manualAmount =
     manualRevenueRows && manualRevenueRows[0]
@@ -476,6 +514,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
       Math.round((estimateEarnings(monthShortsViews, true) + estimateEarnings(monthLongViews, false)) * 100) / 100;
 
     const cakto = caktoSales[key];
+    const shopee = shopeeSales[key];
 
     return {
       key,
@@ -495,6 +534,8 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
       monthEarnings,
       caktoOrders: cakto ? cakto.orders : null,
       caktoAmount: cakto ? cakto.amount : null,
+      shopeeOrders: shopee ? shopee.orders : null,
+      shopeeAmount: shopee ? shopee.amount : null,
     };
   });
 

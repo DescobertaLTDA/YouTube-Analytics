@@ -1575,6 +1575,17 @@ footer.page-footer {
   color: #00913a;
 }
 
+.creator-shopee {
+  background: #fff1ea;
+  border: 1px solid #ee4d2d;
+}
+
+.creator-shopee-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ee4d2d;
+}
+
 /* Botão Atualizar */
 .atualizar-wrap {
   display: flex;
