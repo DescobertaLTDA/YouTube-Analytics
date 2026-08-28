@@ -24,12 +24,12 @@ export function AtualizarButton() {
 
       setMessage({
         type: "success",
-        text: `✅ ${result.matched_videos} vídeos encontrados (de ${result.channel_videos_scanned} no canal).`,
+        text: `${result.matched_videos} vídeos encontrados (de ${result.channel_videos_scanned} no canal).`,
       });
 
       router.refresh();
     } catch (error: any) {
-      setMessage({ type: "error", text: `❌ ${error.message || "Tente novamente."}` });
+      setMessage({ type: "error", text: error.message || "Tente novamente." });
     } finally {
       setLoading(false);
       setTimeout(() => setMessage(null), 6000);
@@ -41,7 +41,23 @@ export function AtualizarButton() {
       <button className="btn-atualizar" onClick={handleClick} disabled={loading}>
         {loading ? "🔄 Atualizando..." : "🔄 Atualizar"}
       </button>
-      {message && <div className={`atualizar-message ${message.type}`}>{message.text}</div>}
+
+      {message && (
+        <div className="toast-container">
+          <div className={`toast toast-${message.type}`}>
+            <span className="toast-icon">{message.type === "success" ? "✓" : "✕"}</span>
+            <span className="toast-text">{message.text}</span>
+            <button
+              type="button"
+              className="toast-close"
+              onClick={() => setMessage(null)}
+              aria-label="Fechar"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
