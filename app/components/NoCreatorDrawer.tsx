@@ -36,6 +36,7 @@ export function NoCreatorDrawer({
   videos: GanhosVideoRow[];
 }) {
   const [open, setOpen] = useState(false);
+  const sortedVideos = [...videos].sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0));
 
   useEffect(() => {
     if (!open) return;
@@ -68,52 +69,61 @@ export function NoCreatorDrawer({
             <div className="drawer-header">
               <div>
                 <h2>Vídeos sem criador</h2>
-                <p className="drawer-subtitle">
-                  {formatNumber(count)} vídeo(s) · {formatCurrency(amount)} sem hashtag no período
-                </p>
+                <p className="drawer-subtitle">Sem hashtag no período · ordenado por receita</p>
               </div>
               <button type="button" className="modal-close" onClick={() => setOpen(false)} aria-label="Fechar">
                 ×
               </button>
             </div>
 
+            <div className="drawer-summary">
+              <div className="drawer-summary-item">
+                <span className="drawer-summary-value">{formatNumber(count)}</span>
+                <span className="drawer-summary-label">vídeos sem criador</span>
+              </div>
+              <div className="drawer-summary-item">
+                <span className="drawer-summary-value amber">{formatCurrency(amount)}</span>
+                <span className="drawer-summary-label">saldo total sem criador</span>
+              </div>
+            </div>
+
             <div className="drawer-body">
-              {videos.length === 0 && (
+              {sortedVideos.length === 0 && (
                 <div className="no-changes">Nenhum vídeo sem criador no período.</div>
               )}
 
-              {videos.map((v) => (
-                <div className="history-row drawer-row" key={v.youtubeVideoId}>
+              {sortedVideos.map((v) => (
+                <div className="drawer-video-row" key={v.youtubeVideoId}>
                   {v.thumbnailUrl && (
-                    <img className="history-thumb" src={v.thumbnailUrl} alt={v.title ?? ""} />
+                    <img className="drawer-video-thumb" src={v.thumbnailUrl} alt={v.title ?? ""} />
                   )}
-                  <div className="history-main">
+                  <div className="drawer-video-info">
                     <a
                       href={`https://youtube.com/watch?v=${v.youtubeVideoId}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="history-title"
+                      className="drawer-video-title"
                     >
                       {v.title ?? "sem título"}
                     </a>
-                    <div className="history-meta">
+                    <div className="drawer-video-meta">
                       <span className="text-muted-small">{v.isShort ? "Short" : "Vídeo longo"}</span>
                       <span className="text-muted-small">{formatDate(v.publishedAt)}</span>
                     </div>
                   </div>
 
-                  <div className="history-stats drawer-stats">
-                    <div className="history-stat">
-                      <span className="history-stat-value malachite">{formatNumber(v.viewCount)}</span>
-                      <span className="history-stat-label">views</span>
+                  <div className="drawer-video-stats">
+                    <div className="drawer-video-stat">
+                      <span className="drawer-video-stat-value malachite">{formatNumber(v.viewCount)}</span>
+                      <span className="drawer-video-stat-label">views</span>
                     </div>
-                    <div className="history-stat">
-                      <span className="history-stat-value">{formatDuration(v.durationSeconds)}</span>
-                      <span className="history-stat-label">duração</span>
+                    <div className="drawer-video-stat">
+                      <span className="drawer-video-stat-value">{formatDuration(v.durationSeconds)}</span>
+                      <span className="drawer-video-stat-label">duração</span>
                     </div>
-                    <div className="history-stat">
-                      <span className="history-stat-value amber">{formatCurrency(v.revenue)}</span>
-                      <span className="history-stat-label">receita</span>
+                    <div className="drawer-video-stat">
+                      <span className="drawer-video-stat-value amber">{formatCurrency(v.revenue)}</span>
+                      <span className="drawer-video-stat-label">receita</span>
                     </div>
                   </div>
                 </div>
