@@ -1,114 +1,65 @@
-import { getDashboardData } from "@/lib/data";
-import Link from "next/link";
+import { getCreatorEarnings } from "@/lib/data";
+import { SiteNav } from "@/app/components/SiteNav";
+import { CreatorCard } from "@/app/components/CreatorCard";
+import { AtualizarButton } from "@/app/components/AtualizarButton";
 
 export const revalidate = 0;
 
-function formatNumber(n: number | null | undefined) {
-  if (n == null) return "—";
-  return new Intl.NumberFormat("pt-BR").format(Math.round(n));
-}
-
-function formatCurrency(n: number | null | undefined) {
-  if (n == null) return "—";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
-
-function formatDate(iso: string | null | undefined) {
-  if (!iso) return "—";
-  return new Intl.DateTimeFormat("pt-BR", { 
-    day: "2-digit", 
-    month: "short", 
-    year: "numeric" 
+function formatDateTime(iso: string | null | undefined) {
+  if (!iso) return "nunca";
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(new Date(iso));
 }
 
-export default async function Home() {
-  const rows = await getDashboardData();
-  const hasData = rows.length > 0;
+export default async function GanhosPage() {
+  const { creators, lastSyncedAt, totalVideosScanned } = await getCreatorEarnings();
 
   return (
     <main className="page">
       <div className="header-row">
         <div>
           <span className="eyebrow">Canal de Pedras e Minerais</span>
-          <h1 className="title">Painel de Acompanhamento</h1>
+          <h1 className="title">Ganhos por Criador</h1>
           <p className="subtitle">
-            Views por dia, e histórico de trocas de título, thumbnail e descrição — coletados
-            automaticamente via YouTube Data API v3.
+            Views e receita estimada de cada criador, somando todos os vídeos do canal marcados
+            com a hashtag dele (#lucas, #matheus, #rafael) — separado entre Shorts e vídeos
+            longos.
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-end" }}>
-          <div className="nav-links">
-            <a className="nav-link active" href="/">painel</a>
-            <a className="nav-link" href="/transcripts">transcripts</a>
-          </div>
+          <SiteNav active="ganhos" />
           <div className="sync-pill">
-            última sincronização: <strong>{hasData ? formatDate(rows[0].latest?.captured_at) : "—"}</strong>
+            última atualização: <strong>{formatDateTime(lastSyncedAt)}</strong>
           </div>
+          <AtualizarButton />
         </div>
       </div>
 
-      {!hasData && (
+      {totalVideosScanned === 0 && (
         <div className="empty facet">
-          <h2>Nenhum vídeo cadastrado ainda</h2>
-          <p>O banco está pronto, mas a tabela <code>videos</code> está vazia.</p>
+          <h2>Nenhum vídeo encontrado ainda</h2>
+          <p>
+            Clique em <strong>Atualizar</strong> pra varrer o canal e achar os vídeos com
+            #lucas, #matheus e #rafael no título ou descrição.
+          </p>
         </div>
       )}
 
-      {hasData && (
-        <div className="grid-6">
-          {rows.map(({ video, latest, viewsPerDay, daysLive, manual, revenue }) => (
-            <Link 
-              href={`/video/${video.id}`} 
-              className="card-link" 
-              key={video.id}
-            >
-              <div className="card facet card-clickable">
-                {latest?.thumbnail_url && (
-                  <img 
-                    className="thumb" 
-                    src={latest.thumbnail_url} 
-                    alt={latest.title ?? "thumbnail"} 
-                  />
-                )}
-
-                <div className="card-top">
-                  <div>
-                    <span className="card-label">{video.channel_label ?? "vídeo"}</span>
-                    <h3 className="card-title">{latest?.title ?? "sem título"}</h3>
-                  </div>
-                </div>
-
-                <div className="stat-row-2">
-                  <div className="stat">
-                    <div className="stat-value malachite">{formatNumber(latest?.view_count)}</div>
-                    <div className="stat-label">views totais</div>
-                  </div>
-                  <div className="stat">
-                    <div className="stat-value amber">{viewsPerDay != null ? formatNumber(viewsPerDay) : "—"}</div>
-                    <div className="stat-label">views / dia</div>
-                  </div>
-                  <div className="stat">
-                    <div className="stat-value">{manual?.ctr != null ? `${manual.ctr}%` : "—"}</div>
-                    <div className="stat-label">CTR</div>
-                  </div>
-                  <div className="stat">
-                    <div className="stat-value malachite">{formatCurrency(revenue)}</div>
-                    <div className="stat-label">receita</div>
-                  </div>
-                </div>
-
-                <div className="card-footer">
-                  <span className="card-click-hint">👆 Clique para detalhes</span>
-                </div>
-              </div>
-            </Link>
+      {totalVideosScanned > 0 && (
+        <div className="creator-grid">
+          {creators.map((stats) => (
+            <CreatorCard key={stats.key} stats={stats} />
           ))}
         </div>
       )}
 
       <footer className="page-footer">
-        supabase · projeto ildxajnvgoduikxkcxqv · região sa-east-1
+        RPM fixo de R$ 0,22 · ganhos = views × RPM ÷ 1000 ÷ 2 · supabase · projeto ildxajnvgoduikxkcxqv
       </footer>
     </main>
   );

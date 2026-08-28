@@ -3,7 +3,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "YouTube Analytics — Pedras e Minerais",
-  description: "Painel de acompanhamento diário de views, título, thumbnail e retenção do canal.",
+  description:
+    "Ganhos por criador, views por dia, e histórico de trocas de título, thumbnail e retenção do canal.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

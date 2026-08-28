@@ -1408,3 +1408,167 @@ footer.page-footer {
     text-align: center;
   }
 }
+
+/* ===== ABA GANHOS (criadores) ===== */
+.malachite {
+  color: #1f9c69;
+}
+
+.amber {
+  color: var(--amber);
+}
+
+.creator-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 8px;
+}
+
+.creator-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.creator-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.creator-name {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 500;
+  margin: 4px 0 0;
+  color: var(--ink);
+}
+
+.rpm-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  padding: 5px 10px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.creator-total {
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.creator-total-value {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  font-weight: 500;
+}
+
+.creator-total-label {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.creator-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.creator-breakdown-item {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+
+.creator-breakdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.creator-breakdown-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+/* Botão Atualizar */
+.atualizar-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.btn-atualizar {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink);
+  background: var(--malachite-dim);
+  border: 1px solid var(--malachite);
+  padding: 8px 16px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-atualizar:hover:not(:disabled) {
+  background: var(--malachite);
+  color: #fff;
+}
+
+.btn-atualizar:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.atualizar-message {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  max-width: 260px;
+  text-align: right;
+}
+
+.atualizar-message.success {
+  color: #1f9c69;
+}
+
+.atualizar-message.error {
+  color: var(--rose);
+}
+
+@media (max-width: 992px) {
+  .creator-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .creator-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .atualizar-wrap {
+    align-items: flex-start;
+  }
+
+  .atualizar-message {
+    text-align: left;
+  }
+}
