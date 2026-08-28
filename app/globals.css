@@ -2395,6 +2395,10 @@ footer.page-footer {
   border-bottom: 1px dashed var(--border);
 }
 
+.top-video-row .top-video-views-col {
+  margin-right: 20px;
+}
+
 .top-video-row:last-child {
   border-bottom: none;
 }
@@ -2444,8 +2448,8 @@ footer.page-footer {
 }
 
 .top-video-views-col {
-  text-align: right;
-  font-weight: 600;
+  text-align: center;
+  font-weight: 400;
 }
 
 .top-video-revenue-col {
@@ -2473,7 +2477,11 @@ footer.page-footer {
   color: var(--text-faint);
 }
 
-.top-video-header .top-video-views-col,
+.top-video-header .top-video-views-col {
+  text-align: center;
+  margin-right: 20px;
+}
+
 .top-video-header .top-video-revenue-col {
   text-align: right;
 }
