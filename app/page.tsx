@@ -91,11 +91,6 @@ export default async function GanhosPage() {
             </div>
             <div className="stat-card">
               <RevenueOverrideForm currentAmount={manualRevenueAmount} />
-              <div className="stat-label" style={{ marginTop: 8 }}>
-                Cole aqui o total que aparece no resumo de receita do YouTube Studio pra usar o
-                valor real em vez da estimativa. A divisão entre criadores continua sendo pela %
-                de views de cada um.
-              </div>
             </div>
           </div>
 
