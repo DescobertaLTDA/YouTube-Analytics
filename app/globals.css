@@ -2365,9 +2365,14 @@ footer.page-footer {
   }
 }
 
-/* ===== TOP 10 DO MÊS ===== */
+/* ===== TOP 10 DO MÊS (tabela) ===== */
 .top-videos-section {
   border-top: 3px solid var(--malachite);
+}
+
+.top-video-table {
+  display: flex;
+  flex-direction: column;
 }
 
 .top-video-row {
@@ -2388,7 +2393,7 @@ footer.page-footer {
   font-size: 15px;
   font-weight: 700;
   color: var(--text-muted);
-  width: 32px;
+  width: 24px;
   flex-shrink: 0;
   text-align: center;
 }
@@ -2400,23 +2405,52 @@ footer.page-footer {
   font-size: 17px;
 }
 
+/* linha de cabeçalho da "tabela" — mesmas colunas da linha de dados, só
+   com rótulos em vez de valores. Some no mobile, onde cada linha já
+   mostra os rótulos junto do valor via .history-stat-label. */
+.top-video-header {
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.top-video-header .top-video-title-col {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.top-video-stats-header .history-stat {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  align-items: flex-end;
+}
+
+/* views antes da receita, e a receita segue em destaque no fim */
 .top-video-revenue {
   font-family: var(--font-mono);
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--malachite);
-  margin-left: auto;
   white-space: nowrap;
 }
 
 .top-video-row.rank-1 .top-video-revenue {
-  font-size: 24px;
+  font-size: 22px;
+}
+
+.top-video-revenue-stat {
+  min-width: 76px;
 }
 
 @media (max-width: 640px) {
-  .top-video-revenue {
-    margin-left: 0;
-    width: 100%;
-    text-align: right;
+  .top-video-header {
+    display: none;
   }
 }
+
+
