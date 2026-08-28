@@ -1,4 +1,4 @@
-import { getDashboardData } from "@/lib/data";
+import { getAllVideoRows } from "@/lib/data";
 import { SiteNav } from "@/app/components/SiteNav";
 import { VideoDashboardGrid } from "@/app/components/VideoDashboardGrid";
 
@@ -14,7 +14,7 @@ function formatDate(iso: string | null | undefined) {
 }
 
 export default async function ShortsPage() {
-  const allRows = await getDashboardData();
+  const allRows = await getAllVideoRows();
   const rows = allRows.filter((r) => r.isShort);
 
   return (
@@ -26,6 +26,8 @@ export default async function ShortsPage() {
           <p className="subtitle">
             Views por dia e histórico de trocas de título, thumbnail e descrição dos Shorts
             (vídeos de até 3 minutos) — coletados automaticamente via YouTube Data API v3.
+            Inclui tanto os cadastrados manualmente quanto os achados pela varredura de
+            hashtag da aba Ganhos.
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-end" }}>
@@ -39,8 +41,8 @@ export default async function ShortsPage() {
 
       <VideoDashboardGrid
         rows={rows}
-        emptyTitle="Nenhum Short cadastrado ainda"
-        emptyDescription="Vídeos com até 3 minutos aparecem aqui depois de cadastrados e sincronizados."
+        emptyTitle="Nenhum Short encontrado ainda"
+        emptyDescription="Vídeos com até 3 minutos aparecem aqui depois de cadastrados manualmente, ou automaticamente ao clicar em Atualizar na aba Ganhos."
       />
 
       <footer className="page-footer">
