@@ -543,7 +543,10 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
   const periodViews = rows.reduce((sum, r) => sum + (r.view_count || 0), 0);
   const periodShortsViews = rows.filter((r) => r.is_short).reduce((sum, r) => sum + (r.view_count || 0), 0);
   const periodLongViews = rows.filter((r) => !r.is_short).reduce((sum, r) => sum + (r.view_count || 0), 0);
-  const noHashtagCount = rows.filter((r) => r.creator === "").length;
+  // "" é o valor legado (nunca escaneado com hashtag); "SEM DONO" é o
+  // rótulo usado depois que passamos a etiquetar esses vídeos direto no
+  // banco. Os dois contam como órfão pra esse card.
+  const noHashtagCount = rows.filter((r) => r.creator === "" || r.creator === "SEM DONO").length;
 
   // Zero ou não preenchido conta como "sem valor manual" — volta a usar a
   // estimativa por RPM automaticamente, sem precisar de um botão separado.
