@@ -13,6 +13,11 @@ function formatNumber(n: number | null | undefined) {
   return new Intl.NumberFormat("pt-BR").format(Math.round(n));
 }
 
+function formatCurrency(n: number | null | undefined) {
+  if (n == null) return "—";
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
+}
+
 function formatDate(iso: string | null | undefined) {
   if (!iso) return "—";
   return new Intl.DateTimeFormat("pt-BR", {
@@ -29,6 +34,8 @@ export default async function GanhosPage({
 }) {
   const data = await getCreatorEarnings();
   const page = Number(searchParams.page) || 1;
+  const creatorsEarnings = data.creators.reduce((sum, c) => sum + c.totalEarnings, 0);
+  const noCreatorEarnings = Math.round((data.periodEarnings - creatorsEarnings) * 100) / 100;
 
   return (
     <main className="page">
@@ -69,6 +76,10 @@ export default async function GanhosPage({
         <div className="stat-card">
           <div className="stat-value-large">{formatNumber(data.noHashtagCount)}</div>
           <div className="stat-label">Vídeos sem criador</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value-large amber">{formatCurrency(noCreatorEarnings)}</div>
+          <div className="stat-label">Saldo sem criador</div>
         </div>
       </div>
 

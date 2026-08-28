@@ -369,7 +369,7 @@ a {
 /* Página de Ganhos: 4 cards (3 números + o form de valor real ao lado de
    "Vídeos escaneados"), então usa 4 colunas em vez das 6 padrão. */
 .stats-grid-ganhos {
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
 }
 
 .stat-card-form {
@@ -1571,9 +1571,10 @@ footer.page-footer {
 
 .rpm-badges {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 6px;
-  align-items: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .rpm-badge {
