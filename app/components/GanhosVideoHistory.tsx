@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { GanhosVideoRow } from "@/lib/data";
+import { averageVphByFormat, computeVph, formatMultiplier, formatVph, vphTier } from "@/lib/vph";
 
 const PAGE_SIZE = 10;
 
@@ -38,55 +39,75 @@ export function GanhosVideoHistory({
   const start = (currentPage - 1) * PAGE_SIZE;
   const pageVideos = videos.slice(start, start + PAGE_SIZE);
 
+  // Média de VPH calculada sobre TODOS os vídeos do período (não só a
+  // página atual), pra a referência de "acima da média" não mudar de
+  // página em página.
+  const avgVph = averageVphByFormat(videos);
+
   return (
     <div className="changes-section">
       <h2>📼 Histórico de Vídeos · últimos 28 dias</h2>
 
       {videos.length === 0 && <div className="no-changes">Nenhum vídeo no período ainda.</div>}
 
-      {pageVideos.map((v) => (
-        <div className="history-row" key={v.youtubeVideoId}>
-          {v.thumbnailUrl && <img className="history-thumb" src={v.thumbnailUrl} alt={v.title ?? ""} />}
-          <div className="history-main">
-            <a
-              href={`https://youtube.com/watch?v=${v.youtubeVideoId}`}
-              target="_blank"
-              rel="noreferrer"
-              className="history-title"
-            >
-              {v.title ?? "sem título"}
-            </a>
-            <div className="history-meta">
-              <span className="card-label">{v.creatorLabel}</span>
-              <span className="text-muted-small">{v.isShort ? "Short" : "Vídeo longo"}</span>
-              <span className="text-muted-small">{formatDate(v.publishedAt)}</span>
-            </div>
-          </div>
+      {pageVideos.map((v) => {
+        const vph = computeVph(v.viewCount, v.publishedAt);
+        const avg = v.isShort ? avgVph.short : avgVph.long;
+        const multiplier = vph != null && avg ? vph / avg : null;
+        const tier = vphTier(multiplier);
 
-          <div className="history-stats">
-            <div className="history-stat">
-              <span className="history-stat-value malachite">{formatNumber(v.viewCount)}</span>
-              <span className="history-stat-label">views</span>
+        return (
+          <div className="history-row" key={v.youtubeVideoId}>
+            {v.thumbnailUrl && <img className="history-thumb" src={v.thumbnailUrl} alt={v.title ?? ""} />}
+            <div className="history-main">
+              <a
+                href={`https://youtube.com/watch?v=${v.youtubeVideoId}`}
+                target="_blank"
+                rel="noreferrer"
+                className="history-title"
+              >
+                {v.title ?? "sem título"}
+              </a>
+              <div className="history-meta">
+                <span className="card-label">{v.creatorLabel}</span>
+                <span className="text-muted-small">{v.isShort ? "Short" : "Vídeo longo"}</span>
+                <span className="text-muted-small">{formatDate(v.publishedAt)}</span>
+                {vph != null && (
+                  <span className="vph-tag">
+                    <span className="vph-tag-value">{formatVph(vph)} VPH</span>
+                    <span className={`vph-badge ${tier.className}`}>
+                      {tier.emoji} {formatMultiplier(multiplier)}
+                    </span>
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="history-stat">
-              <span className="history-stat-value">{formatNumber(v.likeCount)}</span>
-              <span className="history-stat-label">likes</span>
-            </div>
-            <div className="history-stat">
-              <span className="history-stat-value">{formatNumber(v.commentCount)}</span>
-              <span className="history-stat-label">comentários</span>
-            </div>
-            <div className="history-stat">
-              <span className="history-stat-value">{formatDuration(v.durationSeconds)}</span>
-              <span className="history-stat-label">duração</span>
-            </div>
-            <div className="history-stat">
-              <span className="history-stat-value malachite">{formatCurrency(v.revenue)}</span>
-              <span className="history-stat-label">receita</span>
+
+            <div className="history-stats">
+              <div className="history-stat">
+                <span className="history-stat-value malachite">{formatNumber(v.viewCount)}</span>
+                <span className="history-stat-label">views</span>
+              </div>
+              <div className="history-stat">
+                <span className="history-stat-value">{formatNumber(v.likeCount)}</span>
+                <span className="history-stat-label">likes</span>
+              </div>
+              <div className="history-stat">
+                <span className="history-stat-value">{formatNumber(v.commentCount)}</span>
+                <span className="history-stat-label">comentários</span>
+              </div>
+              <div className="history-stat">
+                <span className="history-stat-value">{formatDuration(v.durationSeconds)}</span>
+                <span className="history-stat-label">duração</span>
+              </div>
+              <div className="history-stat">
+                <span className="history-stat-value malachite">{formatCurrency(v.revenue)}</span>
+                <span className="history-stat-label">receita</span>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {totalPages > 1 && (
         <div className="pagination">

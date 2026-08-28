@@ -22,6 +22,12 @@
   --amber-dim: #f0f0f0;
   --rose: #c1121f;
 
+  /* Selo de VPH (views/hora) — únicas cores "vivas" do site, de propósito,
+     pra chamar atenção mesmo na paleta preto-e-branco. */
+  --vph-explosive: #7a0f1c;
+  --vph-hot: #c1121f;
+  --vph-warm: #4b3fd1;
+
   --font-display: "Newsreader", Georgia, "Times New Roman", serif;
   --font-body: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
@@ -2262,6 +2268,57 @@ footer.page-footer {
   font-size: 10px;
   text-transform: uppercase;
   color: var(--text-faint);
+}
+
+/* ===== SELO DE VPH (VIEWS/HORA) ===== */
+.vph-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vph-tag-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.vph-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+
+/* >=20x a média do formato (Short vs. vídeo longo) — bem viral */
+.vph-badge-explosive {
+  background: var(--vph-explosive);
+  color: #ffffff;
+}
+
+/* >=5x a média — em alta */
+.vph-badge-hot {
+  background: var(--vph-hot);
+  color: #ffffff;
+}
+
+/* >=2x a média — acima do normal */
+.vph-badge-warm {
+  background: var(--vph-warm);
+  color: #ffffff;
+}
+
+/* abaixo de 2x — dentro do esperado */
+.vph-badge-normal {
+  background: var(--surface-raised);
+  color: var(--text-muted);
 }
 
 /* ===== PAGINAÇÃO ===== */
