@@ -167,15 +167,20 @@ export async function getAllConversions(
   let page = 1;
 
   while (page <= maxPages) {
-    const data = await shopeeGraphQL<ConversionReportResponse>(CONVERSION_REPORT_QUERY, {
+    // O servidor da Shopee rejeita `scrollId: null` explícito na primeira
+    // página ("got null for non-null") — só inclui a chave quando já
+    // temos um scrollId de verdade (páginas seguintes).
+    const variables: Record<string, unknown> = {
       // Int64 na Shopee é um scalar customizado — manda como string pra
       // evitar erro de "wrong type" na coerção (JSON/JS não tem inteiro
       // de 64 bits nativo).
       purchaseTimeStart: String(Math.floor(params.purchaseTimeStart.getTime() / 1000)),
       purchaseTimeEnd: String(Math.floor(params.purchaseTimeEnd.getTime() / 1000)),
-      scrollId: scrollId ?? null,
       limit: 500,
-    });
+    };
+    if (scrollId) variables.scrollId = scrollId;
+
+    const data = await shopeeGraphQL<ConversionReportResponse>(CONVERSION_REPORT_QUERY, variables);
 
     const report = data.data?.conversionReport;
     if (!report) break;
