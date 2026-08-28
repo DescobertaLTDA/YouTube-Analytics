@@ -5,6 +5,7 @@ import { CreatorCard } from "@/app/components/CreatorCard";
 import { RevenueStatCard } from "@/app/components/RevenueStatCard";
 import { GanhosVideoHistory } from "@/app/components/GanhosVideoHistory";
 import { TopVideosMonth } from "@/app/components/TopVideosMonth";
+import { NoCreatorDrawer } from "@/app/components/NoCreatorDrawer";
 
 export const revalidate = 0;
 
@@ -73,14 +74,11 @@ export default async function GanhosPage({
           <div className="stat-value-large">{formatNumber(data.totalVideosScanned)}</div>
           <div className="stat-label">Vídeos escaneados</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-value-large">{formatNumber(data.noHashtagCount)}</div>
-          <div className="stat-label">Vídeos sem criador</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-value-large amber">{formatCurrency(noCreatorEarnings)}</div>
-          <div className="stat-label">Saldo sem criador</div>
-        </div>
+        <NoCreatorDrawer
+          count={data.noHashtagCount}
+          amount={noCreatorEarnings}
+          videos={data.noHashtagVideos}
+        />
       </div>
 
       <div className="creator-grid">

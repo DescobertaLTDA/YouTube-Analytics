@@ -349,6 +349,10 @@ export type GanhosData = {
   // criador (#lucas / #matheus / #rafael) — contam nas views totais do
   // canal mas não em nenhum card de criador.
   noHashtagCount: number;
+  // Detalhe dos vídeos sem hashtag do período (mesmos que compõem
+  // noHashtagCount) — alimenta o modal que abre ao clicar nos cards
+  // "Vídeos sem criador" / "Saldo sem criador".
+  noHashtagVideos: GanhosVideoRow[];
   // Um vídeo por linha (dedupe de colabs com 2+ hashtags), mais recente
   // primeiro — alimenta o histórico paginado da aba Ganhos.
   periodVideos: GanhosVideoRow[];
@@ -565,6 +569,47 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     estimateEarnings(periodShortsViews, true) + estimateEarnings(periodLongViews, false);
   const periodEarnings = isManualRevenue ? (manualAmount as number) : estimatedPeriodEarnings;
 
+  // Vídeos órfãos (sem hashtag de criador) do período — alimenta o modal
+  // que abre ao clicar nos cards "Vídeos sem criador" / "Saldo sem
+  // criador". Mesma dedupe por youtube_video_id dos outros vídeos, e a
+  // mesma fórmula de receita usada em periodVideos/topVideosMonth.
+  const noHashtagByVideoId = new Map<string, CreatorVideoRow[]>();
+  for (const row of rows) {
+    if (row.creator !== "" && row.creator !== "SEM DONO") continue;
+    const list = noHashtagByVideoId.get(row.youtube_video_id) || [];
+    list.push(row);
+    noHashtagByVideoId.set(row.youtube_video_id, list);
+  }
+
+  const noHashtagVideos: GanhosVideoRow[] = Array.from(noHashtagByVideoId.entries())
+    .map(([youtubeVideoId, group]) => {
+      const first = group[0];
+      const revenue = isManualRevenue
+        ? periodViews > 0
+          ? Math.round(periodEarnings * (first.view_count / periodViews) * 100) / 100
+          : 0
+        : estimateEarnings(first.view_count, first.is_short);
+
+      return {
+        youtubeVideoId,
+        title: first.title,
+        thumbnailUrl: first.thumbnail_url,
+        creatorLabel: "sem hashtag",
+        isShort: first.is_short,
+        viewCount: first.view_count,
+        likeCount: first.like_count,
+        commentCount: first.comment_count,
+        durationSeconds: first.duration_seconds,
+        publishedAt: first.published_at,
+        revenue,
+      };
+    })
+    .sort((a, b) => {
+      const aTime = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+      const bTime = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+      return bTime - aTime;
+    });
+
   const creators: CreatorStats[] = CREATORS.map(({ key, label, hashtag }) => {
     const creatorRows = rows.filter((r) => r.creator === key);
     const shorts = creatorRows.filter((r) => r.is_short);
@@ -751,6 +796,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     isManualRevenue,
     manualRevenueAmount: manualAmount,
     noHashtagCount,
+    noHashtagVideos,
     periodVideos,
     topVideosMonth,
   };
