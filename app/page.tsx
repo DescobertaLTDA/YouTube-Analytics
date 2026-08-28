@@ -68,7 +68,7 @@ export default async function GanhosPage({
         </div>
         <div className="stat-card">
           <div className="stat-value-large">{formatNumber(data.noHashtagCount)}</div>
-          <div className="stat-label">Vídeos sem Hashtags</div>
+          <div className="stat-label">Vídeos sem criador</div>
         </div>
       </div>
 
