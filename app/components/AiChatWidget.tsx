@@ -4,6 +4,16 @@ import { useEffect, useRef, useState } from "react";
 
 type Message = { role: "user" | "assistant"; content: string };
 
+// Renderiza só o essencial do markdown que a IA costuma usar (negrito com
+// **texto**) como JSX de verdade, sem precisar de nenhuma lib de markdown
+// nem dangerouslySetInnerHTML.
+function renderRichText(text: string) {
+  const parts = text.split(/\*\*(.+?)\*\*/g);
+  return parts.map((part, i) =>
+    i % 2 === 1 ? <strong key={i}>{part}</strong> : <span key={i}>{part}</span>
+  );
+}
+
 export function AiChatWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -110,7 +120,7 @@ export function AiChatWidget() {
           )}
           {messages.map((m, i) => (
             <div key={i} className={`ai-chat-bubble ai-chat-bubble-${m.role}`}>
-              {m.content || (loading && i === messages.length - 1 ? "…" : "")}
+              {m.content ? renderRichText(m.content) : loading && i === messages.length - 1 ? "…" : ""}
             </div>
           ))}
         </div>
