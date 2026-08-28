@@ -32,6 +32,7 @@ export type SnapshotRow = {
   view_count: number | null;
   like_count: number | null;
   comment_count: number | null;
+  duration_seconds: number | null;
 };
 
 export type ManualAnalyticsRow = {
@@ -74,4 +75,22 @@ export type TranscriptSegmentRow = {
   timestamp_seconds: number;
   text: string;
   is_chapter: boolean;
+};
+
+/**
+ * Um vídeo do canal descoberto via varredura por hashtag (#lucas, #matheus,
+ * #rafael) na aba "Ganhos". Diferente de `videos`, essa tabela não é
+ * cadastrada manualmente: é toda recriada a cada clique em "Atualizar".
+ */
+export type CreatorVideoRow = {
+  id: string;
+  creator: string;
+  youtube_video_id: string;
+  title: string | null;
+  thumbnail_url: string | null;
+  view_count: number;
+  duration_seconds: number | null;
+  is_short: boolean;
+  published_at: string | null;
+  synced_at: string;
 };

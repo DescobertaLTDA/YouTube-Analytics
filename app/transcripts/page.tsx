@@ -1,5 +1,6 @@
 import { getTranscripts, getVideoOptions } from "@/lib/data";
 import { TranscriptForm } from "@/app/components/TranscriptForm";
+import { SiteNav } from "@/app/components/SiteNav";
 
 export const revalidate = 0;
 
@@ -39,14 +40,7 @@ export default async function TranscriptsPage() {
             tipo &quot;Número N.&quot; são marcadas como capítulo.
           </p>
         </div>
-        <div className="nav-links">
-          <a className="nav-link" href="/">
-            painel
-          </a>
-          <a className="nav-link active" href="/transcripts">
-            transcripts
-          </a>
-        </div>
+        <SiteNav active="transcripts" />
       </div>
 
       <TranscriptForm videos={videos} />

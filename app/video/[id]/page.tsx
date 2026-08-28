@@ -49,7 +49,10 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
     notFound();
   }
 
-  const { video, latest, viewsPerDay, daysLive, manual, revenue, history, changes } = videoData;
+  const { video, latest, viewsPerDay, daysLive, manual, revenue, history, changes, isShort } =
+    videoData;
+  const backHref = isShort ? "/shorts" : "/videos";
+  const backLabel = isShort ? "← Voltar aos Shorts" : "← Voltar aos Vídeos";
 
   // Dados para o gráfico - ordenados por data (mais antigo primeiro)
   const chartData = [...history]
@@ -66,8 +69,8 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
     <main className="page">
       <div className="header-row">
         <div>
-          <Link href="/" className="back-link">
-            ← Voltar ao painel
+          <Link href={backHref} className="back-link">
+            {backLabel}
           </Link>
           <span className="eyebrow">{video.channel_label ?? "Vídeo"}</span>
           <h1 className="title">{latest?.title ?? "Sem título"}</h1>

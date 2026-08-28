@@ -90,6 +90,7 @@ export async function GET() {
           view_count: currentData.viewCount,
           like_count: currentData.likeCount,
           comment_count: currentData.commentCount,
+          duration_seconds: currentData.durationSeconds,
         })
         .select()
         .single();

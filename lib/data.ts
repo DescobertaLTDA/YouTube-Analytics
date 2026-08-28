@@ -1,12 +1,16 @@
 import {
   supabase,
+  getServiceSupabase,
   VideoRow,
   SnapshotRow,
   ManualAnalyticsRow,
   ChangeLogRow,
   TranscriptRow,
   TranscriptSegmentRow,
+  CreatorVideoRow,
 } from "./supabase";
+import { isShortVideo } from "./youtube-channel";
+import { CREATORS, CreatorKey, FIXED_RPM, estimateEarnings } from "./creator-earnings";
 
 export type VideoWithStats = {
   video: VideoRow;
@@ -18,6 +22,7 @@ export type VideoWithStats = {
   revenue: number | null;
   changes: ChangeLogRow[];
   history: SnapshotRow[];
+  isShort: boolean;
 };
 
 export async function getDashboardData(): Promise<VideoWithStats[]> {
@@ -85,6 +90,7 @@ export async function getDashboardData(): Promise<VideoWithStats[]> {
       revenue,
       changes: (changeRows as ChangeLogRow[]) || [],
       history,
+      isShort: isShortVideo(latest?.duration_seconds),
     });
   }
 
@@ -130,4 +136,80 @@ export async function getVideoOptions(): Promise<Pick<VideoRow, "id" | "channel_
     .order("published_at", { ascending: true });
 
   return data || [];
+}
+
+export type CreatorStats = {
+  key: CreatorKey;
+  label: string;
+  hashtag: string;
+  shortsViews: number;
+  shortsCount: number;
+  shortsEarnings: number;
+  longViews: number;
+  longCount: number;
+  longEarnings: number;
+  totalViews: number;
+  totalEarnings: number;
+  rpm: number;
+};
+
+export type GanhosData = {
+  creators: CreatorStats[];
+  lastSyncedAt: string | null;
+  totalVideosScanned: number;
+};
+
+// Lê a tabela `creator_videos` (populada pela varredura por hashtag em
+// /api/ganhos/sync) e agrega em estatísticas por criador — views e ganhos
+// estimados, separados entre Shorts e vídeos longos.
+export async function getCreatorEarnings(): Promise<GanhosData> {
+  // Usa o client com service_role pra não depender de RLS estar liberado
+  // pra leitura anônima nessa tabela nova.
+  const db = getServiceSupabase();
+
+  const { data, error } = await db
+    .from("creator_videos")
+    .select("*");
+
+  if (error) {
+    console.error("❌ Erro ao ler creator_videos:", error);
+  }
+
+  const rows = (data as CreatorVideoRow[]) || [];
+
+  const creators: CreatorStats[] = CREATORS.map(({ key, label, hashtag }) => {
+    const creatorRows = rows.filter((r) => r.creator === key);
+    const shorts = creatorRows.filter((r) => r.is_short);
+    const longs = creatorRows.filter((r) => !r.is_short);
+
+    const shortsViews = shorts.reduce((sum, r) => sum + (r.view_count || 0), 0);
+    const longViews = longs.reduce((sum, r) => sum + (r.view_count || 0), 0);
+
+    return {
+      key,
+      label,
+      hashtag,
+      shortsViews,
+      shortsCount: shorts.length,
+      shortsEarnings: estimateEarnings(shortsViews),
+      longViews,
+      longCount: longs.length,
+      longEarnings: estimateEarnings(longViews),
+      totalViews: shortsViews + longViews,
+      totalEarnings: estimateEarnings(shortsViews + longViews),
+      rpm: FIXED_RPM,
+    };
+  });
+
+  const lastSyncedAt = rows.reduce<string | null>((latest, r) => {
+    if (!r.synced_at) return latest;
+    if (!latest || new Date(r.synced_at) > new Date(latest)) return r.synced_at;
+    return latest;
+  }, null);
+
+  return {
+    creators,
+    lastSyncedAt,
+    totalVideosScanned: rows.length,
+  };
 }

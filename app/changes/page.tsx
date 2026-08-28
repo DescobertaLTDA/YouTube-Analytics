@@ -1,4 +1,5 @@
 import { getServiceSupabase } from "@/lib/supabase";
+import { SiteNav } from "@/app/components/SiteNav";
 
 export const revalidate = 0;
 
@@ -62,10 +63,7 @@ export default async function ChangesPage() {
             e veja o impacto nas views.
           </p>
         </div>
-        <div className="nav-links">
-          <a className="nav-link" href="/">painel</a>
-          <a className="nav-link active" href="/changes">mudanças</a>
-        </div>
+        <SiteNav active="mudancas" />
       </div>
 
       {!changes || changes.length === 0 ? (

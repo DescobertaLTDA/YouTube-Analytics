@@ -1,4 +1,5 @@
 import { supabase, VideoRow, SnapshotRow } from "./supabase";
+import { parseIsoDuration } from "./youtube-channel";
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY!;
 const YOUTUBE_API_URL = "https://www.googleapis.com/youtube/v3";
@@ -12,6 +13,7 @@ export interface YouTubeVideoData {
   likeCount: number;
   commentCount: number;
   publishedAt: string;
+  durationSeconds: number;
 }
 
 export interface Change {
@@ -44,7 +46,7 @@ export interface ViewImpactDetailed {
  */
 export async function fetchYouTubeVideo(videoId: string): Promise<YouTubeVideoData | null> {
   try {
-    const url = `${YOUTUBE_API_URL}/videos?part=snippet,statistics&id=${videoId}&key=${YOUTUBE_API_KEY}`;
+    const url = `${YOUTUBE_API_URL}/videos?part=snippet,statistics,contentDetails&id=${videoId}&key=${YOUTUBE_API_KEY}`;
     
     const response = await fetch(url);
     if (!response.ok) {
@@ -72,6 +74,7 @@ export async function fetchYouTubeVideo(videoId: string): Promise<YouTubeVideoDa
       likeCount: parseInt(statistics.likeCount) || 0,
       commentCount: parseInt(statistics.commentCount) || 0,
       publishedAt: snippet.publishedAt,
+      durationSeconds: parseIsoDuration(item.contentDetails?.duration),
     };
   } catch (error) {
     console.error(`❌ Erro ao buscar vídeo ${videoId}:`, error);
@@ -96,7 +99,7 @@ export async function fetchMultipleYouTubeVideos(videoIds: string[]): Promise<Yo
   for (const chunk of chunks) {
     try {
       const ids = chunk.join(",");
-      const url = `${YOUTUBE_API_URL}/videos?part=snippet,statistics&id=${ids}&key=${YOUTUBE_API_KEY}`;
+      const url = `${YOUTUBE_API_URL}/videos?part=snippet,statistics,contentDetails&id=${ids}&key=${YOUTUBE_API_KEY}`;
       
       const response = await fetch(url);
       if (!response.ok) continue;
@@ -114,6 +117,7 @@ export async function fetchMultipleYouTubeVideos(videoIds: string[]): Promise<Yo
             likeCount: parseInt(item.statistics.likeCount) || 0,
             commentCount: parseInt(item.statistics.commentCount) || 0,
             publishedAt: item.snippet.publishedAt,
+            durationSeconds: parseIsoDuration(item.contentDetails?.duration),
           });
         }
       }
