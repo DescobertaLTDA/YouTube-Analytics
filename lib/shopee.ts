@@ -168,8 +168,11 @@ export async function getAllConversions(
 
   while (page <= maxPages) {
     const data = await shopeeGraphQL<ConversionReportResponse>(CONVERSION_REPORT_QUERY, {
-      purchaseTimeStart: Math.floor(params.purchaseTimeStart.getTime() / 1000),
-      purchaseTimeEnd: Math.floor(params.purchaseTimeEnd.getTime() / 1000),
+      // Int64 na Shopee é um scalar customizado — manda como string pra
+      // evitar erro de "wrong type" na coerção (JSON/JS não tem inteiro
+      // de 64 bits nativo).
+      purchaseTimeStart: String(Math.floor(params.purchaseTimeStart.getTime() / 1000)),
+      purchaseTimeEnd: String(Math.floor(params.purchaseTimeEnd.getTime() / 1000)),
       scrollId: scrollId ?? null,
       limit: 500,
     });
