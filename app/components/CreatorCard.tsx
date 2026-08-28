@@ -2,6 +2,7 @@ import type { CreatorStats } from "@/lib/data";
 import { ShopeeSalesDetail } from "@/app/components/ShopeeSalesDetail";
 import { CreatorGoalsButton } from "@/app/components/CreatorGoalsButton";
 import { LONG_RPM, SHORTS_RPM } from "@/lib/creator-earnings";
+import { IconFilm, IconZap, IconDollar, IconCalendar, IconCart } from "@/app/components/Icons";
 
 const SHORTS_GOAL = 30;
 const REVENUE_GOAL = 1700;
@@ -45,8 +46,12 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
           <h3 className="creator-name">{stats.label}</h3>
         </div>
         <div className="rpm-badges">
-          <span className="rpm-badge rpm-badge-long">🎬 RPM {formatRpm(LONG_RPM)}</span>
-          <span className="rpm-badge rpm-badge-shorts">⚡ RPM {formatRpm(SHORTS_RPM)}</span>
+          <span className="rpm-badge rpm-badge-long">
+            <IconFilm /> RPM {formatRpm(LONG_RPM)}
+          </span>
+          <span className="rpm-badge rpm-badge-shorts">
+            <IconZap /> RPM {formatRpm(SHORTS_RPM)}
+          </span>
         </div>
       </div>
 
@@ -65,7 +70,9 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
       <div className="creator-goals">
         <div className="creator-goal">
           <div className="creator-goal-header">
-            <span>⚡ Meta de Shorts (mês)</span>
+            <span className="icon-label">
+              <IconZap /> Meta de Shorts (mês)
+            </span>
             <span className="text-muted-small">
               {formatNumber(stats.monthShortsCount)} / {SHORTS_GOAL}
             </span>
@@ -74,7 +81,9 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
         </div>
         <div className="creator-goal">
           <div className="creator-goal-header">
-            <span>💰 Meta de Receita (mês)</span>
+            <span className="icon-label">
+              <IconDollar /> Meta de Receita (mês)
+            </span>
             <span className="text-muted-small">
               {formatCurrency(stats.monthEarnings)} / {formatCurrency(REVENUE_GOAL)}
             </span>
@@ -87,7 +96,9 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
 
       <div className="creator-breakdown-item creator-month">
         <div className="creator-breakdown-header">
-          <span>📅 Ganhos do mês ({monthRangeLabel()})</span>
+          <span className="icon-label">
+            <IconCalendar /> Ganhos do mês ({monthRangeLabel()})
+          </span>
           <span className="text-muted-small">{formatNumber(stats.monthViews)} views</span>
         </div>
         <div className="creator-breakdown-stats">
@@ -98,7 +109,9 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
       <div className="creator-breakdown">
         <div className="creator-breakdown-item">
           <div className="creator-breakdown-header">
-            <span>🎬 Vídeos longos</span>
+            <span className="icon-label">
+              <IconFilm /> Vídeos longos
+            </span>
             <span className="text-muted-small">{stats.longCount} vídeo(s)</span>
           </div>
           <div className="creator-breakdown-stats">
@@ -109,7 +122,9 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
 
         <div className="creator-breakdown-item">
           <div className="creator-breakdown-header">
-            <span>⚡ Shorts</span>
+            <span className="icon-label">
+              <IconZap /> Shorts
+            </span>
             <span className="text-muted-small">{stats.shortsCount} vídeo(s)</span>
           </div>
           <div className="creator-breakdown-stats">
@@ -120,7 +135,9 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
 
         <div className="creator-breakdown-item creator-cakto">
           <div className="creator-breakdown-header">
-            <span>💰 Vendas Cakto (28d)</span>
+            <span className="icon-label">
+              <IconDollar /> Vendas Cakto (28d)
+            </span>
             <span className="text-muted-small">
               {stats.caktoOrders != null ? `${stats.caktoOrders} pedido(s)` : "—"}
             </span>
@@ -132,7 +149,9 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
 
         <div className="creator-breakdown-item creator-shopee">
           <div className="creator-breakdown-header">
-            <span>🛒 Vendas Shopee (28d)</span>
+            <span className="icon-label">
+              <IconCart /> Vendas Shopee (28d)
+            </span>
             <span className="text-muted-small">
               {stats.shopeeOrders != null ? `${stats.shopeeOrders} pedido(s)` : "—"}
             </span>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { GanhosVideoRow } from "@/lib/data";
 import { computeVph, formatMultiplier, formatVph, vphTier, VphFormat } from "@/lib/vph";
+import { IconFilm } from "@/app/components/Icons";
 
 const PAGE_SIZE = 10;
 
@@ -47,7 +48,9 @@ export function GanhosVideoHistory({
 
   return (
     <div className="changes-section">
-      <h2>📼 Histórico de Vídeos · últimos 28 dias</h2>
+      <h2 className="icon-label">
+        <IconFilm /> Histórico de Vídeos · últimos 28 dias
+      </h2>
 
       {videos.length === 0 && <div className="no-changes">Nenhum vídeo no período ainda.</div>}
 

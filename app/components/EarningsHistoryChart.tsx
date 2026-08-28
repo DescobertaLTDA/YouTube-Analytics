@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CREATORS, CreatorKey } from "@/lib/creator-earnings";
+import { IconTrendingUp } from "@/app/components/Icons";
 import type { EarningsHistoryPoint } from "@/lib/data";
 
 // Uma cor por criador — vivas e bem distintas entre si, de propósito, pra
@@ -62,7 +63,7 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
   if (timestamps.length < 2) {
     return (
       <div className="chart-section">
-        <h2>📈 Receita ao longo do tempo</h2>
+        <h2 className="icon-label"><IconTrendingUp /> Receita ao longo do tempo</h2>
         <div className="chart-empty">
           Ainda não tem histórico suficiente pra desenhar o gráfico. Cada clique em
           &quot;Atualizar&quot; grava um ponto novo — depois de sincronizar em pelo menos 2 dias
@@ -84,7 +85,7 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
 
   return (
     <div className="chart-section">
-      <h2>📈 Receita ao longo do tempo</h2>
+      <h2 className="icon-label"><IconTrendingUp /> Receita ao longo do tempo</h2>
 
       <div className="chart-line-wrapper" ref={wrapperRef}>
         <svg

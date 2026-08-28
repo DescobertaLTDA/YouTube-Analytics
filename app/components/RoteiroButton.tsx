@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { IconFileText, IconPin, IconSave } from "@/app/components/Icons";
 
 interface RoteiroButtonProps {
   videoId: string;
@@ -93,7 +94,7 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
 
       setMessage({ 
         type: 'success', 
-        text: `✅ Roteiro enviado! ${segmentCount} segmentos extraídos.` 
+        text: `Roteiro enviado! ${segmentCount} segmentos extraídos.` 
       });
       setRoteiro('');
       
@@ -105,7 +106,7 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
       console.error('❌ Erro ao salvar roteiro:', error);
       setMessage({ 
         type: 'error', 
-        text: `❌ Erro: ${error.message || 'Tente novamente.'}` 
+        text: `Erro: ${error.message || 'Tente novamente.'}` 
       });
     } finally {
       setSaving(false);
@@ -115,17 +116,19 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
   return (
     <>
       <button 
-        className="btn-roteiro"
+        className="btn-roteiro icon-label"
         onClick={() => setShowModal(true)}
       >
-        📝 Enviar Roteiro
+        <IconFileText /> Enviar Roteiro
       </button>
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>📝 Enviar Roteiro</h2>
+              <h2 className="icon-label">
+                <IconFileText /> Enviar Roteiro
+              </h2>
               <button className="modal-close" onClick={() => setShowModal(false)}>
                 ×
               </button>
@@ -141,8 +144,8 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
               </div>
 
               <div className="form-group">
-                <label htmlFor="roteiro">
-                  📄 Cole o transcript completo (formato tactiq.io)
+                <label htmlFor="roteiro" className="icon-label">
+                  <IconFileText /> Cole o transcript completo (formato tactiq.io)
                 </label>
                 <textarea
                   id="roteiro"
@@ -159,7 +162,9 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
                   display: 'flex',
                   justifyContent: 'space-between'
                 }}>
-                  <span>📌 O sistema extrai automaticamente os timestamps</span>
+                  <span className="icon-label">
+                    <IconPin /> O sistema extrai automaticamente os timestamps
+                  </span>
                   <span>{roteiro.length} caracteres</span>
                 </div>
               </div>
@@ -180,10 +185,10 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
                 </button>
                 <button 
                   type="submit" 
-                  className="btn btn-success"
+                  className="btn btn-success icon-label"
                   disabled={saving}
                 >
-                  {saving ? 'Enviando...' : '💾 Salvar Roteiro'}
+                  {saving ? 'Enviando...' : <><IconSave /> Salvar Roteiro</>}
                 </button>
               </div>
             </form>

@@ -3,6 +3,7 @@ import { getAllVideoRows } from "@/lib/data";
 import { RoteiroButton } from "@/app/components/RoteiroButton";
 import { RoteirosList } from "@/app/components/RoteirosList";
 import { notFound } from "next/navigation";
+import { IconSearch, IconBarChart, IconFileText, IconClipboard } from "@/app/components/Icons";
 
 export const revalidate = 0;
 
@@ -78,8 +79,8 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
             ID: {youtubeVideoId} · Publicado em {formatDate(video.published_at)}
           </p>
           {source === "auto" && (
-            <p className="subtitle" style={{ marginTop: 4 }}>
-              🔎 Achado automaticamente pela varredura de hashtag da aba Ganhos — ainda não
+            <p className="subtitle icon-label" style={{ marginTop: 4 }}>
+              <IconSearch /> Achado automaticamente pela varredura de hashtag da aba Ganhos — ainda não
               cadastrado manualmente, então não tem histórico de views nem dados do Studio ainda.
             </p>
           )}
@@ -118,7 +119,9 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
 
       {/* GRÁFICO CORRIGIDO */}
       <div className="chart-section">
-        <h2>📊 Evolução de Views</h2>
+        <h2 className="icon-label">
+          <IconBarChart /> Evolução de Views
+        </h2>
         <div className="chart-container">
           {chartData.length > 1 ? (
             <div className="chart-line-wrapper">
@@ -215,7 +218,9 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
       {/* ROTEIRO COM TIMESTAMPS CLICÁVEIS */}
       <div className="roteiro-section">
         <div className="roteiro-header">
-          <h2>📝 Roteiro do Vídeo</h2>
+          <h2 className="icon-label">
+            <IconFileText /> Roteiro do Vídeo
+          </h2>
           <RoteiroButton 
             videoId={youtubeVideoId}
             videoTitle={latest?.title || 'Sem título'}
@@ -227,7 +232,9 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
       </div>
 
       <div className="changes-section">
-        <h2>📋 Histórico de Alterações</h2>
+        <h2 className="icon-label">
+          <IconClipboard /> Histórico de Alterações
+        </h2>
         {changes.length === 0 && (
           <div className="no-changes">Nenhuma alteração registrada ainda</div>
         )}

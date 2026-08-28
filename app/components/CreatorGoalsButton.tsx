@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import type { CreatorStats } from "@/lib/data";
+import { IconTarget, IconDollar, IconEye, IconZap, IconFilm } from "@/app/components/Icons";
 import {
   LONG_COUNT_GOAL,
   LONG_REVENUE_GOAL,
@@ -35,7 +37,7 @@ function GoalRow({
   goal,
   format,
 }: {
-  icon: string;
+  icon: ReactNode;
   label: string;
   value: number;
   goal: number;
@@ -45,7 +47,7 @@ function GoalRow({
   return (
     <div className="goal-drawer-row">
       <div className="creator-goal-header">
-        <span>
+        <span className="icon-label">
           {icon} {label}
         </span>
         <span className="text-muted-small">
@@ -77,8 +79,8 @@ export function CreatorGoalsButton({ stats }: { stats: CreatorStats }) {
 
   return (
     <>
-      <button type="button" className="btn-ver-metas" onClick={() => setOpen(true)}>
-        🎯 Ver metas de {stats.label}
+      <button type="button" className="btn-ver-metas icon-label" onClick={() => setOpen(true)}>
+        <IconTarget /> Ver metas de {stats.label}
       </button>
 
       {open && (
@@ -95,23 +97,25 @@ export function CreatorGoalsButton({ stats }: { stats: CreatorStats }) {
             </div>
 
             <div className="goal-drawer-section">
-              <h3 className="goal-drawer-section-title">⚡ Shorts</h3>
+              <h3 className="goal-drawer-section-title icon-label">
+                <IconZap /> Shorts
+              </h3>
               <GoalRow
-                icon="🎯"
+                icon={<IconTarget />}
                 label="Meta de Shorts"
                 value={stats.monthShortsCount}
                 goal={SHORTS_COUNT_GOAL}
                 format={formatNumber}
               />
               <GoalRow
-                icon="💰"
+                icon={<IconDollar />}
                 label="Meta de receita com Shorts"
                 value={stats.monthShortsEarnings}
                 goal={SHORTS_REVENUE_GOAL}
                 format={formatCurrency}
               />
               <GoalRow
-                icon="👀"
+                icon={<IconEye />}
                 label="Meta de views com Shorts"
                 value={stats.monthShortsViews}
                 goal={SHORTS_VIEWS_GOAL}
@@ -120,23 +124,25 @@ export function CreatorGoalsButton({ stats }: { stats: CreatorStats }) {
             </div>
 
             <div className="goal-drawer-section">
-              <h3 className="goal-drawer-section-title">🎬 Vídeos longos</h3>
+              <h3 className="goal-drawer-section-title icon-label">
+                <IconFilm /> Vídeos longos
+              </h3>
               <GoalRow
-                icon="🎯"
+                icon={<IconTarget />}
                 label="Meta de vídeos longos"
                 value={stats.monthLongCount}
                 goal={LONG_COUNT_GOAL}
                 format={formatNumber}
               />
               <GoalRow
-                icon="💰"
+                icon={<IconDollar />}
                 label="Meta de receita com vídeos longos"
                 value={stats.monthLongEarnings}
                 goal={LONG_REVENUE_GOAL}
                 format={formatCurrency}
               />
               <GoalRow
-                icon="👀"
+                icon={<IconEye />}
                 label="Meta de views com vídeos longos"
                 value={stats.monthLongViews}
                 goal={LONG_VIEWS_GOAL}

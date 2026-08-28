@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { IconInbox, IconCalendar } from "@/app/components/Icons";
 
 interface Roteiro {
   id: string;
@@ -68,13 +69,13 @@ export function RoteirosList({ videoId }: RoteirosListProps) {
   }, [videoId]);
 
   if (loading) {
-    return <p className="text-muted">⏳ Carregando roteiros...</p>;
+    return <p className="text-muted">Carregando roteiros...</p>;
   }
 
   if (error) {
     return (
       <div className="roteiros-empty">
-        <p className="text-muted" style={{ color: 'var(--rose)' }}>❌ Erro: {error}</p>
+        <p className="text-muted" style={{ color: 'var(--rose)' }}>Erro: {error}</p>
         <p className="text-muted-small">Tente recarregar a página ou enviar o roteiro novamente.</p>
       </div>
     );
@@ -83,7 +84,7 @@ export function RoteirosList({ videoId }: RoteirosListProps) {
   if (roteiros.length === 0) {
     return (
       <div className="roteiros-empty">
-        <p className="text-muted">📭 Nenhum roteiro enviado ainda.</p>
+        <p className="text-muted icon-label"><IconInbox /> Nenhum roteiro enviado ainda.</p>
         <p className="text-muted-small">Clique em "Enviar Roteiro" para adicionar o transcript deste vídeo.</p>
       </div>
     );
@@ -117,8 +118,8 @@ export function RoteirosList({ videoId }: RoteirosListProps) {
           
           {selectedRoteiro === roteiro.id && (
             <div className="roteiro-item-content">
-              <div className="roteiro-minutagem">
-                <strong>⏱️ Minutagem:</strong> {roteiro.minutagem || 'Não especificada'}
+              <div className="roteiro-minutagem icon-label">
+                <IconCalendar /> <strong>Minutagem:</strong> {roteiro.minutagem || 'Não especificada'}
               </div>
               <div className="roteiro-texto">
                 <pre>{roteiro.roteiro}</pre>

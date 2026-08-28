@@ -1,4 +1,5 @@
 import type { GanhosVideoRow } from "@/lib/data";
+import { IconTrophy } from "@/app/components/Icons";
 
 function formatNumber(n: number | null | undefined) {
   if (n == null) return "—";
@@ -19,7 +20,9 @@ function monthRangeLabel() {
 export function TopVideosMonth({ videos }: { videos: GanhosVideoRow[] }) {
   return (
     <div className="changes-section top-videos-section">
-      <h2>🏆 Top 10 do Mês · {monthRangeLabel()}</h2>
+      <h2 className="icon-label">
+        <IconTrophy /> Top 10 do Mês · {monthRangeLabel()}
+      </h2>
 
       {videos.length === 0 && (
         <div className="no-changes">Nenhum vídeo publicado no mês ainda.</div>

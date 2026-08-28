@@ -1,5 +1,6 @@
 import { getServiceSupabase } from "@/lib/supabase";
 import { SiteNav } from "@/app/components/SiteNav";
+import { IconBarChart, IconTrendingUp, IconTrendingDown, IconArrowRight } from "@/app/components/Icons";
 
 export const revalidate = 0;
 
@@ -57,7 +58,9 @@ export default async function ChangesPage() {
       <div className="header-row">
         <div>
           <span className="eyebrow">Análise</span>
-          <h1 className="title">📊 Histórico de Mudanças</h1>
+          <h1 className="title icon-label">
+            <IconBarChart /> Histórico de Mudanças
+          </h1>
           <p className="subtitle">
             Acompanhe todas as alterações de título, thumbnail e descrição, 
             e veja o impacto nas views.
@@ -100,10 +103,22 @@ export default async function ChangesPage() {
                     <h3>
                       {group.video?.youtube_video_id || "ID desconhecido"}
                     </h3>
-                    <span className={`change-trend ${trend}`}>
-                      {trend === "up" && "📈 Tendência de alta"}
-                      {trend === "down" && "📉 Tendência de queda"}
-                      {trend === "neutral" && "➡️ Estável"}
+                    <span className={`change-trend ${trend} icon-label`}>
+                      {trend === "up" && (
+                        <>
+                          <IconTrendingUp /> Tendência de alta
+                        </>
+                      )}
+                      {trend === "down" && (
+                        <>
+                          <IconTrendingDown /> Tendência de queda
+                        </>
+                      )}
+                      {trend === "neutral" && (
+                        <>
+                          <IconArrowRight /> Estável
+                        </>
+                      )}
                     </span>
                   </div>
                   <span className="change-count">

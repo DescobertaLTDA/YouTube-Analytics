@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { VideoWithStats } from "@/lib/data";
+import { IconMousePointer } from "@/app/components/Icons";
 
 function formatNumber(n: number | null | undefined) {
   if (n == null) return "—";
@@ -70,7 +71,9 @@ export function VideoDashboardGrid({
             </div>
 
             <div className="card-footer">
-              <span className="card-click-hint">👆 Clique para detalhes</span>
+              <span className="card-click-hint icon-label">
+                <IconMousePointer /> Clique para detalhes
+              </span>
             </div>
           </div>
         </Link>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { IconRefresh } from "@/app/components/Icons";
 
 export function AtualizarButton() {
   const router = useRouter();
@@ -38,8 +39,8 @@ export function AtualizarButton() {
 
   return (
     <div className="atualizar-wrap">
-      <button className="btn-atualizar" onClick={handleClick} disabled={loading}>
-        {loading ? "🔄 Atualizando..." : "🔄 Atualizar"}
+      <button className="btn-atualizar icon-label" onClick={handleClick} disabled={loading}>
+        <IconRefresh className={loading ? "spin" : undefined} /> {loading ? "Atualizando..." : "Atualizar"}
       </button>
 
       {message && (

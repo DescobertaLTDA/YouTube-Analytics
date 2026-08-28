@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { IconSpeaker, IconPause } from "@/app/components/Icons";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -167,7 +168,7 @@ export function AiChatWidget() {
                 <div>{m.content ? renderRichText(m.content) : isStreamingThis ? "…" : ""}</div>
                 {canSpeak && (
                   <button
-                    className={`ai-chat-speak-btn ${speakingIndex === i ? "ai-chat-speak-btn-active" : ""}`}
+                    className={`ai-chat-speak-btn icon-label ${speakingIndex === i ? "ai-chat-speak-btn-active" : ""}`}
                     onClick={() => toggleSpeak(i, m.content)}
                     disabled={loadingAudioIndex === i}
                     aria-label={speakingIndex === i ? "Parar áudio" : "Ouvir resposta"}
@@ -175,9 +176,13 @@ export function AiChatWidget() {
                     {loadingAudioIndex === i ? (
                       "carregando…"
                     ) : speakingIndex === i ? (
-                      <>⏸ parar</>
+                      <>
+                        <IconPause /> parar
+                      </>
                     ) : (
-                      <>🔊 ouvir</>
+                      <>
+                        <IconSpeaker /> ouvir
+                      </>
                     )}
                   </button>
                 )}
