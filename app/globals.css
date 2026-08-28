@@ -1,24 +1,24 @@
 :root {
   --bg: #ffffff;
-  --surface: #fafbfa;
-  --surface-raised: #f2f5f3;
-  --border: #e3e8e5;
-  --text: #171717;
-  --text-muted: #5c6863;
-  --text-faint: #97a19c;
-  --text-secondary: #4a4a4a;
+  --surface: #f9f9fa;
+  --surface-raised: #f1f3f4;
+  --border: #e0e0e0;
+  --text: #0f0f0f;
+  --text-muted: #606060;
+  --text-faint: #909090;
+  --text-secondary: #3f3f3f;
 
-  --malachite: #3ecf8e;
-  --malachite-dim: #e3f9ee;
-  --ink: #121212;
-  --ink-dim: #eef0ef;
-  --amber: #a9740a;
-  --amber-dim: #fbf2df;
-  --rose: #c0524f;
+  --malachite: #065fd4;
+  --malachite-dim: #e8f0fe;
+  --ink: #0f0f0f;
+  --ink-dim: #f1f3f4;
+  --amber: #476282;
+  --amber-dim: #eef2f6;
+  --rose: #d93025;
 
-  --font-display: "Fraunces", Georgia, serif;
-  --font-body: "Inter", -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-display: "Roboto", -apple-system, "Segoe UI", sans-serif;
+  --font-body: "Roboto", -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Roboto", -apple-system, "Segoe UI", sans-serif;
 }
 
 * {
@@ -38,8 +38,7 @@ body {
 }
 
 body {
-  background-image: radial-gradient(circle at 15% 0%, rgba(62, 207, 142, 0.07), transparent 45%),
-    radial-gradient(circle at 85% 10%, rgba(18, 18, 18, 0.04), transparent 40%);
+  background: var(--bg);
 }
 
 a {
@@ -52,35 +51,36 @@ a {
   color: var(--ink);
 }
 
-/* Faceted corner — the signature cut-gem shape used on stat surfaces */
+/* Cantos retos, estilo app de gestão — sem corte diagonal */
 .facet {
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
+  border-radius: 8px;
 }
 
 .facet-sm {
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+  border-radius: 6px;
 }
 
 .page {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 56px 32px 96px;
+  padding: 32px 32px 96px;
 }
 
 .eyebrow {
   font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--malachite);
+  color: var(--text-muted);
 }
 
 .title {
   font-family: var(--font-display);
   font-weight: 500;
-  font-size: 42px;
-  line-height: 1.08;
-  margin: 10px 0 6px;
+  font-size: 28px;
+  line-height: 1.2;
+  margin: 4px 0 6px;
   color: var(--ink);
 }
 
@@ -98,8 +98,8 @@ a {
   gap: 24px;
   flex-wrap: wrap;
   border-bottom: 1px solid var(--border);
-  padding-bottom: 32px;
-  margin-bottom: 40px;
+  padding-bottom: 0;
+  margin-bottom: 32px;
 }
 
 .nav-links {
@@ -110,24 +110,25 @@ a {
 
 .nav-link {
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: 13.5px;
+  font-weight: 500;
   color: var(--text-muted);
   text-decoration: none;
-  padding: 8px 14px;
-  border: 1px solid transparent;
-  border-radius: 3px;
+  padding: 10px 12px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
 }
 
 .nav-link:hover {
   color: var(--ink);
-  border-color: var(--border);
   background: var(--surface);
 }
 
 .nav-link.active {
   color: var(--malachite);
-  background: var(--malachite-dim);
-  border-color: var(--malachite);
+  background: transparent;
+  border-bottom: 2px solid var(--malachite);
 }
 
 .sync-pill {
@@ -137,7 +138,7 @@ a {
   background: var(--surface);
   border: 1px solid var(--border);
   padding: 8px 14px;
-  border-radius: 3px;
+  border-radius: 6px;
   white-space: nowrap;
 }
 
@@ -279,7 +280,7 @@ a {
 }
 
 .stat-row-2 .stat-value.malachite {
-  color: #1f9c69;
+  color: #0b57d0;
 }
 
 .stat-row-2 .stat-value.amber {
@@ -346,7 +347,7 @@ a {
 }
 
 .stat-value-large.malachite {
-  color: #1f9c69;
+  color: #0b57d0;
 }
 
 .stat-value-large.amber {
@@ -653,7 +654,7 @@ a {
 }
 
 .change-new {
-  color: #1f9c69;
+  color: #0b57d0;
   font-weight: 500;
 }
 
@@ -714,7 +715,7 @@ a {
 }
 
 .change-trend.up {
-  color: #1f9c69;
+  color: #0b57d0;
   background: var(--malachite-dim);
 }
 
@@ -789,7 +790,7 @@ a {
 }
 
 .change-new-value {
-  color: #1f9c69;
+  color: #0b57d0;
   font-weight: 500;
   font-size: 13px;
   max-width: 200px;
@@ -840,7 +841,7 @@ a {
 
 .rpm-save {
   background: var(--malachite);
-  color: #0a2a1c;
+  color: #ffffff;
   border: 1px solid var(--malachite);
   padding: 6px 12px;
   font-family: var(--font-mono);
@@ -851,7 +852,7 @@ a {
 }
 
 .rpm-save:hover:not(:disabled) {
-  background: #34b87c;
+  background: #0a4bb5;
 }
 
 .rpm-save:disabled {
@@ -861,7 +862,7 @@ a {
 
 .rpm-saved {
   font-size: 12px;
-  color: #1f9c69;
+  color: #0b57d0;
 }
 
 /* ===== ROTEIRO BUTTON ===== */
@@ -869,7 +870,7 @@ a {
   width: 100%;
   padding: 10px 20px;
   background: var(--malachite);
-  color: #0a2a1c;
+  color: #ffffff;
   border: 1px solid var(--malachite);
   border-radius: 4px;
   font-family: var(--font-mono);
@@ -880,9 +881,9 @@ a {
 }
 
 .btn-roteiro:hover {
-  background: #34b87c;
+  background: #0a4bb5;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(62, 207, 142, 0.3);
+  box-shadow: 0 4px 12px rgba(6, 95, 212, 0.3);
 }
 
 /* ===== MODAL ===== */
@@ -1011,7 +1012,7 @@ a {
 .form-group input:focus {
   outline: none;
   border-color: var(--malachite);
-  box-shadow: 0 0 0 3px rgba(62, 207, 142, 0.1);
+  box-shadow: 0 0 0 3px rgba(6, 95, 212, 0.1);
 }
 
 .form-group textarea {
@@ -1079,14 +1080,14 @@ a {
 
 .btn-success {
   background: var(--malachite);
-  color: #0a2a1c;
+  color: #ffffff;
   border: 1px solid var(--malachite);
 }
 
 .btn-success:hover:not(:disabled) {
-  background: #34b87c;
+  background: #0a4bb5;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(62, 207, 142, 0.3);
+  box-shadow: 0 4px 12px rgba(6, 95, 212, 0.3);
 }
 
 .btn-success:disabled {
@@ -1164,7 +1165,7 @@ a {
 }
 
 .transcript-status.ok {
-  color: #1f9c69;
+  color: #0b57d0;
 }
 
 .transcript-status.error {
@@ -1411,7 +1412,7 @@ footer.page-footer {
 
 /* ===== ABA GANHOS (criadores) ===== */
 .malachite {
-  color: #1f9c69;
+  color: #0b57d0;
 }
 
 .amber {
@@ -1546,7 +1547,7 @@ footer.page-footer {
 }
 
 .atualizar-message.success {
-  color: #1f9c69;
+  color: #0b57d0;
 }
 
 .atualizar-message.error {
