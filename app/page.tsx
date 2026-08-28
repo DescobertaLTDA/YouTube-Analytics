@@ -1,9 +1,10 @@
-import { getCreatorEarnings } from "@/lib/data";
+import { getCreatorEarnings, getCreatorEarningsHistory } from "@/lib/data";
 import { SiteNav } from "@/app/components/SiteNav";
 import { AtualizarButton } from "@/app/components/AtualizarButton";
 import { CreatorCard } from "@/app/components/CreatorCard";
 import { RevenueOverrideForm } from "@/app/components/RevenueOverrideForm";
 import { GanhosVideoHistory } from "@/app/components/GanhosVideoHistory";
+import { EarningsHistoryChart } from "@/app/components/EarningsHistoryChart";
 
 export const revalidate = 0;
 
@@ -32,6 +33,7 @@ export default async function GanhosPage({
   searchParams: { page?: string };
 }) {
   const data = await getCreatorEarnings();
+  const history = await getCreatorEarningsHistory();
   const page = Number(searchParams.page) || 1;
 
   return (
@@ -70,6 +72,8 @@ export default async function GanhosPage({
           <div className="stat-label">Vídeos escaneados</div>
         </div>
       </div>
+
+      <EarningsHistoryChart history={history} />
 
       <RevenueOverrideForm currentAmount={data.manualRevenueAmount} />
 
