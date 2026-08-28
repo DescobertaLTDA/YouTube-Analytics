@@ -19,7 +19,7 @@ function renderRichText(text: string) {
 // não vem nos tipos padrão do TypeScript/DOM.
 type SpeechRecognitionResultLike = { transcript: string };
 type SpeechRecognitionEventLike = {
-  results: { 0: { 0: SpeechRecognitionResultLike } }[];
+  results: { 0: SpeechRecognitionResultLike }[];
 };
 type SpeechRecognitionLike = {
   lang: string;
