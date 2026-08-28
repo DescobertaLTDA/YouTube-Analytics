@@ -2701,6 +2701,37 @@ footer.page-footer {
   cursor: default;
 }
 
+.ai-chat-mic-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--ink-dim);
+  cursor: pointer;
+}
+
+.ai-chat-mic-btn:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.ai-chat-mic-btn-active {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 12%, transparent);
+  animation: ai-chat-mic-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes ai-chat-mic-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
 @media (max-width: 640px) {
   .ai-chat-panel {
     width: 100vw;
