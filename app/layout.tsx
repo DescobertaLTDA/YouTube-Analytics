@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AiChatWidget } from "@/app/components/AiChatWidget";
 
 export const metadata: Metadata = {
   title: "YouTube Analytics — Pedras e Minerais",
@@ -18,7 +19,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <AiChatWidget />
+      </body>
     </html>
   );
 }
