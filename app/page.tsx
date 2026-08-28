@@ -2,6 +2,7 @@ import { getCreatorEarnings } from "@/lib/data";
 import { SiteNav } from "@/app/components/SiteNav";
 import { CreatorCard } from "@/app/components/CreatorCard";
 import { AtualizarButton } from "@/app/components/AtualizarButton";
+import { RevenueOverrideForm } from "@/app/components/RevenueOverrideForm";
 
 export const revalidate = 0;
 
@@ -16,8 +17,32 @@ function formatDateTime(iso: string | null | undefined) {
   }).format(new Date(iso));
 }
 
+function formatDate(iso: string) {
+  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(
+    new Date(iso)
+  );
+}
+
+function formatNumber(n: number) {
+  return new Intl.NumberFormat("pt-BR").format(Math.round(n));
+}
+
+function formatCurrency(n: number) {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
+}
+
 export default async function GanhosPage() {
-  const { creators, lastSyncedAt, totalVideosScanned } = await getCreatorEarnings();
+  const {
+    creators,
+    lastSyncedAt,
+    totalVideosScanned,
+    periodStart,
+    periodEnd,
+    periodViews,
+    periodEarnings,
+    isManualRevenue,
+    manualRevenueAmount,
+  } = await getCreatorEarnings();
 
   return (
     <main className="page">
@@ -26,9 +51,10 @@ export default async function GanhosPage() {
           <span className="eyebrow">Canal de Pedras e Minerais</span>
           <h1 className="title">Ganhos por Criador</h1>
           <p className="subtitle">
-            Views e receita estimada de cada criador, somando todos os vídeos do canal marcados
-            com a hashtag dele (#lucas, #matheus, #rafael) — separado entre Shorts e vídeos
-            longos.
+            Views e receita dos últimos 28 dias ({formatDate(periodStart)} –{" "}
+            {formatDate(periodEnd)}, por data de publicação) de cada criador, somando os vídeos
+            marcados com a hashtag dele (#lucas, #matheus, #rafael) — separado entre Shorts e
+            vídeos longos.
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-end" }}>
@@ -51,15 +77,40 @@ export default async function GanhosPage() {
       )}
 
       {totalVideosScanned > 0 && (
-        <div className="creator-grid">
-          {creators.map((stats) => (
-            <CreatorCard key={stats.key} stats={stats} />
-          ))}
-        </div>
+        <>
+          <div className="stats-grid" style={{ marginBottom: 24 }}>
+            <div className="stat-card">
+              <div className="stat-value-large malachite">{formatNumber(periodViews)}</div>
+              <div className="stat-label">Views · últimos 28 dias</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value-large malachite">{formatCurrency(periodEarnings)}</div>
+              <div className="stat-label">
+                Receita total · {isManualRevenue ? "valor real informado" : "estimativa por RPM"}
+              </div>
+            </div>
+            <div className="stat-card">
+              <RevenueOverrideForm currentAmount={manualRevenueAmount} />
+              <div className="stat-label" style={{ marginTop: 8 }}>
+                Cole aqui o total que aparece no resumo de receita do YouTube Studio pra usar o
+                valor real em vez da estimativa. A divisão entre criadores continua sendo pela %
+                de views de cada um.
+              </div>
+            </div>
+          </div>
+
+          <div className="creator-grid">
+            {creators.map((stats) => (
+              <CreatorCard key={stats.key} stats={stats} />
+            ))}
+          </div>
+        </>
       )}
 
       <footer className="page-footer">
-        RPM fixo de R$ 0,22 · ganhos = views × RPM ÷ 1000 ÷ 2 · supabase · projeto ildxajnvgoduikxkcxqv
+        RPM fixo de R$ 0,32 (usado só quando não há valor real informado) · receita dividida
+        proporcionalmente à % de views de cada criador nos últimos 28 dias · supabase · projeto
+        ildxajnvgoduikxkcxqv
       </footer>
     </main>
   );
