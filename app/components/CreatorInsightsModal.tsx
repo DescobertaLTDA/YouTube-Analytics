@@ -58,11 +58,16 @@ function StatBlock({
 }) {
   return (
     <div className="insights-stat">
-      <span className="icon-label insights-stat-label">
-        {icon} {label}
+      <span className="icon-label insights-stat-label" title={label}>
+        {icon}
+        <span className="insights-stat-label-text">{label}</span>
       </span>
       <span className={`insights-stat-value ${valueClassName || ""}`}>{value}</span>
-      {sub && <span className="insights-stat-sub">{sub}</span>}
+      {sub && (
+        <span className="insights-stat-sub" title={sub}>
+          {sub}
+        </span>
+      )}
     </div>
   );
 }
@@ -157,7 +162,7 @@ export function CreatorInsightsModal({
           <div className="insights-grid">
             <StatBlock
               icon={<IconTrendingUp />}
-              label="Média geral por vídeo"
+              label="Média geral"
               value={formatCurrency(avgEarningsOverall)}
               valueClassName="malachite"
               sub={`${formatNumber(stats.periodCount)} vídeo(s) no período`}
@@ -174,7 +179,7 @@ export function CreatorInsightsModal({
             />
             <StatBlock
               icon={<IconFilm />}
-              label="Média por vídeo longo"
+              label="Média por longo"
               value={formatCurrency(avgEarningsLong)}
               sub={
                 avgViewsLong != null
@@ -192,7 +197,7 @@ export function CreatorInsightsModal({
           <div className="insights-grid">
             <StatBlock
               icon={<IconZap />}
-              label="Shorts a publicar"
+              label="Shorts a postar"
               value={
                 shortsVideosToGoal === 0
                   ? "Meta batida"
@@ -204,7 +209,7 @@ export function CreatorInsightsModal({
             />
             <StatBlock
               icon={<IconFilm />}
-              label="Vídeos longos a publicar"
+              label="Longos a postar"
               value={
                 longVideosToGoal === 0
                   ? "Meta batida"
@@ -216,7 +221,7 @@ export function CreatorInsightsModal({
             />
             <StatBlock
               icon={<IconCalendar />}
-              label="Ritmo diário necessário"
+              label="Ritmo diário"
               value={dailyPaceNeeded > 0 ? formatCurrency(dailyPaceNeeded) : "Meta batida"}
               sub={`${daysLeft} dia(s) restantes no mês`}
             />
@@ -237,7 +242,7 @@ export function CreatorInsightsModal({
             />
             <StatBlock
               icon={<IconTarget />}
-              label="% da meta de receita"
+              label="% da meta"
               value={`${goalPct}%`}
               sub={`${formatCurrency(stats.monthEarnings)} / ${formatCurrency(totalRevenueGoal)}`}
             />

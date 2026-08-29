@@ -1578,14 +1578,17 @@ footer.page-footer {
 /* ----- modal de insights/médias (abre ao clicar no card) ----- */
 .insights-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
   gap: 12px;
+  align-items: stretch;
 }
 
 .insights-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  display: grid;
+  grid-template-rows: auto auto auto;
+  align-content: start;
+  row-gap: 6px;
+  min-width: 0;
   padding: 14px 16px;
   border-radius: 8px;
   background: var(--surface);
@@ -1593,20 +1596,38 @@ footer.page-footer {
 }
 
 .insights-stat-label {
-  font-size: 12px;
+  min-width: 0;
   color: var(--text-muted);
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.insights-stat-label-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .insights-stat-value {
   font-family: var(--font-mono);
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--ink);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .insights-stat-sub {
   font-size: 11px;
   color: var(--text-faint);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .creator-card-top {
