@@ -241,3 +241,21 @@ export function IconMic({ size = 14, className }: IconProps) {
     </svg>
   );
 }
+
+// Selo de "verificado" (canal/conta) — círculo preenchido com check branco,
+// estilo YouTube. Diferente dos outros ícones (outline), esse é sólido.
+export function IconVerifiedBadge({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      <circle cx="12" cy="12" r="10" fill="currentColor" />
+      <path
+        d="M8 12.5l2.5 2.5L16 9.5"
+        fill="none"
+        stroke="var(--bg)"
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}

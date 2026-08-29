@@ -8,6 +8,7 @@ import {
   IconZap,
   IconFileText,
   IconBarChart,
+  IconVerifiedBadge,
 } from "@/app/components/Icons";
 
 const NAV_ITEMS = [
@@ -40,7 +41,10 @@ export function Sidebar({
         {avatarUrl && (
           <img className="sidebar-brand-avatar" src={avatarUrl} alt={channelTitle || "Canal"} />
         )}
-        <span className="sidebar-brand-title">{channelTitle || "Canal Ligado"}</span>
+        <span className="sidebar-brand-label">Canal</span>
+        <span className="sidebar-brand-title icon-label">
+          {channelTitle || "Canal Ligado"} <IconVerifiedBadge size={15} />
+        </span>
       </div>
 
       <nav className="sidebar-nav">
