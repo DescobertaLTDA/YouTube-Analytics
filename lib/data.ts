@@ -668,8 +668,22 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     // quanto de cada tipo ele tem, só pra exibir no card.
     const blendedRpm = totalViews > 0 ? ((totalEarnings * 2 * 1000) / totalViews) : SHORTS_RPM;
 
-    // Ganhos do mês (dia 01 até hoje) — sempre estimado por RPM, direto
-    // pelas views de cada tipo, igual à estimativa dos 28 dias.
+    // RPM efetivo de cada formato no período — quando há valor real
+    // digitado em "Ganhos", isso já reflete a divisão proporcional real
+    // (shortsEarnings/longEarnings acima); sem valor real, cai exatamente
+    // no RPM fixo de sempre. O fallback (quando o período não tem views
+    // daquele formato) usa estimateEarnings(1000, ...) em vez do RPM cru,
+    // porque Shorts tem a divisão extra por 2 embutida na fórmula — assim
+    // o fallback fica consistente com o cálculo normal.
+    const effectiveShortsRpm =
+      shortsViews > 0 ? (shortsEarnings / shortsViews) * 1000 : estimateEarnings(1000, true);
+    const effectiveLongRpm =
+      longViews > 0 ? (longEarnings / longViews) * 1000 : estimateEarnings(1000, false);
+
+    // Ganhos do mês (dia 01 até hoje) — usa o RPM efetivo do período (real
+    // quando houver, estimado quando não houver) em vez de sempre estimar
+    // por RPM fixo, pra ficar consistente com o card de "Vídeos longos" /
+    // "Shorts" do período.
     const monthCreatorRows = monthRows.filter((r) => r.creator === key);
     const monthShortsViews = monthCreatorRows
       .filter((r) => r.is_short)
@@ -678,8 +692,8 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
       .filter((r) => !r.is_short)
       .reduce((sum, r) => sum + (r.view_count || 0), 0);
     const monthViews = monthShortsViews + monthLongViews;
-    const monthShortsEarnings = estimateEarnings(monthShortsViews, true);
-    const monthLongEarnings = estimateEarnings(monthLongViews, false);
+    const monthShortsEarnings = Math.round((monthShortsViews / 1000) * effectiveShortsRpm * 100) / 100;
+    const monthLongEarnings = Math.round((monthLongViews / 1000) * effectiveLongRpm * 100) / 100;
     const monthEarnings = Math.round((monthShortsEarnings + monthLongEarnings) * 100) / 100;
     const monthCount = monthCreatorRows.length;
     const monthShortsCount = monthCreatorRows.filter((r) => r.is_short).length;
