@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { IconInbox, IconCalendar } from "@/app/components/Icons";
+import { parseTactiqTranscript } from "@/lib/transcript-parser";
 
 interface Roteiro {
   id: string;
@@ -117,17 +118,52 @@ export function RoteirosList({ videoId }: RoteirosListProps) {
           </div>
           
           {selectedRoteiro === roteiro.id && (
-            <div className="roteiro-item-content">
-              <div className="roteiro-minutagem icon-label">
-                <IconCalendar /> <strong>Minutagem:</strong> {roteiro.minutagem || 'Não especificada'}
-              </div>
-              <div className="roteiro-texto">
-                <pre>{roteiro.roteiro}</pre>
-              </div>
-            </div>
+            <RoteiroContent roteiro={roteiro} />
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+// Card expandido de um roteiro: reaproveita o mesmo parser usado na
+// importação (tactiq) pra transformar o texto colado em minutagem
+// navegável — uma lista rolável (arrastável) com cada linha de timestamp,
+// e capítulos destacados em negrito. Se por algum motivo não houver
+// nenhum timestamp reconhecido no texto, cai pro texto corrido puro.
+function RoteiroContent({ roteiro }: { roteiro: Roteiro }) {
+  const parsed = parseTactiqTranscript(roteiro.roteiro);
+  const hasSegments = parsed.segments.length > 0;
+
+  return (
+    <div className="roteiro-item-content">
+      <div className="roteiro-minutagem icon-label">
+        <IconCalendar />{" "}
+        <strong>{hasSegments ? `${parsed.segments.length} marcações de tempo` : "Roteiro"}</strong>
+        {roteiro.source_title ? ` · ${roteiro.source_title}` : ""}
+      </div>
+
+      {hasSegments ? (
+        <div className="roteiro-timestamps">
+          <div className="roteiro-timestamps-grid">
+            {parsed.segments.map((seg) => (
+              <div
+                key={seg.order}
+                className={`roteiro-timestamp-item ${seg.isChapter ? "chapter" : ""}`}
+              >
+                <span className="roteiro-timestamp-time">{seg.timestampLabel.slice(0, 8)}</span>
+                <span className="roteiro-timestamp-text">{seg.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="roteiro-timestamps">
+          <div className="roteiro-texto">
+            <pre>{roteiro.roteiro}</pre>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -27,18 +27,22 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
     setMessage(null);
 
     try {
-      // Extrai informações do transcript
+      // Extrai só metadados (título de origem) do cabeçalho tactiq — o
+      // video_id em si NUNCA vem do texto colado. Antes, se a URL colada
+      // no cabeçalho não batesse exatamente com o ID desta página (typo,
+      // link errado, formato diferente), o roteiro era salvo com outro
+      // video_id e sumia da lista deste vídeo. Usar sempre o `videoId`
+      // que a própria página já sabe ser o correto evita esse bug.
       const lines = roteiro.split('\n');
       let sourceTitle = null;
-      let youtubeVideoId = null;
       
       for (const line of lines) {
         const trimmed = line.trim();
         if (trimmed.startsWith('#')) {
           const content = trimmed.replace(/^#\s*/, '').trim();
           if (content.includes('youtube.com') || content.includes('youtu.be')) {
-            const match = content.match(/(?:watch\?v=|watch\/|youtu\.be\/)([a-zA-Z0-9_-]{6,})/);
-            if (match) youtubeVideoId = match[1];
+            // é a URL do cabeçalho — ignorada pro video_id, só confirma a fonte
+            continue;
           } else if (!content.includes('tactiq.io') && !content.includes('http')) {
             sourceTitle = content;
           }
@@ -60,17 +64,15 @@ export function RoteiroButton({ videoId, videoTitle, videoLabel }: RoteiroButton
         }
       }
 
-      // Usa o videoId que veio do YouTube (correto)
-      const videoIdToSave = youtubeVideoId || videoId;
-      console.log('📤 Salvando com video_id:', videoIdToSave);
+      console.log('📤 Salvando com video_id:', videoId);
 
       const dados = {
-        video_id: videoIdToSave,
+        video_id: videoId,
         video_title: videoTitle || sourceTitle || 'Sem título',
         video_label: videoLabel || 'Vídeo',
         roteiro: roteiro.trim(),
         minutagem: sourceTitle || 'Transcript completo',
-        youtube_video_id: youtubeVideoId,
+        youtube_video_id: videoId,
         source_title: sourceTitle,
         segment_count: segmentCount,
         duration_seconds: Math.round(durationSeconds)

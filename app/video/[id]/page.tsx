@@ -150,7 +150,7 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
         <div className="chart-container">
           {chartData.length > 1 ? (
             <div className="chart-line-wrapper">
-              <svg className="chart-line" viewBox="0 0 600 200" preserveAspectRatio="xMidYMid meet">
+              <svg className="chart-line" viewBox="0 0 600 200" preserveAspectRatio="none">
                 {/* Grid lines */}
                 <line x1="0" y1="40" x2="600" y2="40" stroke="#e9ecef" strokeWidth="1" />
                 <line x1="0" y1="80" x2="600" y2="80" stroke="#e9ecef" strokeWidth="1" />
