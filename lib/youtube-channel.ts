@@ -46,6 +46,37 @@ export function isShortVideo(durationSeconds: number | null | undefined): boolea
 }
 
 /**
+ * Busca nome e avatar (thumbnail) do canal — usado no menu lateral do site.
+ * Cacheado por 24h (o avatar quase nunca muda) pra não gastar cota da API
+ * a cada carregamento de página.
+ */
+export interface ChannelInfo {
+  title: string;
+  avatarUrl: string | null;
+}
+
+export async function getChannelInfo(channelId: string = getChannelId()): Promise<ChannelInfo | null> {
+  const url = `${YOUTUBE_API_URL}/channels?part=snippet&id=${channelId}&key=${YOUTUBE_API_KEY}`;
+  const response = await fetch(url, { next: { revalidate: 86400 } });
+  if (!response.ok) {
+    console.error(`❌ Erro ao buscar info do canal ${channelId}: ${response.status}`);
+    return null;
+  }
+  const data = await response.json();
+  const snippet = data?.items?.[0]?.snippet;
+  if (!snippet) return null;
+
+  return {
+    title: snippet.title || "",
+    avatarUrl:
+      snippet.thumbnails?.high?.url ||
+      snippet.thumbnails?.medium?.url ||
+      snippet.thumbnails?.default?.url ||
+      null,
+  };
+}
+
+/**
  * Busca o ID da playlist "uploads" do canal — é a forma mais barata (em
  * cota da API) de listar todo o histórico de vídeos de um canal, melhor do
  * que usar search.list.

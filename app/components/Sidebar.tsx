@@ -25,14 +25,22 @@ function isActive(pathname: string, href: string) {
   return pathname.startsWith(href);
 }
 
-export function Sidebar() {
+export function Sidebar({
+  channelTitle,
+  avatarUrl,
+}: {
+  channelTitle?: string;
+  avatarUrl?: string | null;
+}) {
   const pathname = usePathname();
 
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <span className="sidebar-brand-title">Canal Ligado</span>
-        <span className="sidebar-brand-sub">Pedras e Minerais</span>
+        {avatarUrl && (
+          <img className="sidebar-brand-avatar" src={avatarUrl} alt={channelTitle || "Canal"} />
+        )}
+        <span className="sidebar-brand-title">{channelTitle || "Canal Ligado"}</span>
       </div>
 
       <nav className="sidebar-nav">
