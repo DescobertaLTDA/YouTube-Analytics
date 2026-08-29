@@ -3,7 +3,15 @@ import { getAllVideoRows } from "@/lib/data";
 import { RoteiroButton } from "@/app/components/RoteiroButton";
 import { RoteirosList } from "@/app/components/RoteirosList";
 import { notFound } from "next/navigation";
-import { IconSearch, IconBarChart, IconFileText, IconClipboard } from "@/app/components/Icons";
+import {
+  IconSearch,
+  IconBarChart,
+  IconFileText,
+  IconClipboard,
+  IconTrendingUp,
+  IconTrendingDown,
+  IconArrowRight,
+} from "@/app/components/Icons";
 
 export const revalidate = 0;
 
@@ -65,6 +73,23 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
     }));
 
   const youtubeVideoId = video.youtube_video_id;
+
+  // Tendência de views a partir do histórico de snapshots deste vídeo —
+  // mesma lógica que existia na antiga página /changes, agora calculada
+  // por vídeo em vez de globalmente.
+  const sortedHistory = [...history].sort(
+    (a, b) => new Date(a.captured_at).getTime() - new Date(b.captured_at).getTime()
+  );
+  let trend: "up" | "down" | "neutral" = "neutral";
+  if (sortedHistory.length >= 2) {
+    const oldest = sortedHistory[0];
+    const newest = sortedHistory[sortedHistory.length - 1];
+    const days =
+      (new Date(newest.captured_at).getTime() - new Date(oldest.captured_at).getTime()) /
+      (1000 * 60 * 60 * 24);
+    const growth = days > 0 ? ((newest.view_count || 0) - (oldest.view_count || 0)) / days : 0;
+    trend = growth > 100 ? "up" : growth < -100 ? "down" : "neutral";
+  }
 
   return (
     <main className="page">
@@ -232,21 +257,57 @@ export default async function VideoPage({ params }: { params: { id: string } }) 
       </div>
 
       <div className="changes-section">
-        <h2 className="icon-label">
-          <IconClipboard /> Histórico de Alterações
-        </h2>
+        <div className="change-group-header">
+          <h2 className="icon-label" style={{ marginBottom: 0 }}>
+            <IconClipboard /> Histórico de Alterações
+          </h2>
+          {changes.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span className={`change-trend ${trend} icon-label`}>
+                {trend === "up" && (
+                  <>
+                    <IconTrendingUp /> Tendência de alta
+                  </>
+                )}
+                {trend === "down" && (
+                  <>
+                    <IconTrendingDown /> Tendência de queda
+                  </>
+                )}
+                {trend === "neutral" && (
+                  <>
+                    <IconArrowRight /> Estável
+                  </>
+                )}
+              </span>
+              <span className="change-count">{changes.length} alterações</span>
+            </div>
+          )}
+        </div>
+
         {changes.length === 0 && (
           <div className="no-changes">Nenhuma alteração registrada ainda</div>
         )}
-        {changes.slice(0, 10).map((c) => (
-          <div className="change-item" key={c.id}>
-            <span className="change-field">{c.changed_field}</span>
-            <span className="change-old">{c.old_value || "—"}</span>
-            <span className="change-arrow">→</span>
-            <span className="change-new">{c.new_value || "—"}</span>
-            <span className="change-date">{formatDate(c.detected_at)}</span>
-          </div>
-        ))}
+
+        <div className="changes-list">
+          {changes.slice(0, 10).map((c) => (
+            <div className="change-item-detailed" key={c.id}>
+              <span className="change-field-badge">{c.changed_field}</span>
+              <div className="change-values">
+                <span className="change-old-value">
+                  {(c.old_value || "vazio").slice(0, 80)}
+                  {(c.old_value?.length || 0) > 80 && "..."}
+                </span>
+                <span className="change-arrow-detailed">→</span>
+                <span className="change-new-value">
+                  {(c.new_value || "vazio").slice(0, 80)}
+                  {(c.new_value?.length || 0) > 80 && "..."}
+                </span>
+              </div>
+              <span className="change-date-detailed">{formatDate(c.detected_at)}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <footer className="page-footer">

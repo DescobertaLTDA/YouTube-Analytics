@@ -6,17 +6,15 @@ import {
   IconDollar,
   IconFilm,
   IconZap,
-  IconFileText,
-  IconBarChart,
   IconVerifiedBadge,
 } from "@/app/components/Icons";
 
+// Transcript do roteiro e histórico de mudanças saíram do menu — agora
+// vivem dentro do card de cada vídeo (app/video/[id]/page.tsx).
 const NAV_ITEMS = [
   { href: "/", label: "Ganhos", icon: <IconDollar size={16} /> },
   { href: "/videos", label: "Vídeos", icon: <IconFilm size={16} /> },
   { href: "/shorts", label: "Shorts", icon: <IconZap size={16} /> },
-  { href: "/transcripts", label: "Transcripts", icon: <IconFileText size={16} /> },
-  { href: "/changes", label: "Mudanças", icon: <IconBarChart size={16} /> },
 ];
 
 // "/" só fica ativo na home exata; as outras rotas usam prefixo pra cobrir
