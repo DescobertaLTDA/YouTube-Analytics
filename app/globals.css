@@ -2436,9 +2436,37 @@ footer.page-footer {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 12px 0;
+  padding: 12px 8px;
   border-bottom: 1px dashed var(--border);
+  border-radius: 8px;
   flex-wrap: wrap;
+  transition: background 0.15s ease;
+}
+
+.history-row-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.history-row-link:hover .history-row {
+  background: var(--surface-raised);
+}
+
+.history-row-link:hover .history-title {
+  color: var(--malachite);
+}
+
+.history-row-link:last-of-type .history-row {
+  border-bottom: none;
+}
+
+.video-list-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 8px 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
 }
 
 .history-row:last-child {

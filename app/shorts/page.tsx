@@ -12,9 +12,14 @@ function formatDate(iso: string | null | undefined) {
   }).format(new Date(iso));
 }
 
-export default async function ShortsPage() {
+export default async function ShortsPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
   const allRows = await getAllVideoRows();
   const rows = allRows.filter((r) => r.isShort);
+  const page = Number(searchParams.page) || 1;
 
   return (
     <main className="page">
@@ -39,6 +44,8 @@ export default async function ShortsPage() {
         rows={rows}
         emptyTitle="Nenhum Short encontrado ainda"
         emptyDescription="Vídeos com até 3 minutos aparecem aqui depois de cadastrados manualmente, ou automaticamente ao clicar em Atualizar na aba Ganhos."
+        page={page}
+        basePath="/shorts"
       />
 
       <footer className="page-footer">

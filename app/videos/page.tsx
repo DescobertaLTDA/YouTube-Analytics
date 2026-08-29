@@ -12,9 +12,14 @@ function formatDate(iso: string | null | undefined) {
   }).format(new Date(iso));
 }
 
-export default async function VideosPage() {
+export default async function VideosPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
   const allRows = await getAllVideoRows();
   const rows = allRows.filter((r) => !r.isShort);
+  const page = Number(searchParams.page) || 1;
 
   return (
     <main className="page">
@@ -38,6 +43,8 @@ export default async function VideosPage() {
         rows={rows}
         emptyTitle="Nenhum vídeo longo encontrado ainda"
         emptyDescription="Vídeos com mais de 3 minutos aparecem aqui depois de cadastrados manualmente, ou automaticamente ao clicar em Atualizar na aba Ganhos."
+        page={page}
+        basePath="/videos"
       />
 
       <footer className="page-footer">
