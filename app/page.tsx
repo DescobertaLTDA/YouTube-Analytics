@@ -1,5 +1,4 @@
 import { getCreatorEarnings } from "@/lib/data";
-import { SiteNav } from "@/app/components/SiteNav";
 import { AtualizarButton } from "@/app/components/AtualizarButton";
 import { CreatorCard } from "@/app/components/CreatorCard";
 import { RevenueStatCard } from "@/app/components/RevenueStatCard";
@@ -49,11 +48,8 @@ export default async function GanhosPage({
             automaticamente via varredura de hashtag no YouTube Data API v3.
           </p>
         </div>
-        <div className="header-row-actions">
-          <div className="header-row-actions-top">
-            <AtualizarButton />
-            <SiteNav active="ganhos" />
-          </div>
+        <div className="header-row-actions header-row-actions-inline">
+          <AtualizarButton />
           <div className="sync-pill">
             última sincronização: <strong>{formatDate(data.lastSyncedAt)}</strong>
           </div>

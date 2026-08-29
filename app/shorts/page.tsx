@@ -1,5 +1,4 @@
 import { getAllVideoRows } from "@/lib/data";
-import { SiteNav } from "@/app/components/SiteNav";
 import { VideoDashboardGrid } from "@/app/components/VideoDashboardGrid";
 
 export const revalidate = 0;
@@ -30,12 +29,9 @@ export default async function ShortsPage() {
             hashtag da aba Ganhos.
           </p>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-end" }}>
-          <SiteNav active="shorts" />
-          <div className="sync-pill">
-            última sincronização:{" "}
-            <strong>{allRows.length > 0 ? formatDate(allRows[0].latest?.captured_at) : "—"}</strong>
-          </div>
+        <div className="sync-pill">
+          última sincronização:{" "}
+          <strong>{allRows.length > 0 ? formatDate(allRows[0].latest?.captured_at) : "—"}</strong>
         </div>
       </div>
 

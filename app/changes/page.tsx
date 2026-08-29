@@ -1,5 +1,4 @@
 import { getServiceSupabase } from "@/lib/supabase";
-import { SiteNav } from "@/app/components/SiteNav";
 import { IconBarChart, IconTrendingUp, IconTrendingDown, IconArrowRight } from "@/app/components/Icons";
 
 export const revalidate = 0;
@@ -66,7 +65,6 @@ export default async function ChangesPage() {
             e veja o impacto nas views.
           </p>
         </div>
-        <SiteNav active="mudancas" />
       </div>
 
       {!changes || changes.length === 0 ? (
