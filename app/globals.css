@@ -1560,6 +1560,55 @@ footer.page-footer {
   box-shadow: 0 1px 3px rgba(17, 17, 17, 0.05);
 }
 
+.creator-card-clickable {
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.creator-card-clickable:hover {
+  border-color: #c2c2c2;
+  box-shadow: 0 8px 24px rgba(17, 17, 17, 0.08);
+}
+
+.creator-card-clickable:focus-visible {
+  outline: 2px solid var(--malachite);
+  outline-offset: 2px;
+}
+
+/* ----- modal de insights/médias (abre ao clicar no card) ----- */
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.insights-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.insights-stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.insights-stat-value {
+  font-family: var(--font-mono);
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.insights-stat-sub {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
 .creator-card-top {
   display: flex;
   justify-content: space-between;

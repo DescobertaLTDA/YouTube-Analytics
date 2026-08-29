@@ -1,6 +1,10 @@
+"use client";
+
+import { useState } from "react";
 import type { CreatorStats } from "@/lib/data";
 import { ShopeeSalesDetail } from "@/app/components/ShopeeSalesDetail";
 import { CreatorGoalsButton } from "@/app/components/CreatorGoalsButton";
+import { CreatorInsightsModal } from "@/app/components/CreatorInsightsModal";
 import { LONG_RPM, SHORTS_RPM } from "@/lib/creator-earnings";
 import { IconFilm, IconZap, IconDollar, IconCalendar, IconCart } from "@/app/components/Icons";
 
@@ -38,8 +42,21 @@ function monthRangeLabel() {
 }
 
 export function CreatorCard({ stats }: { stats: CreatorStats }) {
+  const [insightsOpen, setInsightsOpen] = useState(false);
+
   return (
-    <div className="creator-card facet">
+    <div
+      className="creator-card facet creator-card-clickable"
+      role="button"
+      tabIndex={0}
+      onClick={() => setInsightsOpen(true)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setInsightsOpen(true);
+        }
+      }}
+    >
       <div className="creator-card-top">
         <div>
           <span className="card-label">{stats.hashtag}</span>
@@ -91,7 +108,9 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
           <ProgressBar value={stats.monthEarnings} goal={REVENUE_GOAL} />
         </div>
 
-        <CreatorGoalsButton stats={stats} />
+        <div onClick={(e) => e.stopPropagation()}>
+          <CreatorGoalsButton stats={stats} />
+        </div>
       </div>
 
       <div className="creator-breakdown-item creator-month">
@@ -159,9 +178,19 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
           <div className="creator-breakdown-stats">
             <span className="creator-shopee-value">{formatCurrency(stats.shopeeAmount)}</span>
           </div>
-          {stats.shopeeSales && <ShopeeSalesDetail sales={stats.shopeeSales} />}
+          {stats.shopeeSales && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <ShopeeSalesDetail sales={stats.shopeeSales} />
+            </div>
+          )}
         </div>
       </div>
+
+      {insightsOpen && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <CreatorInsightsModal stats={stats} onClose={() => setInsightsOpen(false)} />
+        </div>
+      )}
     </div>
   );
 }
