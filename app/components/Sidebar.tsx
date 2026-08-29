@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   IconDollar,
@@ -36,14 +37,14 @@ export function Sidebar() {
 
       <nav className="sidebar-nav">
         {NAV_ITEMS.map((item) => (
-          <a
+          <Link
             key={item.href}
             href={item.href}
             className={`sidebar-nav-link ${isActive(pathname, item.href) ? "active" : ""}`}
           >
             {item.icon}
             <span>{item.label}</span>
-          </a>
+          </Link>
         ))}
       </nav>
     </aside>
