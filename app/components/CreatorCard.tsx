@@ -125,6 +125,25 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
         </div>
       </div>
 
+      <div className="creator-breakdown-item creator-outside-month">
+        <div className="creator-breakdown-header">
+          <span className="icon-label">
+            <IconCalendar /> Ganhos anteriores ao mês
+          </span>
+          <span className="text-muted-small">
+            {formatNumber(Math.max(stats.totalViews - stats.monthViews, 0))} views
+          </span>
+        </div>
+        <div className="creator-breakdown-stats">
+          <span className="creator-outside-month-value">
+            {formatCurrency(Math.max(stats.totalEarnings - stats.monthEarnings, 0))}
+          </span>
+        </div>
+        <p className="creator-outside-month-note">
+          Parte do período de 28 dias que cai antes do dia 01 — não conta na meta do mês.
+        </p>
+      </div>
+
       <div className="creator-breakdown">
         <div className="creator-breakdown-item">
           <div className="creator-breakdown-header">

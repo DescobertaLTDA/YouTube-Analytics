@@ -1971,6 +1971,24 @@ footer.page-footer {
   font-weight: 600;
 }
 
+.creator-outside-month {
+  background: var(--surface);
+  border: 1px dashed var(--border);
+}
+
+.creator-outside-month-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.creator-outside-month-note {
+  margin-top: 8px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-faint);
+}
+
 .creator-cakto {
   background: var(--surface-raised);
   border: 1px solid var(--ink);
