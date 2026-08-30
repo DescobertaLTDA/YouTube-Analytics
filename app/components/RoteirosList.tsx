@@ -109,7 +109,7 @@ export function RoteirosList({ videoId }: RoteirosListProps) {
               <span className="roteiro-item-meta">
                 {roteiro.segment_count || 0} segmentos · 
                 {roteiro.duration_seconds ? ` ${Math.round(roteiro.duration_seconds / 60)}min` : ''} · 
-                {new Date(roteiro.created_at).toLocaleDateString('pt-BR')}
+                {new Date(roteiro.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
               </span>
             </div>
             <span className="roteiro-item-toggle">
