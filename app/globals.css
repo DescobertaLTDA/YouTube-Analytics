@@ -28,12 +28,10 @@
   --vph-hot: #c1121f;
   --vph-warm: #4b3fd1;
 
-  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
-  --font-body: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
-
-  /* Fonte real usada pelo YouTube (site e Studio): Roboto. Usada só na
-     tabela de vídeos abaixo, pra imitar a aba "Conteúdo do canal". */
+  /* Fonte única do site inteiro: Roboto (a mesma do YouTube). */
+  --font-display: "Roboto", Arial, sans-serif;
+  --font-body: "Roboto", Arial, sans-serif;
+  --font-mono: "Roboto", Arial, sans-serif;
   --font-yt: "Roboto", Arial, sans-serif;
   --yt-border: #e5e5e5;
   --yt-text: #0f0f0f;
@@ -2878,6 +2876,7 @@ footer.page-footer {
 
 .yt-date-main {
   color: var(--yt-text);
+  white-space: nowrap;
 }
 
 .yt-date-sub {
