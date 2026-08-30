@@ -37,7 +37,15 @@ export async function GET(request: Request) {
       .toISOString()
       .slice(0, 10);
 
-    const rows = await getDailyVideoRevenue(startDate, endDate);
+    // A API não aceita `video` combinado com `day` numa chamada só —
+    // precisamos da lista de vídeos primeiro pra consultar um por um.
+    const db = getServiceSupabase();
+    const { data: videoIdRows } = await db.from("creator_videos").select("youtube_video_id");
+    const videoIds = Array.from(
+      new Set(((videoIdRows as { youtube_video_id: string }[]) || []).map((v) => v.youtube_video_id))
+    );
+
+    const rows = await getDailyVideoRevenue(startDate, endDate, videoIds);
 
     if (rows === null) {
       return NextResponse.json(
@@ -56,8 +64,6 @@ export async function GET(request: Request) {
         { status: 200 }
       );
     }
-
-    const db = getServiceSupabase();
 
     // Pra saber is_short e published_at de cada vídeo (a Analytics API não
     // devolve isso, só o ID). creator_videos já tem essa info salva pra

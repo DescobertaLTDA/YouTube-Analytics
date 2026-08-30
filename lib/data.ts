@@ -943,21 +943,6 @@ export async function getCreatorDailyEarnings(days = 30): Promise<EarningsHistor
     console.error("❌ Erro ao ler creator_videos:", creatorError);
   }
 
-  // Receita OFICIAL por vídeo/dia (quando o OAuth estiver configurado).
-  // Busca uma vez só, cobrindo toda a janela pedida — bem mais barato que
-  // uma chamada por vídeo. `null` = integração não configurada (ou
-  // falhou), então nada aqui usa receita real e tudo cai pro RPM.
-  const today = new Date();
-  const startDate = new Date(today.getTime() - (days + 2) * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
-  const endDate = today.toISOString().slice(0, 10);
-  const realRevenueRows = await getDailyVideoRevenue(startDate, endDate);
-  const realRevenueByKey = new Map<string, number>();
-  for (const row of realRevenueRows || []) {
-    realRevenueByKey.set(`${row.date}|${row.videoId}`, row.estimatedRevenue);
-  }
-
   // Vídeo -> lista de criadores marcados nele. Colab (2+ hashtags) entra
   // uma vez pra cada criador, de propósito — mesmo critério usado no
   // resto da aba Ganhos.
@@ -967,6 +952,24 @@ export async function getCreatorDailyEarnings(days = 30): Promise<EarningsHistor
     const list = creatorsByVideo.get(row.youtube_video_id) || [];
     list.push(row.creator as CreatorKey);
     creatorsByVideo.set(row.youtube_video_id, list);
+  }
+
+  // Receita OFICIAL por vídeo/dia (quando o OAuth estiver configurado).
+  // A API não aceita `video` combinado com `day` numa chamada só, então
+  // consultamos um vídeo por vez — só pelos vídeos que têm criador
+  // atribuído, que são os únicos usados no gráfico abaixo. `null` =
+  // integração não configurada (ou falhou), então nada aqui usa receita
+  // real e tudo cai pro RPM.
+  const today = new Date();
+  const startDate = new Date(today.getTime() - (days + 2) * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const endDate = today.toISOString().slice(0, 10);
+  const relevantVideoIds = Array.from(creatorsByVideo.keys());
+  const realRevenueRows = await getDailyVideoRevenue(startDate, endDate, relevantVideoIds);
+  const realRevenueByKey = new Map<string, number>();
+  for (const row of realRevenueRows || []) {
+    realRevenueByKey.set(`${row.date}|${row.videoId}`, row.estimatedRevenue);
   }
 
   type HistoryRow = { youtube_video_id: string; view_count: number; captured_date: string; is_short: boolean };
