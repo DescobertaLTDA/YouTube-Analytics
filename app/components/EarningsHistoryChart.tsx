@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { CREATORS, CreatorKey } from "@/lib/creator-earnings";
 import { IconTrendingUp } from "@/app/components/Icons";
 import type { EarningsHistoryPoint } from "@/lib/data";
@@ -37,12 +37,50 @@ function formatDateTime(iso: string) {
   }).format(new Date(iso));
 }
 
+// "Dom., 23 de ago. de 2026" — mesmo formato do tooltip do YouTube Studio.
+function formatDateLong(iso: string) {
+  const d = new Date(iso);
+  const weekday = new Intl.DateTimeFormat("pt-BR", { weekday: "short" }).format(d);
+  const rest = new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(d);
+  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)}, ${rest}`;
+}
+
+// Transforma uma lista de pontos num path suave (spline Catmull-Rom
+// convertida pra curvas de Bézier cúbicas), no lugar da polyline reta.
+function smoothPath(points: { x: number; y: number }[]) {
+  if (points.length === 0) return "";
+  if (points.length === 1) return `M ${points[0].x},${points[0].y}`;
+
+  let d = `M ${points[0].x},${points[0].y}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i - 1] ?? points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2] ?? p2;
+
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+    d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
+  }
+  return d;
+}
+
 export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoint[] }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   // Largura real do container em px — medida no cliente pra o SVG ir de
   // ponta a ponta sem esticar/distorcer linhas, pontos e texto (o que
   // acontecia usando preserveAspectRatio com um viewBox de largura fixa).
   const [width, setWidth] = useState(FALLBACK_WIDTH);
+  // Índice do ponto mais próximo do mouse — controla a linha-guia, os
+  // pontos destacados e o tooltip, igual ao hover do YouTube Studio.
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const el = wrapperRef.current;
@@ -83,6 +121,44 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
 
   const gridLines = [0.25, 0.5, 0.75, 1].map((f) => PAD_TOP + chartHeight * (1 - f));
 
+  // Pontos de cada criador pré-calculados uma vez só, reaproveitados pela
+  // linha, pelos círculos e pelo tooltip.
+  const seriesPoints = CREATORS.map(({ key }) => ({
+    key,
+    points: timestamps.map((t, i) => {
+      const point = history.find((h) => h.capturedAt === t && h.creator === key);
+      return { x: xFor(i), y: yFor(point?.totalEarnings ?? 0), value: point?.totalEarnings ?? 0 };
+    }),
+  }));
+
+  const handlePointerMove = useCallback(
+    (e: MouseEvent<SVGSVGElement>) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      // rect.width é o tamanho real na tela; width (state) é a unidade do
+      // viewBox — como o SVG não distorce (width/height fixos = viewBox),
+      // essa razão converte a posição do mouse pra "unidades do gráfico".
+      const relX = ((e.clientX - rect.left) / rect.width) * width;
+      let closest = 0;
+      let closestDist = Infinity;
+      timestamps.forEach((_, i) => {
+        const dist = Math.abs(xFor(i) - relX);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closest = i;
+        }
+      });
+      setHoverIndex(closest);
+    },
+    [timestamps, width]
+  );
+
+  const hoverX = hoverIndex !== null ? xFor(hoverIndex) : null;
+
+  // Mantém o tooltip dentro da área do gráfico, mesmo perto das bordas.
+  const TOOLTIP_WIDTH = 200;
+  const clampedTooltipX =
+    hoverX !== null ? Math.max(TOOLTIP_WIDTH / 2, Math.min(width - TOOLTIP_WIDTH / 2, hoverX)) : 0;
+
   return (
     <div className="chart-section">
       <h2 className="icon-label"><IconTrendingUp /> Receita ao longo do tempo</h2>
@@ -94,39 +170,53 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
           width={width}
           height={HEIGHT}
           preserveAspectRatio="none"
+          onMouseMove={handlePointerMove}
+          onMouseLeave={() => setHoverIndex(null)}
         >
           {gridLines.map((y, i) => (
             <line key={i} x1={PAD_LEFT} y1={y} x2={width - PAD_RIGHT} y2={y} stroke="#e9ecef" strokeWidth={1} />
           ))}
 
-          {CREATORS.map(({ key }) => {
-            const points = timestamps.map((t, i) => {
-              const point = history.find((h) => h.capturedAt === t && h.creator === key);
-              return { x: xFor(i), y: yFor(point?.totalEarnings ?? 0) };
-            });
-            const pointsAttr = points.map((p) => `${p.x},${p.y}`).join(" ");
+          {hoverX !== null && (
+            <line
+              x1={hoverX}
+              y1={PAD_TOP}
+              x2={hoverX}
+              y2={PAD_TOP + chartHeight}
+              stroke="#c4c9cf"
+              strokeWidth={1}
+              strokeDasharray="3 3"
+            />
+          )}
 
-            return (
-              <g key={key}>
-                <polyline
-                  points={pointsAttr}
-                  fill="none"
-                  stroke={CREATOR_COLORS[key]}
-                  strokeWidth={2.5}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                {points.map((p, i) => (
-                  <circle key={i} cx={p.x} cy={p.y} r={3} fill={CREATOR_COLORS[key]} stroke="#ffffff" strokeWidth={1.5}>
-                    <title>
-                      {CREATORS.find((c) => c.key === key)?.label} · {formatDateTime(timestamps[i])} ·{" "}
-                      {formatCurrency(history.find((h) => h.capturedAt === timestamps[i] && h.creator === key)?.totalEarnings ?? 0)}
-                    </title>
-                  </circle>
-                ))}
-              </g>
-            );
-          })}
+          {seriesPoints.map(({ key, points }) => (
+            <g key={key}>
+              <path
+                d={smoothPath(points)}
+                fill="none"
+                stroke={CREATOR_COLORS[key]}
+                strokeWidth={2.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              {points.map((p, i) => (
+                <circle
+                  key={i}
+                  cx={p.x}
+                  cy={p.y}
+                  r={hoverIndex === i ? 5 : 3}
+                  fill={CREATOR_COLORS[key]}
+                  stroke="#ffffff"
+                  strokeWidth={hoverIndex === i ? 2 : 1.5}
+                >
+                  <title>
+                    {CREATORS.find((c) => c.key === key)?.label} · {formatDateTime(timestamps[i])} ·{" "}
+                    {formatCurrency(p.value)}
+                  </title>
+                </circle>
+              ))}
+            </g>
+          ))}
 
           <text x={PAD_LEFT} y={HEIGHT - 8} fontSize="11" fill="#909090">
             {formatDateShort(timestamps[0])}
@@ -135,6 +225,27 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
             {formatDateShort(timestamps[timestamps.length - 1])}
           </text>
         </svg>
+
+        {hoverIndex !== null && (
+          <div
+            className="chart-tooltip"
+            style={{
+              left: `${(clampedTooltipX / width) * 100}%`,
+              width: TOOLTIP_WIDTH,
+            }}
+          >
+            <div className="chart-tooltip-date">{formatDateLong(timestamps[hoverIndex])}</div>
+            {seriesPoints.map(({ key, points }) => (
+              <div className="chart-tooltip-row" key={key}>
+                <span className="chart-tooltip-dot" style={{ background: CREATOR_COLORS[key] }} />
+                <span className="chart-tooltip-name">{CREATORS.find((c) => c.key === key)?.label}</span>
+                <span className="chart-tooltip-value" style={{ color: CREATOR_COLORS[key] }}>
+                  {formatCurrency(points[hoverIndex].value)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="chart-legend">
