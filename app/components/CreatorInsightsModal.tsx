@@ -17,6 +17,7 @@ import {
   SHORTS_REVENUE_GOAL,
   LONG_REVENUE_GOAL,
 } from "@/lib/creator-earnings";
+import { daysLeftInMonth, nowInSaoPaulo } from "@/lib/date-br";
 
 function formatNumber(n: number | null | undefined) {
   if (n == null || !isFinite(n)) return "—";
@@ -33,14 +34,6 @@ function formatCurrency(n: number | null | undefined) {
 function average(total: number, count: number): number | null {
   if (!count) return null;
   return total / count;
-}
-
-// Dias restantes no mês corrente (incluindo hoje), usado pra projetar o
-// ritmo diário necessário até a virada do mês.
-function daysLeftInMonth(): number {
-  const now = new Date();
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  return Math.max(lastDay - now.getDate() + 1, 1);
 }
 
 function StatBlock({
@@ -132,8 +125,7 @@ export function CreatorInsightsModal({
   // Projeção simples de fechamento do mês: ganhos já feitos + (ritmo médio
   // diário observado até agora × dias restantes). Usa a mesma janela do
   // "Ganhos do mês" do card.
-  const now = new Date();
-  const daysElapsed = now.getDate();
+  const daysElapsed = nowInSaoPaulo().getDate();
   const dailyPaceObserved = daysElapsed > 0 ? stats.monthEarnings / daysElapsed : 0;
   const projectedMonthEnd = stats.monthEarnings + dailyPaceObserved * (daysLeft - 1);
 

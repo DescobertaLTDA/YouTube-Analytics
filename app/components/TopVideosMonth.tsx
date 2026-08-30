@@ -1,5 +1,6 @@
 import type { GanhosVideoRow } from "@/lib/data";
 import { IconTrophy } from "@/app/components/Icons";
+import { monthRangeLabel } from "@/lib/date-br";
 
 function formatNumber(n: number | null | undefined) {
   if (n == null) return "—";
@@ -8,13 +9,6 @@ function formatNumber(n: number | null | undefined) {
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
-
-function monthRangeLabel() {
-  const now = new Date();
-  const month = new Intl.DateTimeFormat("pt-BR", { month: "short" }).format(now);
-  const day = now.getDate();
-  return `01 a ${day} de ${month}`;
 }
 
 export function TopVideosMonth({ videos }: { videos: GanhosVideoRow[] }) {

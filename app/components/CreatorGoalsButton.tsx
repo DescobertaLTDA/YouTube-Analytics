@@ -12,6 +12,7 @@ import {
   SHORTS_REVENUE_GOAL,
   SHORTS_VIEWS_GOAL,
 } from "@/lib/creator-earnings";
+import { monthRangeFullLabel } from "@/lib/date-br";
 
 function formatNumber(n: number | null | undefined) {
   if (n == null) return "—";
@@ -21,13 +22,6 @@ function formatNumber(n: number | null | undefined) {
 function formatCurrency(n: number | null | undefined) {
   if (n == null) return "—";
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
-
-function monthRangeFullLabel() {
-  const now = new Date();
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const month = new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(now);
-  return `01 a ${lastDay} de ${month}`;
 }
 
 function GoalRow({

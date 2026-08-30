@@ -7,6 +7,7 @@ import { CreatorGoalsButton } from "@/app/components/CreatorGoalsButton";
 import { CreatorInsightsModal } from "@/app/components/CreatorInsightsModal";
 import { LONG_RPM, SHORTS_RPM } from "@/lib/creator-earnings";
 import { IconFilm, IconZap, IconDollar, IconCalendar, IconCart } from "@/app/components/Icons";
+import { monthRangeLabel } from "@/lib/date-br";
 
 const SHORTS_GOAL = 30;
 const REVENUE_GOAL = 1700;
@@ -32,13 +33,6 @@ function formatCurrency(n: number | null | undefined) {
 
 function formatRpm(n: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
-
-function monthRangeLabel() {
-  const now = new Date();
-  const month = new Intl.DateTimeFormat("pt-BR", { month: "short" }).format(now);
-  const day = now.getDate();
-  return `01 a ${day} de ${month}`;
 }
 
 export function CreatorCard({ stats }: { stats: CreatorStats }) {
