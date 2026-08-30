@@ -1,10 +1,11 @@
-import { getCreatorEarnings } from "@/lib/data";
+import { getCreatorEarnings, getCreatorEarningsHistory } from "@/lib/data";
 import { AtualizarButton } from "@/app/components/AtualizarButton";
 import { CreatorCard } from "@/app/components/CreatorCard";
 import { RevenueStatCard } from "@/app/components/RevenueStatCard";
 import { GanhosVideoHistory } from "@/app/components/GanhosVideoHistory";
 import { TopVideosMonth } from "@/app/components/TopVideosMonth";
 import { NoCreatorDrawer } from "@/app/components/NoCreatorDrawer";
+import { EarningsHistoryChart } from "@/app/components/EarningsHistoryChart";
 
 export const revalidate = 0;
 
@@ -33,6 +34,7 @@ export default async function GanhosPage({
   searchParams: { page?: string };
 }) {
   const data = await getCreatorEarnings();
+  const earningsHistory = await getCreatorEarningsHistory();
   const page = Number(searchParams.page) || 1;
   const creatorsEarnings = data.creators.reduce((sum, c) => sum + c.totalEarnings, 0);
   const noCreatorEarnings = Math.round((data.periodEarnings - creatorsEarnings) * 100) / 100;
@@ -76,6 +78,8 @@ export default async function GanhosPage({
           videos={data.noHashtagVideos}
         />
       </div>
+
+      <EarningsHistoryChart history={earningsHistory} />
 
       <div className="creator-grid">
         {data.creators.map((stats) => (
