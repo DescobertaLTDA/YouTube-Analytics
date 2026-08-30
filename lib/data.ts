@@ -13,6 +13,7 @@ import {
 } from "./supabase";
 import { isShortVideo } from "./youtube-channel";
 import { CREATORS, CreatorKey, SHORTS_RPM, estimateEarnings } from "./creator-earnings";
+import { getDailyVideoRevenue } from "./youtube-revenue";
 import { getAllOrders, sumPaidAmount } from "./cakto";
 import { averageVphByFormat, VphFormat } from "./vph";
 import {
@@ -914,9 +915,14 @@ export async function getCreatorEarningsHistory(limit = 60): Promise<EarningsHis
 //
 // Diferente do total acumulado (getCreatorEarningsHistory), aqui NÃO dá
 // pra usar a receita real digitada manualmente — ela é um valor único do
-// período de 28 dias, sem quebra por dia — então esse gráfico sempre usa
-// a estimativa por RPM, mesmo quando os cards do topo estão mostrando o
-// valor real.
+// período de 28 dias, sem quebra por dia.
+//
+// Quando o OAuth da YouTube Analytics API estiver configurado (ver
+// lib/youtube-revenue.ts), esse ganho diário usa a receita OFICIAL do
+// YouTube por vídeo/dia sempre que ela já estiver disponível (costuma
+// vir com ~2 dias de atraso). Pros dias mais recentes, que ainda não têm
+// esse dado, ou se o OAuth não estiver configurado, cai pra estimativa
+// por RPM — igual funcionava antes.
 export async function getCreatorDailyEarnings(days = 30): Promise<EarningsHistoryPoint[]> {
   const db = getServiceSupabase();
 
@@ -935,6 +941,21 @@ export async function getCreatorDailyEarnings(days = 30): Promise<EarningsHistor
   }
   if (creatorError) {
     console.error("❌ Erro ao ler creator_videos:", creatorError);
+  }
+
+  // Receita OFICIAL por vídeo/dia (quando o OAuth estiver configurado).
+  // Busca uma vez só, cobrindo toda a janela pedida — bem mais barato que
+  // uma chamada por vídeo. `null` = integração não configurada (ou
+  // falhou), então nada aqui usa receita real e tudo cai pro RPM.
+  const today = new Date();
+  const startDate = new Date(today.getTime() - (days + 2) * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const endDate = today.toISOString().slice(0, 10);
+  const realRevenueRows = await getDailyVideoRevenue(startDate, endDate);
+  const realRevenueByKey = new Map<string, number>();
+  for (const row of realRevenueRows || []) {
+    realRevenueByKey.set(`${row.date}|${row.videoId}`, row.estimatedRevenue);
   }
 
   // Vídeo -> lista de criadores marcados nele. Colab (2+ hashtags) entra
@@ -981,7 +1002,11 @@ export async function getCreatorDailyEarnings(days = 30): Promise<EarningsHistor
       const deltaViews = Math.max((curr.view_count || 0) - (prev.view_count || 0), 0);
       if (deltaViews === 0) continue;
 
-      const dayEarnings = estimateEarnings(deltaViews, curr.is_short);
+      // Receita real desse vídeo nesse dia, se o YouTube já liberou;
+      // senão cai pra estimativa por RPM em cima do delta de views.
+      const realRevenue = realRevenueByKey.get(`${curr.captured_date}|${videoId}`);
+      const dayEarnings = realRevenue ?? estimateEarnings(deltaViews, curr.is_short);
+
       const bucket = byDate.get(curr.captured_date) || emptyBucket();
       for (const creator of creators) {
         bucket[creator].views += deltaViews;
