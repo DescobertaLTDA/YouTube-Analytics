@@ -39,7 +39,11 @@ const CONCURRENCY = 5;
 export async function getDailyVideoRevenue(
   startDate: string,
   endDate: string,
-  videoIds: string[]
+  videoIds: string[],
+  // Callback opcional pra quem chamar (ex: rota de backfill) conseguir
+  // expor a causa real de uma falha por vídeo na resposta HTTP, sem
+  // depender de olhar os logs da função na Vercel.
+  onError?: (videoId: string, status: number | null, message: string) => void
 ): Promise<DailyVideoRevenue[] | null> {
   const accessToken = await getYoutubeAccessToken();
   if (!accessToken) return null;
@@ -68,10 +72,12 @@ export async function getDailyVideoRevenue(
       });
 
       if (!response.ok) {
+        const text = await response.text();
         console.error(
           `❌ Erro ao buscar receita real do vídeo ${videoId} na YouTube Analytics API:`,
-          await response.text()
+          text
         );
+        onError?.(videoId, response.status, text);
         return;
       }
 
@@ -90,6 +96,7 @@ export async function getDailyVideoRevenue(
       }
     } catch (error) {
       console.error(`❌ Erro ao buscar receita real do vídeo ${videoId} na YouTube Analytics API:`, error);
+      onError?.(videoId, null, String(error));
     }
   }
 

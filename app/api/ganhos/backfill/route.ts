@@ -45,7 +45,18 @@ export async function GET(request: Request) {
       new Set(((videoIdRows as { youtube_video_id: string }[]) || []).map((v) => v.youtube_video_id))
     );
 
-    const rows = await getDailyVideoRevenue(startDate, endDate, videoIds);
+    // Guarda só os erros ÚNICOS (por status+mensagem) pra não devolver 121
+    // linhas repetidas quando todos os vídeos falham pelo mesmo motivo.
+    const errorsSeen = new Map<string, { status: number | null; message: string; exemploVideoId: string; ocorrencias: number }>();
+    const rows = await getDailyVideoRevenue(startDate, endDate, videoIds, (videoId, status, message) => {
+      const key = `${status}|${message}`;
+      const existing = errorsSeen.get(key);
+      if (existing) {
+        existing.ocorrencias++;
+      } else {
+        errorsSeen.set(key, { status, message, exemploVideoId: videoId, ocorrencias: 1 });
+      }
+    });
 
     if (rows === null) {
       return NextResponse.json(
@@ -60,7 +71,14 @@ export async function GET(request: Request) {
 
     if (rows.length === 0) {
       return NextResponse.json(
-        { success: true, message: "A API não retornou nenhuma linha pro período pedido.", inserted: 0 },
+        {
+          success: true,
+          message: "A API não retornou nenhuma linha pro período pedido.",
+          inserted: 0,
+          // Se todos os vídeos falharam pelo mesmo motivo, ele aparece aqui
+          // — isso substitui precisar abrir os logs da função na Vercel.
+          errosDaApi: Array.from(errorsSeen.values()),
+        },
         { status: 200 }
       );
     }
