@@ -2655,6 +2655,12 @@ footer.page-footer {
   }
 }
 
+/* Container sem caixa/borda pra tabela de vídeos — o Studio não coloca
+   a lista dentro de um card, ela fica solta direto na página. */
+.yt-section {
+  margin-bottom: 32px;
+}
+
 /* ===== TABELA ESTILO "CONTEÚDO DO CANAL" (YouTube Studio) =====
    Réplica visual da aba Vídeos do Studio: cabeçalho fixo, checkbox,
    miniatura com duração, título de 2 linhas, ícones de ação no hover
@@ -2662,10 +2668,7 @@ footer.page-footer {
    Usa Roboto, a fonte real da interface do YouTube. */
 .yt-table-wrap {
   font-family: var(--font-yt);
-  border: 1px solid var(--yt-border);
-  border-radius: 8px;
-  overflow: hidden;
-  background: #ffffff;
+  overflow-x: auto;
 }
 
 .yt-toolbar {
@@ -2754,12 +2757,14 @@ footer.page-footer {
 }
 
 .yt-checkbox {
+  display: inline-block;
   width: 18px;
   height: 18px;
   border: 2px solid #999999;
   border-radius: 2px;
   background: #fff;
   cursor: default;
+  flex-shrink: 0;
 }
 
 .yt-video-cell {

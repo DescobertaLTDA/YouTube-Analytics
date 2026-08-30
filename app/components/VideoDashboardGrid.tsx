@@ -122,7 +122,7 @@ export function VideoDashboardGrid({
   const pageRows = rows.slice(start, start + PAGE_SIZE);
 
   return (
-    <div className="changes-section">
+    <div className="yt-section">
       <div className="video-list-header">
         <span className="text-muted-small">
           {formatNumber(rows.length)} vídeo(s) no total · página {currentPage} de {totalPages}
