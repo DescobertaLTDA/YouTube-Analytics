@@ -20,8 +20,23 @@ const PAD_LEFT = 4;
 const PAD_RIGHT = 4;
 const FALLBACK_WIDTH = 700;
 
+const TZ = "America/Sao_Paulo";
+
+// Node (SSR) e o navegador (hidratação) podem embutir versões diferentes
+// dos dados ICU/CLDR. Isso faz com que o MESMO Intl.NumberFormat/
+// DateTimeFormat produza, pro mesmo valor, um espaço "normal" de um lado
+// e um espaço especial invisível (NBSP U+00A0, narrow no-break U+202F,
+// thin space U+2009 etc.) do outro — visualmente idênticos, mas bytes
+// diferentes, o que quebra a hidratação do React (#418/#425). Aqui a
+// gente normaliza qualquer um desses pra um espaço comum de propósito.
+function normalizeSpaces(s: string): string {
+  return s.replace(/[\u00A0\u202F\u2009\u2007\u2008]/g, " ");
+}
+
 function formatCurrency(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
+  return normalizeSpaces(
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n)
+  );
 }
 
 // `capturedAt` agora é uma data pura ("YYYY-MM-DD", sem hora), porque cada
@@ -33,19 +48,24 @@ function toLocalDate(iso: string): Date {
 }
 
 function formatDateShort(iso: string) {
-  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(toLocalDate(iso));
+  return normalizeSpaces(
+    new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", timeZone: TZ }).format(
+      toLocalDate(iso)
+    )
+  );
 }
 
 // "Dom., 23 de ago. de 2026" — mesmo formato do tooltip do YouTube Studio.
 function formatDateLong(iso: string) {
   const d = toLocalDate(iso);
-  const weekday = new Intl.DateTimeFormat("pt-BR", { weekday: "short" }).format(d);
+  const weekday = new Intl.DateTimeFormat("pt-BR", { weekday: "short", timeZone: TZ }).format(d);
   const rest = new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "short",
     year: "numeric",
+    timeZone: TZ,
   }).format(d);
-  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)}, ${rest}`;
+  return normalizeSpaces(`${weekday.charAt(0).toUpperCase()}${weekday.slice(1)}, ${rest}`);
 }
 
 // Transforma uma lista de pontos num path suave (spline Catmull-Rom
@@ -210,8 +230,7 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
                   strokeWidth={hoverIndex === i ? 2 : 1.5}
                 >
                   <title>
-                    {CREATORS.find((c) => c.key === key)?.label} · {formatDateLong(timestamps[i])} ·{" "}
-                    {formatCurrency(p.value)}
+                    {`${CREATORS.find((c) => c.key === key)?.label} · ${formatDateLong(timestamps[i])} · ${formatCurrency(p.value)}`}
                   </title>
                 </circle>
               ))}
