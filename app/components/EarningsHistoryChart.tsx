@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react
 import { CREATORS, CreatorKey } from "@/lib/creator-earnings";
 import { IconTrendingUp } from "@/app/components/Icons";
 import type { EarningsHistoryPoint } from "@/lib/data";
+import { formatCurrency, formatDateShort, formatDateLong } from "@/lib/format-br";
 
 // Uma cor por criador — vivas e bem distintas entre si, de propósito, pra
 // ficar fácil de diferenciar as linhas de longe.
@@ -22,51 +23,12 @@ const FALLBACK_WIDTH = 700;
 
 const TZ = "America/Sao_Paulo";
 
-// Node (SSR) e o navegador (hidratação) podem embutir versões diferentes
-// dos dados ICU/CLDR. Isso faz com que o MESMO Intl.NumberFormat/
-// DateTimeFormat produza, pro mesmo valor, um espaço "normal" de um lado
-// e um espaço especial invisível (NBSP U+00A0, narrow no-break U+202F,
-// thin space U+2009 etc.) do outro — visualmente idênticos, mas bytes
-// diferentes, o que quebra a hidratação do React (#418/#425). Aqui a
-// gente normaliza qualquer um desses pra um espaço comum de propósito.
-function normalizeSpaces(s: string): string {
-  return s.replace(/[\u00A0\u202F\u2009\u2007\u2008]/g, " ");
-}
-
-function formatCurrency(n: number) {
-  return normalizeSpaces(
-    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n)
-  );
-}
-
-// `capturedAt` agora é uma data pura ("YYYY-MM-DD", sem hora), porque cada
-// ponto representa um dia inteiro. `new Date("2026-08-28")` sozinho é
-// interpretado como UTC e pode "voltar" um dia em fusos negativos (ex:
-// Brasil) — completar com T00:00:00 força a leitura como horário local.
-function toLocalDate(iso: string): Date {
-  return new Date(iso.includes("T") ? iso : `${iso}T00:00:00`);
-}
-
-function formatDateShort(iso: string) {
-  return normalizeSpaces(
-    new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", timeZone: TZ }).format(
-      toLocalDate(iso)
-    )
-  );
-}
-
-// "Dom., 23 de ago. de 2026" — mesmo formato do tooltip do YouTube Studio.
-function formatDateLong(iso: string) {
-  const d = toLocalDate(iso);
-  const weekday = new Intl.DateTimeFormat("pt-BR", { weekday: "short", timeZone: TZ }).format(d);
-  const rest = new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: TZ,
-  }).format(d);
-  return normalizeSpaces(`${weekday.charAt(0).toUpperCase()}${weekday.slice(1)}, ${rest}`);
-}
+// formatCurrency/formatDateShort/formatDateLong vêm de "@/lib/format-br",
+// que já normaliza os espaços Unicode que causavam mismatch de hidratação
+// (React #418/#425) — ver comentário lá para o motivo. Aqui só embrulhamos
+// as versões "curta"/"longa" de data com o fuso de São Paulo.
+const shortDate = (iso: string) => formatDateShort(iso, { timeZone: TZ });
+const longDate = (iso: string) => formatDateLong(iso, { timeZone: TZ });
 
 // Transforma uma lista de pontos num path suave (spline Catmull-Rom
 // convertida pra curvas de Bézier cúbicas), no lugar da polyline reta.
@@ -230,7 +192,7 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
                   strokeWidth={hoverIndex === i ? 2 : 1.5}
                 >
                   <title>
-                    {`${CREATORS.find((c) => c.key === key)?.label} · ${formatDateLong(timestamps[i])} · ${formatCurrency(p.value)}`}
+                    {`${CREATORS.find((c) => c.key === key)?.label} · ${longDate(timestamps[i])} · ${formatCurrency(p.value)}`}
                   </title>
                 </circle>
               ))}
@@ -238,10 +200,10 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
           ))}
 
           <text x={PAD_LEFT} y={HEIGHT - 8} fontSize="11" fill="#909090">
-            {formatDateShort(timestamps[0])}
+            {shortDate(timestamps[0])}
           </text>
           <text x={width - PAD_RIGHT} y={HEIGHT - 8} fontSize="11" fill="#909090" textAnchor="end">
-            {formatDateShort(timestamps[timestamps.length - 1])}
+            {shortDate(timestamps[timestamps.length - 1])}
           </text>
         </svg>
 
@@ -253,7 +215,7 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
               width: TOOLTIP_WIDTH,
             }}
           >
-            <div className="chart-tooltip-date">{formatDateLong(timestamps[hoverIndex])}</div>
+            <div className="chart-tooltip-date">{longDate(timestamps[hoverIndex])}</div>
             {seriesPoints.map(({ key, points }) => (
               <div className="chart-tooltip-row" key={key}>
                 <span className="chart-tooltip-dot" style={{ background: CREATOR_COLORS[key] }} />

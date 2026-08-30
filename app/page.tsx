@@ -7,27 +7,9 @@ import { TopVideosMonth } from "@/app/components/TopVideosMonth";
 import { NoCreatorDrawer } from "@/app/components/NoCreatorDrawer";
 import { EarningsHistoryChart } from "@/app/components/EarningsHistoryChart";
 import { monthRangeLabel, monthRangeFullLabel, daysLeftInMonth, nowInSaoPaulo } from "@/lib/date-br";
+import { formatNumber, formatCurrency, formatDateFull as formatDate } from "@/lib/format-br";
 
 export const revalidate = 0;
-
-function formatNumber(n: number | null | undefined) {
-  if (n == null) return "—";
-  return new Intl.NumberFormat("pt-BR").format(Math.round(n));
-}
-
-function formatCurrency(n: number | null | undefined) {
-  if (n == null) return "—";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
-
-function formatDate(iso: string | null | undefined) {
-  if (!iso) return "—";
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(iso));
-}
 
 export default async function GanhosPage({
   searchParams,

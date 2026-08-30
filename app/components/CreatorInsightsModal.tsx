@@ -17,15 +17,16 @@ import {
   SHORTS_REVENUE_GOAL,
   LONG_REVENUE_GOAL,
 } from "@/lib/creator-earnings";
+import { formatNumber as formatNumberBr, formatCurrency as formatCurrencyBr } from "@/lib/format-br";
 
 function formatNumber(n: number | null | undefined) {
   if (n == null || !isFinite(n)) return "—";
-  return new Intl.NumberFormat("pt-BR").format(Math.round(n));
+  return formatNumberBr(n);
 }
 
 function formatCurrency(n: number | null | undefined) {
   if (n == null || !isFinite(n)) return "—";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
+  return formatCurrencyBr(n);
 }
 
 // Média simples: total / contagem. Retorna null quando não há vídeos ainda,

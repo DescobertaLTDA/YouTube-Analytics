@@ -2,10 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-function formatCurrency(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
+import { formatCurrency } from "@/lib/format-br";
 
 export function RevenueStatCard({
   periodEarnings,

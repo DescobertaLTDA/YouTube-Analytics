@@ -1,15 +1,7 @@
 import type { GanhosVideoRow } from "@/lib/data";
 import { IconTrophy } from "@/app/components/Icons";
 import { monthRangeLabel } from "@/lib/date-br";
-
-function formatNumber(n: number | null | undefined) {
-  if (n == null) return "—";
-  return new Intl.NumberFormat("pt-BR").format(Math.round(n));
-}
-
-function formatCurrency(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
+import { formatNumber, formatCurrency } from "@/lib/format-br";
 
 export function TopVideosMonth({ videos }: { videos: GanhosVideoRow[] }) {
   return (

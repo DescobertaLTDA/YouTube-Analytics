@@ -12,16 +12,7 @@ import {
   SHORTS_REVENUE_GOAL,
   SHORTS_VIEWS_GOAL,
 } from "@/lib/creator-earnings";
-
-function formatNumber(n: number | null | undefined) {
-  if (n == null) return "—";
-  return new Intl.NumberFormat("pt-BR").format(Math.round(n));
-}
-
-function formatCurrency(n: number | null | undefined) {
-  if (n == null) return "—";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
+import { formatNumber, formatCurrency } from "@/lib/format-br";
 
 function GoalRow({
   icon,

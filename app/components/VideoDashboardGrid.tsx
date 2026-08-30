@@ -3,25 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { VideoWithStats } from "@/lib/data";
+import { formatNumber, formatCurrency, formatDateFull as formatDate } from "@/lib/format-br";
 
 const PAGE_SIZE = 10;
-
-function formatNumber(n: number | null | undefined) {
-  if (n == null) return "—";
-  return new Intl.NumberFormat("pt-BR").format(Math.round(n));
-}
-
-function formatCurrency(n: number | null | undefined) {
-  if (n == null) return "—";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
-
-function formatDate(iso: string | null | undefined) {
-  if (!iso) return "—";
-  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).format(
-    new Date(iso)
-  );
-}
 
 function formatDuration(seconds: number | null | undefined) {
   if (!seconds || seconds <= 0) return null;

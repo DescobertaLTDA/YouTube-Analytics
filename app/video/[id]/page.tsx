@@ -12,39 +12,9 @@ import {
   IconTrendingDown,
   IconArrowRight,
 } from "@/app/components/Icons";
+import { formatNumber, formatCurrency, formatDateTime as formatDate, formatDateShort as formatChartDate } from "@/lib/format-br";
 
 export const revalidate = 0;
-
-function formatNumber(n: number | null | undefined) {
-  if (n == null) return "—";
-  return new Intl.NumberFormat("pt-BR").format(Math.round(n));
-}
-
-function formatCurrency(n: number | null | undefined) {
-  if (n == null) return "—";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
-
-function formatDate(iso: string | null | undefined) {
-  if (!iso) return "—";
-  return new Intl.DateTimeFormat("pt-BR", { 
-    day: "2-digit", 
-    month: "short", 
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(new Date(iso));
-}
-
-// Formata data apenas para o gráfico (mais curta)
-function formatChartDate(iso: string | null | undefined) {
-  if (!iso) return "—";
-  const date = new Date(iso);
-  return date.toLocaleDateString('pt-BR', { 
-    day: '2-digit', 
-    month: 'short'
-  });
-}
 
 async function getVideoData(videoId: string) {
   const allData = await getAllVideoRows();

@@ -1,17 +1,8 @@
 import { getTranscripts, getVideoOptions } from "@/lib/data";
 import { TranscriptForm } from "@/app/components/TranscriptForm";
+import { formatDateTime } from "@/lib/format-br";
 
 export const revalidate = 0;
-
-function formatDateTime(iso: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(iso));
-}
 
 function formatDuration(seconds: number | null) {
   if (seconds == null) return "—";

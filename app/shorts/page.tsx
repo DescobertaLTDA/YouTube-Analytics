@@ -1,16 +1,8 @@
 import { getAllVideoRows } from "@/lib/data";
 import { VideoDashboardGrid } from "@/app/components/VideoDashboardGrid";
+import { formatDateFull as formatDate } from "@/lib/format-br";
 
 export const revalidate = 0;
-
-function formatDate(iso: string | null | undefined) {
-  if (!iso) return "—";
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(iso));
-}
 
 export default async function ShortsPage({
   searchParams,

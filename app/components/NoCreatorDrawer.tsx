@@ -2,28 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { GanhosVideoRow } from "@/lib/data";
-
-function formatNumber(n: number | null | undefined) {
-  if (n == null) return "—";
-  return new Intl.NumberFormat("pt-BR").format(Math.round(n));
-}
-
-function formatCurrency(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
-
-// `new Date("2026-08-28")` sozinho é interpretado como UTC e pode "voltar"
-// um dia em fusos negativos (ex: Brasil) — completar com T00:00:00 força a
-// leitura como horário local, igual server e client, evitando mismatch de
-// hidratação do React.
-function toLocalDate(iso: string): Date {
-  return new Date(iso.includes("T") ? iso : `${iso}T00:00:00`);
-}
-
-function formatDate(iso: string | null) {
-  if (!iso) return "—";
-  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(toLocalDate(iso));
-}
+import { formatNumber, formatCurrency, formatDateShort as formatDate } from "@/lib/format-br";
 
 function formatDuration(seconds: number | null) {
   if (seconds == null) return "—";

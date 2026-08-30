@@ -2,22 +2,9 @@ import Link from "next/link";
 import type { GanhosVideoRow } from "@/lib/data";
 import { computeVph, formatMultiplier, formatVph, vphTier, VphFormat } from "@/lib/vph";
 import { IconFilm } from "@/app/components/Icons";
+import { formatNumber, formatCurrency, formatDateShort as formatDate } from "@/lib/format-br";
 
 const PAGE_SIZE = 10;
-
-function formatNumber(n: number | null | undefined) {
-  if (n == null) return "—";
-  return new Intl.NumberFormat("pt-BR").format(Math.round(n));
-}
-
-function formatCurrency(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
-
-function formatDate(iso: string | null) {
-  if (!iso) return "—";
-  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(new Date(iso));
-}
 
 function formatDuration(seconds: number | null) {
   if (seconds == null) return "—";

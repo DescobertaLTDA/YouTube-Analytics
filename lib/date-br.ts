@@ -3,6 +3,8 @@
 // usuário). Isso evita mismatches de hidratação: sem isso, o servidor
 // (UTC) e o cliente (America/Sao_Paulo) podem calcular dia/mês
 // diferentes para o mesmo instante, gerando os erros React #418/#423.
+import { normalizeSpaces } from "@/lib/format-br";
+
 const TZ = "America/Sao_Paulo";
 
 export function nowInSaoPaulo(): Date {
@@ -35,14 +37,14 @@ export function monthRangeLabel(): string {
   const now = nowInSaoPaulo();
   const month = new Intl.DateTimeFormat("pt-BR", { month: "short" }).format(now);
   const day = now.getDate();
-  return `01 a ${day} de ${month}`;
+  return normalizeSpaces(`01 a ${day} de ${month}`);
 }
 
 export function monthRangeFullLabel(): string {
   const now = nowInSaoPaulo();
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const month = new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(now);
-  return `01 a ${lastDay} de ${month}`;
+  return normalizeSpaces(`01 a ${lastDay} de ${month}`);
 }
 
 export function daysLeftInMonth(): number {

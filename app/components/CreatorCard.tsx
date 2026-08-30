@@ -7,6 +7,7 @@ import { CreatorGoalsButton } from "@/app/components/CreatorGoalsButton";
 import { CreatorInsightsModal } from "@/app/components/CreatorInsightsModal";
 import { LONG_RPM, SHORTS_RPM } from "@/lib/creator-earnings";
 import { IconFilm, IconZap, IconDollar, IconCalendar, IconCart } from "@/app/components/Icons";
+import { formatNumber, formatCurrency } from "@/lib/format-br";
 
 const SHORTS_GOAL = 30;
 const REVENUE_GOAL = 1700;
@@ -20,18 +21,8 @@ function ProgressBar({ value, goal }: { value: number; goal: number }) {
   );
 }
 
-function formatNumber(n: number | null | undefined) {
-  if (n == null) return "—";
-  return new Intl.NumberFormat("pt-BR").format(Math.round(n));
-}
-
-function formatCurrency(n: number | null | undefined) {
-  if (n == null) return "—";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
-
 function formatRpm(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
+  return formatCurrency(n);
 }
 
 export function CreatorCard({

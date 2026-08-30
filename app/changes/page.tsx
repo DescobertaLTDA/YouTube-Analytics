@@ -1,5 +1,6 @@
 import { getServiceSupabase } from "@/lib/supabase";
 import { IconBarChart, IconTrendingUp, IconTrendingDown, IconArrowRight } from "@/app/components/Icons";
+import { formatDateFull } from "@/lib/format-br";
 
 export const revalidate = 0;
 
@@ -140,7 +141,7 @@ export default async function ChangesPage() {
                         </span>
                       </div>
                       <span className="change-date-detailed">
-                        {new Date(change.detected_at).toLocaleDateString("pt-BR")}
+                        {formatDateFull(change.detected_at)}
                       </span>
                     </div>
                   ))}

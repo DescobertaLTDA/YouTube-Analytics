@@ -6,6 +6,8 @@
 // considerado "viral" se estiver bem acima da média de outros Shorts, e o
 // mesmo vale pra vídeo longo.
 
+import { formatNumber } from "@/lib/format-br";
+
 export type VphFormat = "short" | "long";
 
 export type VphVideoLike = {
@@ -60,8 +62,7 @@ export function vphTier(multiplier: number | null): VphTier {
 }
 
 export function formatVph(vph: number | null) {
-  if (vph == null) return "—";
-  return new Intl.NumberFormat("pt-BR").format(Math.round(vph));
+  return formatNumber(vph);
 }
 
 export function formatMultiplier(multiplier: number | null) {
