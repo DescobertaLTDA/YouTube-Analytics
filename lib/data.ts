@@ -867,7 +867,11 @@ export type EarningsHistoryPoint = {
 
 // Histórico de receita por criador — um ponto por sincronização (clique em
 // "Atualizar"), gravado em `creator_earnings_snapshots` pela rota
-// /api/ganhos/sync. Alimenta o gráfico de linha da aba Ganhos.
+// /api/ganhos/sync. É o TOTAL ACUMULADO da janela de 28 dias naquele
+// instante (mesmo valor que aparece nos cards), não o ganho daquele dia
+// isolado — por isso não é usado no gráfico de linha (ver
+// getCreatorDailyEarnings abaixo). Mantido por se um dia for útil mostrar
+// a evolução do acumulado do período em vez do dia a dia.
 export async function getCreatorEarningsHistory(limit = 60): Promise<EarningsHistoryPoint[]> {
   const db = getServiceSupabase();
 
@@ -892,4 +896,117 @@ export async function getCreatorEarningsHistory(limit = 60): Promise<EarningsHis
       totalEarnings: r.total_earnings,
       totalViews: r.total_views,
     }));
+}
+
+// Ganho estimado POR DIA (não acumulado) de cada criador — o que alimenta
+// o gráfico de linha da aba Ganhos.
+//
+// Como calcula: `creator_video_view_history` já guarda, pra cada vídeo do
+// canal, o view_count "fechado" de cada dia (1 linha por vídeo por dia,
+// não importa quantas vezes o sync rodou naquele dia — é upsert por
+// youtube_video_id + captured_date). Então pra cada vídeo comparamos o
+// view_count de um dia com o do dia anterior: a diferença é exatamente
+// quantas views aquele vídeo ganhou NAQUELE dia. Aplicamos o RPM do
+// formato dele (Shorts ou longo) só em cima dessa fatia diária, e
+// somamos por criador usando a marcação de hashtag atual de
+// `creator_videos` (colab conta pra cada criador inteiro, igual o resto
+// da aba Ganhos já faz).
+//
+// Diferente do total acumulado (getCreatorEarningsHistory), aqui NÃO dá
+// pra usar a receita real digitada manualmente — ela é um valor único do
+// período de 28 dias, sem quebra por dia — então esse gráfico sempre usa
+// a estimativa por RPM, mesmo quando os cards do topo estão mostrando o
+// valor real.
+export async function getCreatorDailyEarnings(days = 30): Promise<EarningsHistoryPoint[]> {
+  const db = getServiceSupabase();
+
+  const [{ data: historyData, error: historyError }, { data: creatorVideoRows, error: creatorError }] =
+    await Promise.all([
+      db
+        .from("creator_video_view_history")
+        .select("youtube_video_id, view_count, captured_date, is_short")
+        .order("captured_date", { ascending: true }),
+      db.from("creator_videos").select("creator, youtube_video_id"),
+    ]);
+
+  if (historyError) {
+    console.error("❌ Erro ao ler creator_video_view_history:", historyError);
+    return [];
+  }
+  if (creatorError) {
+    console.error("❌ Erro ao ler creator_videos:", creatorError);
+  }
+
+  // Vídeo -> lista de criadores marcados nele. Colab (2+ hashtags) entra
+  // uma vez pra cada criador, de propósito — mesmo critério usado no
+  // resto da aba Ganhos.
+  const creatorsByVideo = new Map<string, CreatorKey[]>();
+  for (const row of (creatorVideoRows as { creator: string; youtube_video_id: string }[]) || []) {
+    if (!CREATORS.some((c) => c.key === row.creator)) continue; // ignora "" / "SEM DONO"
+    const list = creatorsByVideo.get(row.youtube_video_id) || [];
+    list.push(row.creator as CreatorKey);
+    creatorsByVideo.set(row.youtube_video_id, list);
+  }
+
+  type HistoryRow = { youtube_video_id: string; view_count: number; captured_date: string; is_short: boolean };
+  const byVideo = new Map<string, HistoryRow[]>();
+  for (const row of (historyData as HistoryRow[]) || []) {
+    const list = byVideo.get(row.youtube_video_id) || [];
+    list.push(row);
+    byVideo.set(row.youtube_video_id, list);
+  }
+
+  type Bucket = Record<CreatorKey, { views: number; earnings: number }>;
+  const emptyBucket = (): Bucket => ({
+    lucas: { views: 0, earnings: 0 },
+    matheus: { views: 0, earnings: 0 },
+    rafael: { views: 0, earnings: 0 },
+  });
+
+  // data (YYYY-MM-DD) -> bucket por criador
+  const byDate = new Map<string, Bucket>();
+
+  for (const [videoId, rows] of byVideo) {
+    const creators = creatorsByVideo.get(videoId);
+    if (!creators || creators.length === 0) continue; // vídeo sem hashtag não entra no gráfico por criador
+
+    const sorted = rows.slice().sort((a, b) => (a.captured_date < b.captured_date ? -1 : 1));
+
+    for (let i = 1; i < sorted.length; i++) {
+      const prev = sorted[i - 1];
+      const curr = sorted[i];
+      // Delta de views entre um dia fechado e o anterior. Nunca negativo
+      // (recontagem do YouTube, vídeo reprocessado etc. não geram ganho
+      // negativo no gráfico — só ficam de fora).
+      const deltaViews = Math.max((curr.view_count || 0) - (prev.view_count || 0), 0);
+      if (deltaViews === 0) continue;
+
+      const dayEarnings = estimateEarnings(deltaViews, curr.is_short);
+      const bucket = byDate.get(curr.captured_date) || emptyBucket();
+      for (const creator of creators) {
+        bucket[creator].views += deltaViews;
+        bucket[creator].earnings += dayEarnings;
+      }
+      byDate.set(curr.captured_date, bucket);
+    }
+  }
+
+  const dates = Array.from(byDate.keys())
+    .sort()
+    .slice(-days);
+
+  const points: EarningsHistoryPoint[] = [];
+  for (const date of dates) {
+    const bucket = byDate.get(date)!;
+    for (const { key } of CREATORS) {
+      points.push({
+        capturedAt: date,
+        creator: key,
+        totalEarnings: Math.round(bucket[key].earnings * 100) / 100,
+        totalViews: bucket[key].views,
+      });
+    }
+  }
+
+  return points;
 }

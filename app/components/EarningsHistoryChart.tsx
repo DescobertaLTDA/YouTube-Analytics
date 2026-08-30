@@ -24,22 +24,21 @@ function formatCurrency(n: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 }
 
-function formatDateShort(iso: string) {
-  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(new Date(iso));
+// `capturedAt` agora é uma data pura ("YYYY-MM-DD", sem hora), porque cada
+// ponto representa um dia inteiro. `new Date("2026-08-28")` sozinho é
+// interpretado como UTC e pode "voltar" um dia em fusos negativos (ex:
+// Brasil) — completar com T00:00:00 força a leitura como horário local.
+function toLocalDate(iso: string): Date {
+  return new Date(iso.includes("T") ? iso : `${iso}T00:00:00`);
 }
 
-function formatDateTime(iso: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(iso));
+function formatDateShort(iso: string) {
+  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(toLocalDate(iso));
 }
 
 // "Dom., 23 de ago. de 2026" — mesmo formato do tooltip do YouTube Studio.
 function formatDateLong(iso: string) {
-  const d = new Date(iso);
+  const d = toLocalDate(iso);
   const weekday = new Intl.DateTimeFormat("pt-BR", { weekday: "short" }).format(d);
   const rest = new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
@@ -103,9 +102,9 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
       <div className="chart-section">
         <h2 className="icon-label"><IconTrendingUp /> Receita ao longo do tempo</h2>
         <div className="chart-empty">
-          Ainda não tem histórico suficiente pra desenhar o gráfico. Cada clique em
-          &quot;Atualizar&quot; grava um ponto novo — depois de sincronizar em pelo menos 2 dias
-          diferentes a linha aparece aqui.
+          Ainda não tem histórico suficiente pra desenhar o gráfico. O sync grava as views de
+          cada vídeo por dia — depois de ter pelo menos 2 dias diferentes registrados, a linha
+          aparece aqui.
         </div>
       </div>
     );
@@ -162,6 +161,7 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
   return (
     <div className="chart-section">
       <h2 className="icon-label"><IconTrendingUp /> Receita ao longo do tempo</h2>
+      <p className="chart-subtitle">Ganho estimado por dia (RPM) — não o acumulado do período de 28 dias.</p>
 
       <div className="chart-line-wrapper" ref={wrapperRef}>
         <svg
@@ -210,7 +210,7 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
                   strokeWidth={hoverIndex === i ? 2 : 1.5}
                 >
                   <title>
-                    {CREATORS.find((c) => c.key === key)?.label} · {formatDateTime(timestamps[i])} ·{" "}
+                    {CREATORS.find((c) => c.key === key)?.label} · {formatDateLong(timestamps[i])} ·{" "}
                     {formatCurrency(p.value)}
                   </title>
                 </circle>

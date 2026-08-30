@@ -594,6 +594,13 @@ a {
   color: var(--ink);
 }
 
+.chart-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: -12px;
+  margin-bottom: 16px;
+}
+
 .chart-container {
   padding: 8px 0;
 }

@@ -1,4 +1,4 @@
-import { getCreatorEarnings, getCreatorEarningsHistory } from "@/lib/data";
+import { getCreatorEarnings, getCreatorDailyEarnings } from "@/lib/data";
 import { AtualizarButton } from "@/app/components/AtualizarButton";
 import { CreatorCard } from "@/app/components/CreatorCard";
 import { RevenueStatCard } from "@/app/components/RevenueStatCard";
@@ -34,7 +34,7 @@ export default async function GanhosPage({
   searchParams: { page?: string };
 }) {
   const data = await getCreatorEarnings();
-  const earningsHistory = await getCreatorEarningsHistory();
+  const earningsHistory = await getCreatorDailyEarnings();
   const page = Number(searchParams.page) || 1;
   const creatorsEarnings = data.creators.reduce((sum, c) => sum + c.totalEarnings, 0);
   const noCreatorEarnings = Math.round((data.periodEarnings - creatorsEarnings) * 100) / 100;
