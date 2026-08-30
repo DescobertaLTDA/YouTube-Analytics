@@ -25,7 +25,7 @@ export default async function GanhosPage({
   const monthFullLabel = monthRangeFullLabel();
   const daysLeft = daysLeftInMonth();
   const daysElapsed = nowInSaoPaulo().getDate();
-  const earningsHistory = await getCreatorDailyEarnings();
+  const earningsHistory = await getCreatorDailyEarnings(28);
   const page = Number(searchParams.page) || 1;
   const creatorsEarnings = data.creators.reduce((sum, c) => sum + c.totalEarnings, 0);
   const noCreatorEarnings = Math.round((data.periodEarnings - creatorsEarnings) * 100) / 100;

@@ -923,7 +923,7 @@ export async function getCreatorEarningsHistory(limit = 60): Promise<EarningsHis
 // vir com ~2 dias de atraso). Pros dias mais recentes, que ainda não têm
 // esse dado, ou se o OAuth não estiver configurado, cai pra estimativa
 // por RPM — igual funcionava antes.
-export async function getCreatorDailyEarnings(days = 30): Promise<EarningsHistoryPoint[]> {
+export async function getCreatorDailyEarnings(days = 28): Promise<EarningsHistoryPoint[]> {
   const db = getServiceSupabase();
 
   const [{ data: historyData, error: historyError }, { data: creatorVideoRows, error: creatorError }] =
