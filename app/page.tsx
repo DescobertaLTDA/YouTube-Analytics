@@ -6,6 +6,7 @@ import { GanhosVideoHistory } from "@/app/components/GanhosVideoHistory";
 import { TopVideosMonth } from "@/app/components/TopVideosMonth";
 import { NoCreatorDrawer } from "@/app/components/NoCreatorDrawer";
 import { EarningsHistoryChart } from "@/app/components/EarningsHistoryChart";
+import { monthRangeLabel, monthRangeFullLabel, daysLeftInMonth, nowInSaoPaulo } from "@/lib/date-br";
 
 export const revalidate = 0;
 
@@ -34,6 +35,14 @@ export default async function GanhosPage({
   searchParams: { page?: string };
 }) {
   const data = await getCreatorEarnings();
+
+  // Calculado uma única vez aqui (server component) e passado como prop
+  // adiante — evita que os client components recalculem "agora" de novo
+  // na hidratação, o que já causou mismatches de #418/#423 no passado.
+  const monthLabel = monthRangeLabel();
+  const monthFullLabel = monthRangeFullLabel();
+  const daysLeft = daysLeftInMonth();
+  const daysElapsed = nowInSaoPaulo().getDate();
   const earningsHistory = await getCreatorDailyEarnings();
   const page = Number(searchParams.page) || 1;
   const creatorsEarnings = data.creators.reduce((sum, c) => sum + c.totalEarnings, 0);
@@ -83,7 +92,14 @@ export default async function GanhosPage({
 
       <div className="creator-grid">
         {data.creators.map((stats) => (
-          <CreatorCard key={stats.key} stats={stats} />
+          <CreatorCard
+            key={stats.key}
+            stats={stats}
+            monthLabel={monthLabel}
+            monthFullLabel={monthFullLabel}
+            daysLeft={daysLeft}
+            daysElapsed={daysElapsed}
+          />
         ))}
       </div>
 

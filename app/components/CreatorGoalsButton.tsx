@@ -12,7 +12,6 @@ import {
   SHORTS_REVENUE_GOAL,
   SHORTS_VIEWS_GOAL,
 } from "@/lib/creator-earnings";
-import { monthRangeFullLabel } from "@/lib/date-br";
 
 function formatNumber(n: number | null | undefined) {
   if (n == null) return "—";
@@ -55,7 +54,13 @@ function GoalRow({
   );
 }
 
-export function CreatorGoalsButton({ stats }: { stats: CreatorStats }) {
+export function CreatorGoalsButton({
+  stats,
+  monthFullLabel,
+}: {
+  stats: CreatorStats;
+  monthFullLabel: string;
+}) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -83,7 +88,7 @@ export function CreatorGoalsButton({ stats }: { stats: CreatorStats }) {
             <div className="drawer-header">
               <div>
                 <h2>Metas de {stats.label}</h2>
-                <p className="drawer-subtitle">{monthRangeFullLabel()}</p>
+                <p className="drawer-subtitle">{monthFullLabel}</p>
               </div>
               <button type="button" className="modal-close" onClick={() => setOpen(false)} aria-label="Fechar">
                 ×

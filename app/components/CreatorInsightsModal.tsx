@@ -17,7 +17,6 @@ import {
   SHORTS_REVENUE_GOAL,
   LONG_REVENUE_GOAL,
 } from "@/lib/creator-earnings";
-import { daysLeftInMonth, nowInSaoPaulo } from "@/lib/date-br";
 
 function formatNumber(n: number | null | undefined) {
   if (n == null || !isFinite(n)) return "—";
@@ -67,9 +66,13 @@ function StatBlock({
 
 export function CreatorInsightsModal({
   stats,
+  daysLeft,
+  daysElapsed,
   onClose,
 }: {
   stats: CreatorStats;
+  daysLeft: number;
+  daysElapsed: number;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -117,7 +120,6 @@ export function CreatorInsightsModal({
 
   // Ritmo diário necessário até o fim do mês pra bater a meta de receita
   // total (Shorts + longos), com base no que já falta e nos dias restantes.
-  const daysLeft = daysLeftInMonth();
   const totalRevenueGoal = SHORTS_REVENUE_GOAL + LONG_REVENUE_GOAL;
   const totalRevenueMissing = Math.max(totalRevenueGoal - stats.monthEarnings, 0);
   const dailyPaceNeeded = totalRevenueMissing > 0 ? totalRevenueMissing / daysLeft : 0;
@@ -125,7 +127,6 @@ export function CreatorInsightsModal({
   // Projeção simples de fechamento do mês: ganhos já feitos + (ritmo médio
   // diário observado até agora × dias restantes). Usa a mesma janela do
   // "Ganhos do mês" do card.
-  const daysElapsed = nowInSaoPaulo().getDate();
   const dailyPaceObserved = daysElapsed > 0 ? stats.monthEarnings / daysElapsed : 0;
   const projectedMonthEnd = stats.monthEarnings + dailyPaceObserved * (daysLeft - 1);
 

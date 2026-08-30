@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { VideoWithStats } from "@/lib/data";
 
 const PAGE_SIZE = 10;
@@ -35,9 +38,32 @@ function formatDuration(seconds: number | null | undefined) {
    imitando a barra de ações rápidas do Studio (editar, analytics,
    comentários, monetização, mais opções). */
 function HoverIcons({ videoId }: { videoId: string }) {
+  const router = useRouter();
   return (
     <div className="yt-hover-icons">
-      <Link href={`/video/${videoId}`} className="yt-hover-icon" title="Detalhes">
+      <span
+        className="yt-hover-icon"
+        title="Detalhes"
+        role="link"
+        tabIndex={0}
+        onClick={(e) => {
+          // Não pode ser um <Link>/<a> aqui: esse ícone já fica dentro do
+          // <Link> que envolve a linha inteira, e <a> dentro de <a> é HTML
+          // inválido — o navegador desaninha isso ao parsear o HTML do
+          // servidor, e a árvore que sobra diverge da que o React espera
+          // hidratar (era exatamente a causa dos erros #418/#423).
+          e.preventDefault();
+          e.stopPropagation();
+          router.push(`/video/${videoId}`);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            e.stopPropagation();
+            router.push(`/video/${videoId}`);
+          }
+        }}
+      >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
           <path
             d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3Z"
@@ -46,7 +72,7 @@ function HoverIcons({ videoId }: { videoId: string }) {
             strokeLinejoin="round"
           />
         </svg>
-      </Link>
+      </span>
       <span className="yt-hover-icon" title="Analytics">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
           <path d="M4 20V10M12 20V4M20 20v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />

@@ -7,7 +7,6 @@ import { CreatorGoalsButton } from "@/app/components/CreatorGoalsButton";
 import { CreatorInsightsModal } from "@/app/components/CreatorInsightsModal";
 import { LONG_RPM, SHORTS_RPM } from "@/lib/creator-earnings";
 import { IconFilm, IconZap, IconDollar, IconCalendar, IconCart } from "@/app/components/Icons";
-import { monthRangeLabel } from "@/lib/date-br";
 
 const SHORTS_GOAL = 30;
 const REVENUE_GOAL = 1700;
@@ -35,7 +34,22 @@ function formatRpm(n: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 }
 
-export function CreatorCard({ stats }: { stats: CreatorStats }) {
+export function CreatorCard({
+  stats,
+  monthLabel,
+  monthFullLabel,
+  daysLeft,
+  daysElapsed,
+}: {
+  stats: CreatorStats;
+  // Labels de data (fuso São Paulo) calculados uma vez no server component
+  // pai e repassados como prop — nunca recalculados aqui dentro, pra não
+  // arriscar diferença entre o render do servidor e o da hidratação.
+  monthLabel: string;
+  monthFullLabel: string;
+  daysLeft: number;
+  daysElapsed: number;
+}) {
   const [insightsOpen, setInsightsOpen] = useState(false);
 
   return (
@@ -103,14 +117,14 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
         </div>
 
         <div onClick={(e) => e.stopPropagation()}>
-          <CreatorGoalsButton stats={stats} />
+          <CreatorGoalsButton stats={stats} monthFullLabel={monthFullLabel} />
         </div>
       </div>
 
       <div className="creator-breakdown-item creator-month">
         <div className="creator-breakdown-header">
           <span className="icon-label">
-            <IconCalendar /> Ganhos do mês ({monthRangeLabel()})
+            <IconCalendar /> Ganhos do mês ({monthLabel})
           </span>
           <span className="text-muted-small">{formatNumber(stats.monthViews)} views</span>
         </div>
@@ -201,7 +215,12 @@ export function CreatorCard({ stats }: { stats: CreatorStats }) {
 
       {insightsOpen && (
         <div onClick={(e) => e.stopPropagation()}>
-          <CreatorInsightsModal stats={stats} onClose={() => setInsightsOpen(false)} />
+          <CreatorInsightsModal
+            stats={stats}
+            daysLeft={daysLeft}
+            daysElapsed={daysElapsed}
+            onClose={() => setInsightsOpen(false)}
+          />
         </div>
       )}
     </div>
