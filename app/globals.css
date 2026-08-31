@@ -2143,6 +2143,21 @@ footer.page-footer {
   white-space: nowrap;
 }
 
+/* Grupo dos botões Atualizar + Carregar CSV (aba Ganhos) */
+.ganhos-actions-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .ganhos-actions-group {
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+  }
+}
+
 /* Botão Atualizar */
 .atualizar-wrap {
   position: relative;

@@ -41,10 +41,22 @@ export const LONG_VIEWS_GOAL = Math.round((LONG_REVENUE_GOAL * 1000) / LONG_RPM)
  * - Vídeo longo: views * RPM / 1000 (sem o /2).
  *
  * `isShort` decide qual RPM usar — Shorts (R$0,32) ou vídeo longo (R$5,50).
+ *
+ * `realRpm` é o RPM real daquele vídeo específico, importado via CSV do
+ * YouTube Studio (tabela `video_rpm_real` — ver `lib/rpm-real.ts`). Quando
+ * informado (não nulo/undefined), substitui o RPM fixo no cálculo; o /2 de
+ * Shorts continua se aplicando normalmente, porque é uma regra de split
+ * nossa, não algo que o YouTube Studio reporta. Sem `realRpm`, o
+ * comportamento é idêntico ao de antes (RPM fixo) — nenhuma chamada
+ * existente precisa mudar.
  */
-export function estimateEarnings(views: number, isShort: boolean = true): number {
+export function estimateEarnings(
+  views: number,
+  isShort: boolean = true,
+  realRpm?: number | null
+): number {
   if (!views) return 0;
-  const rpm = isShort ? SHORTS_RPM : LONG_RPM;
+  const rpm = realRpm != null ? realRpm : isShort ? SHORTS_RPM : LONG_RPM;
   const raw = isShort ? (views * rpm) / 1000 / 2 : (views * rpm) / 1000;
   return Math.round(raw * 100) / 100;
 }

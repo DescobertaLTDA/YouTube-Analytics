@@ -1,5 +1,6 @@
 import { getCreatorEarnings, getCreatorDailyEarnings } from "@/lib/data";
 import { AtualizarButton } from "@/app/components/AtualizarButton";
+import { CarregarCsvButton } from "@/app/components/CarregarCsvButton";
 import { CreatorCard } from "@/app/components/CreatorCard";
 import { RevenueStatCard } from "@/app/components/RevenueStatCard";
 import { GanhosVideoHistory } from "@/app/components/GanhosVideoHistory";
@@ -42,7 +43,10 @@ export default async function GanhosPage({
           </p>
         </div>
         <div className="header-row-actions header-row-actions-inline">
-          <AtualizarButton />
+          <div className="ganhos-actions-group">
+            <AtualizarButton />
+            <CarregarCsvButton />
+          </div>
           <div className="sync-pill">
             última sincronização: <strong>{formatDate(data.lastSyncedAt)}</strong>
           </div>

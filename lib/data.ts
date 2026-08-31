@@ -13,6 +13,7 @@ import {
 } from "./supabase";
 import { isShortVideo } from "./youtube-channel";
 import { CREATORS, CreatorKey, SHORTS_RPM, estimateEarnings } from "./creator-earnings";
+import { getRealRpmMap, sumEstimatedEarnings } from "./rpm-real";
 import { getDailyVideoRevenue } from "./youtube-revenue";
 import { getAllOrders, sumPaidAmount } from "./cakto";
 import { averageVphByFormat, VphFormat } from "./vph";
@@ -139,6 +140,7 @@ async function getAutoDiscoveredRows(): Promise<VideoWithStats[]> {
   }
 
   const rows = (data as CreatorVideoRow[]) || [];
+  const realRpmMap = await getRealRpmMap();
 
   // Um vídeo pode ter mais de uma hashtag (ex: colab #lucas + #matheus) —
   // agrupa por youtube_video_id pra não listar o mesmo vídeo duas vezes.
@@ -199,7 +201,11 @@ async function getAutoDiscoveredRows(): Promise<VideoWithStats[]> {
       viewsPerDay,
       daysLive,
       manual: null,
-      revenue: estimateEarnings(first.view_count, first.is_short),
+      revenue: estimateEarnings(
+        first.view_count,
+        first.is_short,
+        realRpmMap.get(youtubeVideoId)?.rpm
+      ),
       changes: [],
       history: [fakeSnapshot],
       isShort: first.is_short,
@@ -458,10 +464,11 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
   // pra leitura anônima nessas tabelas.
   const db = getServiceSupabase();
 
-  const [{ data, error }, { data: manualRevenueRows, error: manualRevenueError }] =
+  const [{ data, error }, { data: manualRevenueRows, error: manualRevenueError }, realRpmMap] =
     await Promise.all([
       db.from("creator_videos").select("*"),
       db.from("manual_revenue").select("*").eq("id", "current").limit(1),
+      getRealRpmMap(),
     ]);
 
   if (error) {
@@ -580,9 +587,12 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
   const isManualRevenue = manualAmount != null && manualAmount > 0;
   // Estimativa por RPM: Shorts e vídeos longos usam RPM diferente (longos
   // rendem bem mais — R$5,50 contra R$0,32 dos Shorts), então soma cada um
-  // separado em vez de aplicar um RPM único pra tudo.
+  // separado em vez de aplicar um RPM único pra tudo. E dentro de cada
+  // formato, soma vídeo a vídeo (não views totais x 1 RPM), porque cada
+  // vídeo pode ter seu próprio RPM real importado via CSV.
   const estimatedPeriodEarnings =
-    estimateEarnings(periodShortsViews, true) + estimateEarnings(periodLongViews, false);
+    sumEstimatedEarnings(rows.filter((r) => r.is_short), realRpmMap) +
+    sumEstimatedEarnings(rows.filter((r) => !r.is_short), realRpmMap);
   const periodEarnings = isManualRevenue ? (manualAmount as number) : estimatedPeriodEarnings;
 
   // Vídeos órfãos (sem hashtag de criador) do período — alimenta o modal
@@ -604,7 +614,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
         ? periodViews > 0
           ? Math.round(periodEarnings * (first.view_count / periodViews) * 100) / 100
           : 0
-        : estimateEarnings(first.view_count, first.is_short);
+        : estimateEarnings(first.view_count, first.is_short, realRpmMap.get(youtubeVideoId)?.rpm);
 
       return {
         youtubeVideoId,
@@ -650,18 +660,19 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
       // respeita a diferença de monetização entre os dois formatos.
       const totalEarnings =
         periodViews > 0 ? Math.round(periodEarnings * (totalViews / periodViews) * 100) / 100 : 0;
-      const shortsWeight = estimateEarnings(shortsViews, true);
-      const longWeight = estimateEarnings(longViews, false);
+      const shortsWeight = sumEstimatedEarnings(shorts, realRpmMap);
+      const longWeight = sumEstimatedEarnings(longs, realRpmMap);
       const totalWeight = shortsWeight + longWeight;
       shortsEarnings =
         totalWeight > 0 ? Math.round(totalEarnings * (shortsWeight / totalWeight) * 100) / 100 : 0;
       longEarnings = Math.round((totalEarnings - shortsEarnings) * 100) / 100;
     } else {
-      // Estimativa: aplica o RPM certo de cada tipo direto nas views do
-      // criador — bem mais preciso que dividir por % de views quando os
-      // RPMs são tão diferentes entre si.
-      shortsEarnings = estimateEarnings(shortsViews, true);
-      longEarnings = estimateEarnings(longViews, false);
+      // Estimativa: soma vídeo a vídeo, usando o RPM real de cada um
+      // quando existir (fallback pro fixo do formato) — bem mais preciso
+      // que aplicar um RPM único em cima da soma de views do criador,
+      // ainda mais agora que RPMs reais variam vídeo a vídeo.
+      shortsEarnings = sumEstimatedEarnings(shorts, realRpmMap);
+      longEarnings = sumEstimatedEarnings(longs, realRpmMap);
     }
 
     const totalEarnings = Math.round((shortsEarnings + longEarnings) * 100) / 100;
@@ -763,7 +774,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
         ? periodViews > 0
           ? Math.round(periodEarnings * (first.view_count / periodViews) * 100) / 100
           : 0
-        : estimateEarnings(first.view_count, first.is_short);
+        : estimateEarnings(first.view_count, first.is_short, realRpmMap.get(youtubeVideoId)?.rpm);
 
       return {
         youtubeVideoId,
@@ -817,7 +828,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
         commentCount: first.comment_count,
         durationSeconds: first.duration_seconds,
         publishedAt: first.published_at,
-        revenue: estimateEarnings(first.view_count, first.is_short),
+        revenue: estimateEarnings(first.view_count, first.is_short, realRpmMap.get(youtubeVideoId)?.rpm),
       };
     })
     .sort((a, b) => b.revenue - a.revenue)
@@ -1002,7 +1013,10 @@ export async function getCreatorDailyEarnings(days = 28): Promise<EarningsHistor
     .slice(0, 10);
   const endDate = today.toISOString().slice(0, 10);
   const relevantVideoIds = Array.from(creatorsByVideo.keys());
-  const realRevenueRows = await getDailyVideoRevenue(startDate, endDate, relevantVideoIds);
+  const [realRevenueRows, realRpmMap] = await Promise.all([
+    getDailyVideoRevenue(startDate, endDate, relevantVideoIds),
+    getRealRpmMap(),
+  ]);
   const realRevenueByKey = new Map<string, number>();
   for (const row of realRevenueRows || []) {
     realRevenueByKey.set(`${row.date}|${row.videoId}`, row.estimatedRevenue);
@@ -1043,7 +1057,8 @@ export async function getCreatorDailyEarnings(days = 28): Promise<EarningsHistor
       // Receita real desse vídeo nesse dia, se o YouTube já liberou;
       // senão cai pra estimativa por RPM em cima do delta de views.
       const realRevenue = realRevenueByKey.get(`${curr.captured_date}|${videoId}`);
-      const dayEarnings = realRevenue ?? estimateEarnings(deltaViews, curr.is_short);
+      const dayEarnings =
+        realRevenue ?? estimateEarnings(deltaViews, curr.is_short, realRpmMap.get(videoId)?.rpm);
 
       const bucket = byDate.get(curr.captured_date) || emptyBucket();
       for (const creator of creators) {
