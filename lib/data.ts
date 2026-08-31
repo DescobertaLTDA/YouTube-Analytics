@@ -926,11 +926,23 @@ export async function getCreatorEarningsHistory(limit = 60): Promise<EarningsHis
 export async function getCreatorDailyEarnings(days = 28): Promise<EarningsHistoryPoint[]> {
   const db = getServiceSupabase();
 
+  // Busca só a janela relevante (+1 dia de folga pra ter o "dia anterior"
+  // de referência do primeiro ponto exibido, pra calcular o delta dele).
+  // Sem esse filtro, a query trazia a tabela inteira sem paginação e
+  // esbarrava no limite padrão de 1000 linhas do Supabase/PostgREST —
+  // com ~1 linha por vídeo-âncora por dia, isso truncava o histórico em
+  // ~11-12 dias (sempre os mais ANTIGOS, por causa do order ascending),
+  // fazendo o gráfico "últimos 28 dias" parar bem antes de hoje.
+  const historyStartDate = new Date(Date.now() - (days + 1) * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
   const [{ data: historyData, error: historyError }, { data: creatorVideoRows, error: creatorError }] =
     await Promise.all([
       db
         .from("creator_video_view_history")
         .select("youtube_video_id, view_count, captured_date, is_short")
+        .gte("captured_date", historyStartDate)
         .order("captured_date", { ascending: true }),
       db.from("creator_videos").select("creator, youtube_video_id"),
     ]);
