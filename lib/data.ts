@@ -937,15 +937,39 @@ export async function getCreatorDailyEarnings(days = 28): Promise<EarningsHistor
     .toISOString()
     .slice(0, 10);
 
-  const [{ data: historyData, error: historyError }, { data: creatorVideoRows, error: creatorError }] =
-    await Promise.all([
-      db
-        .from("creator_video_view_history")
-        .select("youtube_video_id, view_count, captured_date, is_short")
-        .gte("captured_date", historyStartDate)
-        .order("captured_date", { ascending: true }),
-      db.from("creator_videos").select("creator, youtube_video_id"),
-    ]);
+  // Busca em páginas de 1000 linhas até esgotar a janela. Um único
+  // .select() nunca é suficiente aqui: mesmo já filtrado por data, com
+  // ~120 vídeos-âncora × 29 dias dá ~3.500 linhas, e o Supabase/PostgREST
+  // corta em 1000 linhas por chamada (Max Rows do projeto) não importa
+  // quantas o filtro de data deixaria passar — por isso o corte em
+  // ~11-12 dias persistia mesmo com o .gte() no lugar. Paginando com
+  // .range() em loop, buscamos a janela inteira independente do tamanho.
+  type HistoryRow = { youtube_video_id: string; view_count: number; captured_date: string; is_short: boolean };
+  const PAGE_SIZE = 1000;
+  const historyRows: HistoryRow[] = [];
+  let historyError: unknown = null;
+  for (let page = 0; ; page++) {
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+    const { data: pageData, error: pageError } = await db
+      .from("creator_video_view_history")
+      .select("youtube_video_id, view_count, captured_date, is_short")
+      .gte("captured_date", historyStartDate)
+      .order("captured_date", { ascending: true })
+      .range(from, to);
+
+    if (pageError) {
+      historyError = pageError;
+      break;
+    }
+    const rows = (pageData as HistoryRow[]) || [];
+    historyRows.push(...rows);
+    if (rows.length < PAGE_SIZE) break; // última página
+  }
+
+  const { data: creatorVideoRows, error: creatorError } = await db
+    .from("creator_videos")
+    .select("creator, youtube_video_id");
 
   if (historyError) {
     console.error("❌ Erro ao ler creator_video_view_history:", historyError);
@@ -984,9 +1008,8 @@ export async function getCreatorDailyEarnings(days = 28): Promise<EarningsHistor
     realRevenueByKey.set(`${row.date}|${row.videoId}`, row.estimatedRevenue);
   }
 
-  type HistoryRow = { youtube_video_id: string; view_count: number; captured_date: string; is_short: boolean };
   const byVideo = new Map<string, HistoryRow[]>();
-  for (const row of (historyData as HistoryRow[]) || []) {
+  for (const row of historyRows) {
     const list = byVideo.get(row.youtube_video_id) || [];
     list.push(row);
     byVideo.set(row.youtube_video_id, list);
