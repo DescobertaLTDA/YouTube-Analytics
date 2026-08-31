@@ -1,6 +1,21 @@
 // lib/rpm-csv-parser.ts
+
+export type ParsedRpmRow = {
+  youtube_video_id: string;
+  title: string;
+  rpm: number;
+  receita: number | null;
+  views: number | null;
+};
+
+export type ParseRpmCsvResult = {
+  rows: ParsedRpmRow[];
+  skipped: number;
+  totalRow: { views: number | null; receita: number | null; rpm: number | null } | null;
+};
+
 const COL_ID = "Conteúdo";
-const COL_TITLE = "Título do vídeo";  // <-- NOVO
+const COL_TITLE = "Título do vídeo";  // <-- ESSA LINHA É CRUCIAL
 const COL_RPM = "RPM (BRL)";
 const COL_RECEITA = "Receita estimada (BRL)";
 const COL_VIEWS = "Visualizações";
@@ -43,7 +58,7 @@ function toNumberOrNull(value: string | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function parseRpmCsv(csvText: string) {
+export function parseRpmCsv(csvText: string): ParseRpmCsvResult {
   const normalized = csvText.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
   const lines = normalized.split("\n").filter((line) => line.trim() !== "");
 
@@ -53,7 +68,7 @@ export function parseRpmCsv(csvText: string) {
 
   const header = parseCsvLine(lines[0]);
   const idIdx = header.indexOf(COL_ID);
-  const titleIdx = header.indexOf(COL_TITLE);  // <-- NOVO
+  const titleIdx = header.indexOf(COL_TITLE);  // <-- ESSA LINHA É CRUCIAL
   const rpmIdx = header.indexOf(COL_RPM);
   const receitaIdx = header.indexOf(COL_RECEITA);
   const viewsIdx = header.indexOf(COL_VIEWS);
@@ -67,14 +82,14 @@ export function parseRpmCsv(csvText: string) {
     );
   }
 
-  const rows: any[] = [];
+  const rows: ParsedRpmRow[] = [];
   let skipped = 0;
-  let totalRow = null;
+  let totalRow: ParseRpmCsvResult["totalRow"] = null;
 
   for (let i = 1; i < lines.length; i++) {
     const fields = parseCsvLine(lines[i]);
     const videoId = (fields[idIdx] || "").trim();
-    const title = (fields[titleIdx] || "").trim();  // <-- NOVO
+    const title = (fields[titleIdx] || "").trim();  // <-- ESSA LINHA É CRUCIAL
 
     if (!videoId) {
       skipped++;
@@ -97,7 +112,7 @@ export function parseRpmCsv(csvText: string) {
 
     rows.push({
       youtube_video_id: videoId,
-      title: title,  // <-- NOVO
+      title: title,  // <-- ESSA LINHA É CRUCIAL
       rpm,
       receita,
       views,
