@@ -1,43 +1,10 @@
-// Parser do "Dados da tabela.csv" exportado do YouTube Studio (aba
-// Conteúdo, relatório "Receita"). Usado pela importação de RPM real
-// (ver plano: Parte 3 = endpoint de upload, Parte 5 = usar esse RPM no
-// cálculo de ganhos).
-//
-// Esse export tem uma coluna por vídeo (linha "Total" = soma do canal,
-// que é ignorada aqui) e traz, entre outras, as colunas:
-//   Conteúdo                  -> id do vídeo no YouTube
-//   RPM (BRL)                 -> RPM real do vídeo no período
-//   Receita estimada (BRL)    -> receita do vídeo no período
-//   Visualizações             -> views do vídeo no período
-//
-// O parser é feito por NOME de coluna (não por posição fixa), porque o
-// YouTube Studio já mudou a ordem/quantidade de colunas entre exports
-// (o export "simples" não tem RPM; o "completo" tem). Se a coluna RPM
-// não existir no arquivo, o parser lança um erro claro em vez de
-// silenciosamente devolver lixo.
-
-export type ParsedRpmRow = {
-  youtube_video_id: string;
-  rpm: number;
-  receita: number | null;
-  views: number | null;
-};
-
-export type ParseRpmCsvResult = {
-  rows: ParsedRpmRow[];
-  skipped: number; // linhas ignoradas (ex: sem RPM válido)
-  totalRow: { views: number | null; receita: number | null; rpm: number | null } | null;
-};
-
+// lib/rpm-csv-parser.ts
 const COL_ID = "Conteúdo";
+const COL_TITLE = "Título do vídeo";  // <-- NOVO
 const COL_RPM = "RPM (BRL)";
 const COL_RECEITA = "Receita estimada (BRL)";
 const COL_VIEWS = "Visualizações";
 
-/**
- * Faz o parse de uma linha de CSV respeitando aspas (campos com vírgula
- * ou aspas dentro, como títulos de vídeo e datas "Aug 19, 2026").
- */
 function parseCsvLine(line: string): string[] {
   const fields: string[] = [];
   let current = "";
@@ -76,13 +43,7 @@ function toNumberOrNull(value: string | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/**
- * Recebe o texto bruto do CSV e devolve o RPM/receita/views real por
- * vídeo. A linha "Total" (soma do canal) é excluída de `rows`, mas
- * devolvida separadamente em `totalRow` (útil pra conferência).
- */
-export function parseRpmCsv(csvText: string): ParseRpmCsvResult {
-  // Remove BOM (comum em CSV exportado do Google) e normaliza quebras de linha.
+export function parseRpmCsv(csvText: string) {
   const normalized = csvText.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
   const lines = normalized.split("\n").filter((line) => line.trim() !== "");
 
@@ -92,6 +53,7 @@ export function parseRpmCsv(csvText: string): ParseRpmCsvResult {
 
   const header = parseCsvLine(lines[0]);
   const idIdx = header.indexOf(COL_ID);
+  const titleIdx = header.indexOf(COL_TITLE);  // <-- NOVO
   const rpmIdx = header.indexOf(COL_RPM);
   const receitaIdx = header.indexOf(COL_RECEITA);
   const viewsIdx = header.indexOf(COL_VIEWS);
@@ -101,17 +63,18 @@ export function parseRpmCsv(csvText: string): ParseRpmCsvResult {
   }
   if (rpmIdx === -1) {
     throw new Error(
-      `Coluna "${COL_RPM}" não encontrada no CSV. Este parece ser o export "simples" do YouTube Studio, sem RPM por vídeo — reexporte usando o relatório de Receita (aba Conteúdo) com as colunas de monetização.`
+      `Coluna "${COL_RPM}" não encontrada no CSV. Reexporte usando o relatório de Receita (aba Conteúdo) com as colunas de monetização.`
     );
   }
 
-  const rows: ParsedRpmRow[] = [];
+  const rows: any[] = [];
   let skipped = 0;
-  let totalRow: ParseRpmCsvResult["totalRow"] = null;
+  let totalRow = null;
 
   for (let i = 1; i < lines.length; i++) {
     const fields = parseCsvLine(lines[i]);
     const videoId = (fields[idIdx] || "").trim();
+    const title = (fields[titleIdx] || "").trim();  // <-- NOVO
 
     if (!videoId) {
       skipped++;
@@ -128,13 +91,17 @@ export function parseRpmCsv(csvText: string): ParseRpmCsvResult {
     }
 
     if (rpm === null) {
-      // Vídeo sem RPM válido no período (ex: sem monetização) — ignora
-      // em vez de gravar um RPM inválido no banco.
       skipped++;
       continue;
     }
 
-    rows.push({ youtube_video_id: videoId, rpm, receita, views });
+    rows.push({
+      youtube_video_id: videoId,
+      title: title,  // <-- NOVO
+      rpm,
+      receita,
+      views,
+    });
   }
 
   return { rows, skipped, totalRow };
