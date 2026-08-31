@@ -5,21 +5,27 @@ export const dynamic = "force-dynamic";
 
 // Rota de DIAGNÓSTICO TEMPORÁRIA — não faz parte do app normal.
 //
-// Motivo de existir: /api/ganhos/backfill está devolvendo 0 linhas da
-// YouTube Analytics API pra TODOS os vídeos, em 35 dias, sem nenhum erro
-// de API. Isso é consistente com uma hipótese específica: a query usa
-// `ids: "channel==MINE"`, que não é o YOUTUBE_CHANNEL_ID do .env — é o
-// canal vinculado à CONTA GOOGLE que autorizou o OAuth (rodando
-// scripts/get-youtube-refresh-token.mjs). Se essa autorização foi feita
-// com uma conta diferente da dona do canal, "MINE" aponta pra outro
-// canal (ou nenhum), que não tem os vídeos pedidos — API responde 200 OK
-// com rows vazio, sem erro, exatamente como estamos vendo.
+// v2: a primeira versão chamava youtube/v3/channels?mine=true (Data API),
+// mas o token só tem o escopo yt-analytics-monetary.readonly, que NÃO dá
+// acesso à Data API — por isso deu 403 ACCESS_TOKEN_SCOPE_INSUFFICIENT.
+// Isso não prova nem descarta a hipótese de canal errado, só mostra que
+// usamos a API errada pro teste.
 //
-// Esta rota chama o endpoint /youtube/v3/channels?mine=true da YouTube
-// Data API usando o MESMO access token OAuth que o backfill usa, e
-// devolve qual canal essa autorização realmente enxerga. Compare o
-// channelId/título retornado aqui com o canal real (o que aparece em
-// creator_videos / no próprio YouTube Studio).
+// Esta versão usa exclusivamente a YouTube Analytics API (o mesmo
+// endpoint que o backfill usa), pedindo dados agregados do CANAL INTEIRO
+// nos últimos 90 dias, SEM filtro de vídeo. Isso isola duas hipóteses:
+//
+// A) Se vier alguma linha aqui (views > 0 pra qualquer dia): o token e o
+//    canal têm dados normalmente — o problema do backfill dar 0 linhas
+//    é mais provável de ser um descompasso entre os `youtube_video_id`
+//    salvos em creator_videos e os vídeos que esse canal realmente tem
+//    (ex: IDs de outro canal, ou pertencentes a um canal gerenciado à
+//    parte).
+// B) Se vier TUDO vazio, igual ao backfill: o canal ligado a essa
+//    autorização OAuth não tem nenhum dado de Analytics no período —
+//    forte indício de que a autorização foi feita com a conta/canal
+//    errado (precisa refazer scripts/get-youtube-refresh-token.mjs
+//    logado na conta DONA do canal certo).
 //
 // Apague esse arquivo depois de confirmar o diagnóstico.
 export async function GET() {
@@ -38,8 +44,24 @@ export async function GET() {
       );
     }
 
+    const today = new Date();
+    const endDate = today.toISOString().slice(0, 10);
+    const startDate = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+
+    const params = new URLSearchParams({
+      ids: "channel==MINE",
+      startDate,
+      endDate,
+      metrics: "estimatedRevenue,views",
+      dimensions: "day",
+      maxResults: "366",
+      // Sem `filters=video==...` de propósito — queremos o canal inteiro.
+    });
+
     const response = await fetch(
-      "https://www.googleapis.com/youtube/v3/channels?part=id,snippet,statistics&mine=true",
+      `https://youtubeanalytics.googleapis.com/v2/reports?${params}`,
       {
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: "no-store",
@@ -52,7 +74,7 @@ export async function GET() {
       return NextResponse.json(
         {
           success: false,
-          message: "A API do YouTube recusou a chamada com esse token.",
+          message: "A YouTube Analytics API recusou a chamada com esse token.",
           status: response.status,
           detalhe: data,
         },
@@ -60,30 +82,21 @@ export async function GET() {
       );
     }
 
-    const channel = data.items?.[0];
-
-    if (!channel) {
-      return NextResponse.json({
-        success: true,
-        message:
-          "O token é válido, mas 'mine=true' não retornou NENHUM canal. " +
-          "Isso confirma que a conta Google autorizada no OAuth não tem (ou não gerencia) " +
-          "nenhum canal do YouTube — precisa refazer o get-youtube-refresh-token.mjs " +
-          "logado na conta DONA do canal.",
-        totalDeCanaisEncontrados: data.items?.length ?? 0,
-      });
-    }
+    const rows = (data.rows as [string, number, number][]) || [];
+    const totalViews = rows.reduce((sum, r) => sum + (Number(r[2]) || 0), 0);
+    const totalRevenue = rows.reduce((sum, r) => sum + (Number(r[1]) || 0), 0);
 
     return NextResponse.json({
       success: true,
-      message:
-        "Esse é o canal que a autorização OAuth (usada no backfill/sync de receita) enxerga. " +
-        "Compare o channelId abaixo com o ID do canal real (visível na URL do YouTube Studio " +
-        "ou nas configurações avançadas do canal).",
-      channelId: channel.id,
-      channelTitle: channel.snippet?.title,
-      totalDeCanaisEncontrados: data.items?.length ?? 0,
-      totalDeVideosDoCanal: channel.statistics?.videoCount,
+      periodoConsultado: { startDate, endDate },
+      diasComDadosRetornados: rows.length,
+      totalViewsNoPeriodo: totalViews,
+      totalRevenueNoPeriodo: totalRevenue,
+      amostraLinhas: rows.slice(0, 5),
+      diagnostico:
+        rows.length > 0
+          ? "O canal ligado a esse token TEM dados de Analytics normalmente. O problema do backfill provavelmente não é canal errado — é descompasso entre os youtube_video_id salvos em creator_videos e os vídeos reais desse canal. Próximo passo: pegar 1 video_id de creator_videos e testar esse endpoint filtrando por ele especificamente."
+          : "O canal ligado a esse token NÃO tem NENHUM dado de Analytics nos últimos 90 dias, nem agregado (sem filtro de vídeo). Forte indício de que o OAuth foi autorizado com a conta/canal errado — refaça scripts/get-youtube-refresh-token.mjs logado na conta Google DONA do canal certo.",
     });
   } catch (error) {
     console.error("❌ Erro no diagnóstico whoami-analytics:", error);
