@@ -836,8 +836,33 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
       .filter((r) => !r.is_short)
       .reduce((sum, r) => sum + (r.view_count || 0), 0);
     const monthViews = monthShortsViews + monthLongViews;
-    const monthShortsEarnings = Math.round((monthShortsViews / 1000) * effectiveShortsRpm * 100) / 100;
-    const monthLongEarnings = Math.round((monthLongViews / 1000) * effectiveLongRpm * 100) / 100;
+    // Receita do mês: soma vídeo a vídeo (RPM real de cada um quando
+    // existir, fixo quando não) — igual ao resto do arquivo (Top 10,
+    // "Ganhos do período"). Antes isso aplicava a MÉDIA de RPM do
+    // período de 28 dias (effectiveShortsRpm/effectiveLongRpm) em cima
+    // do total de views do mês, o que dava um valor errado sempre que
+    // os vídeos do mês tinham RPM diferente da média do período — ex.:
+    // vídeo novo sem RPM real ainda (cai no fixo R$0,32/R$5,50) só que
+    // no período tem outros vídeos com RPM real bem mais baixo puxando
+    // a média pra baixo, fazendo a "Meta de Receita" mostrar menos do
+    // que a soma real dos vídeos do mês no Top 10. Só mantém a média
+    // quando há valor manual digitado, porque aí não tem como saber a
+    // receita real de cada vídeo — é só um rateio aproximado.
+    let monthShortsEarnings: number;
+    let monthLongEarnings: number;
+    if (isManualRevenue) {
+      monthShortsEarnings = Math.round((monthShortsViews / 1000) * effectiveShortsRpm * 100) / 100;
+      monthLongEarnings = Math.round((monthLongViews / 1000) * effectiveLongRpm * 100) / 100;
+    } else {
+      monthShortsEarnings = sumEstimatedEarnings(
+        monthViewCreatorRows.filter((r) => r.is_short),
+        realRpmMap
+      );
+      monthLongEarnings = sumEstimatedEarnings(
+        monthViewCreatorRows.filter((r) => !r.is_short),
+        realRpmMap
+      );
+    }
     const monthEarnings = Math.round((monthShortsEarnings + monthLongEarnings) * 100) / 100;
 
     const cakto = caktoSales[key];
