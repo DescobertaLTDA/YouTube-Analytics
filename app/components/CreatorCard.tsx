@@ -26,6 +26,27 @@ function formatRpm(n: number) {
   return formatCurrency(n);
 }
 
+// RPM médio efetivo de vídeo longo do criador, calculado a partir da
+// receita e das views reais do período — ou seja, já reflete o RPM real
+// importado via CSV (tabela `video_rpm_real` no Supabase) pros vídeos que
+// têm, e só cai no fixo (`LONG_RPM`) pros que não têm. Contrário de
+// mostrar sempre o mesmo valor fixo pra todo criador, isso aqui é o RPM
+// que de fato foi usado no cálculo da receita mostrada no card.
+// Fórmula inversa de `estimateEarnings` pra vídeo longo: earnings = views
+// * rpm / 1000 → rpm = earnings * 1000 / views.
+function effectiveLongRpm(stats: CreatorStats): number {
+  if (stats.longViews <= 0) return LONG_RPM;
+  return (stats.longEarnings * 1000) / stats.longViews;
+}
+
+// Mesma ideia pro RPM médio efetivo de Shorts, mas invertendo a fórmula
+// de Shorts (que tem o `/2` do split): earnings = views * rpm / 1000 / 2
+// → rpm = earnings * 1000 * 2 / views.
+function effectiveShortsRpm(stats: CreatorStats): number {
+  if (stats.shortsViews <= 0) return SHORTS_RPM;
+  return (stats.shortsEarnings * 1000 * 2) / stats.shortsViews;
+}
+
 export function CreatorCard({
   stats,
   monthLabel,
@@ -69,11 +90,11 @@ export function CreatorCard({
           <h3 className="creator-name">{stats.label}</h3>
         </div>
         <div className="rpm-badges">
-          <span className="rpm-badge rpm-badge-long">
-            <IconFilm /> RPM {formatRpm(LONG_RPM)}
+          <span className="rpm-badge rpm-badge-long" title="RPM médio real dos vídeos longos no período (28d)">
+            <IconFilm /> RPM {formatRpm(effectiveLongRpm(stats))}
           </span>
-          <span className="rpm-badge rpm-badge-shorts">
-            <IconZap /> RPM {formatRpm(SHORTS_RPM)}
+          <span className="rpm-badge rpm-badge-shorts" title="RPM médio real dos Shorts no período (28d)">
+            <IconZap /> RPM {formatRpm(effectiveShortsRpm(stats))}
           </span>
         </div>
       </div>
