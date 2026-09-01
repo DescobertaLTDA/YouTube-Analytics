@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
           rpm: row.rpm,
           receita: row.receita,
           views: row.views,
+          visualizacoes_intencionais: row.visualizacoesIntencionais,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'youtube_video_id',

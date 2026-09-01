@@ -613,6 +613,17 @@ a {
 
 .stat-card-revenue {
   position: relative;
+  text-align: left;
+}
+
+.modal-narrow {
+  max-width: 380px;
+}
+
+.rpm-input-currency {
+  width: 100%;
+  font-size: 18px;
+  padding: 10px 12px;
 }
 
 .stat-edit-pencil {

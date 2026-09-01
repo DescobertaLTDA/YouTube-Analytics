@@ -6,12 +6,18 @@ export type ParsedRpmRow = {
   rpm: number;
   receita: number | null;
   views: number | null;
+  visualizacoesIntencionais: number | null;
 };
 
 export type ParseRpmCsvResult = {
   rows: ParsedRpmRow[];
   skipped: number;
-  totalRow: { views: number | null; receita: number | null; rpm: number | null } | null;
+  totalRow: {
+    views: number | null;
+    receita: number | null;
+    rpm: number | null;
+    visualizacoesIntencionais: number | null;
+  } | null;
 };
 
 const COL_ID = "Conteúdo";
@@ -19,6 +25,7 @@ const COL_TITLE = "Título do vídeo";  // <-- ESSA LINHA É CRUCIAL
 const COL_RPM = "RPM (BRL)";
 const COL_RECEITA = "Receita estimada (BRL)";
 const COL_VIEWS = "Visualizações";
+const COL_VIEWS_INTENCIONAIS = "Visualizações intencionais";
 
 function parseCsvLine(line: string): string[] {
   const fields: string[] = [];
@@ -72,6 +79,7 @@ export function parseRpmCsv(csvText: string): ParseRpmCsvResult {
   const rpmIdx = header.indexOf(COL_RPM);
   const receitaIdx = header.indexOf(COL_RECEITA);
   const viewsIdx = header.indexOf(COL_VIEWS);
+  const viewsIntencionaisIdx = header.indexOf(COL_VIEWS_INTENCIONAIS);
 
   if (idIdx === -1) {
     throw new Error(`Coluna "${COL_ID}" não encontrada no CSV.`);
@@ -99,9 +107,11 @@ export function parseRpmCsv(csvText: string): ParseRpmCsvResult {
     const rpm = toNumberOrNull(fields[rpmIdx]);
     const receita = receitaIdx !== -1 ? toNumberOrNull(fields[receitaIdx]) : null;
     const views = viewsIdx !== -1 ? toNumberOrNull(fields[viewsIdx]) : null;
+    const visualizacoesIntencionais =
+      viewsIntencionaisIdx !== -1 ? toNumberOrNull(fields[viewsIntencionaisIdx]) : null;
 
     if (videoId === "Total") {
-      totalRow = { rpm, receita, views };
+      totalRow = { rpm, receita, views, visualizacoesIntencionais };
       continue;
     }
 
@@ -116,6 +126,7 @@ export function parseRpmCsv(csvText: string): ParseRpmCsvResult {
       rpm,
       receita,
       views,
+      visualizacoesIntencionais,
     });
   }
 

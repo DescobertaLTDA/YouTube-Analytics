@@ -13,7 +13,7 @@ import {
 } from "./supabase";
 import { isShortVideo } from "./youtube-channel";
 import { CREATORS, CreatorKey, SHORTS_RPM, estimateEarnings } from "./creator-earnings";
-import { getRealRpmMap, sumEstimatedEarnings } from "./rpm-real";
+import { getRealRpmMap, sumEstimatedEarnings, effectiveViews } from "./rpm-real";
 import { getDailyVideoRevenue } from "./youtube-revenue";
 import { getAllOrders, sumPaidAmount } from "./cakto";
 import { averageVphByFormat, VphFormat } from "./vph";
@@ -202,7 +202,7 @@ async function getAutoDiscoveredRows(): Promise<VideoWithStats[]> {
       daysLive,
       manual: null,
       revenue: estimateEarnings(
-        first.view_count,
+        effectiveViews(youtubeVideoId, first.view_count, realRpmMap),
         first.is_short,
         realRpmMap.get(youtubeVideoId)?.rpm
       ),
@@ -336,6 +336,11 @@ export type GanhosVideoRow = {
   creatorLabel: string;
   isShort: boolean;
   viewCount: number;
+  // Visualizações intencionais (YouTube Studio), quando importadas via CSV
+  // pra esse vídeo. É essa que entra no cálculo de `revenue` no lugar de
+  // `viewCount` — `null` significa que ainda não tem RPM real importado
+  // pra esse vídeo, então a receita caiu pro fallback (viewCount).
+  intentionalViews: number | null;
   likeCount: number | null;
   commentCount: number | null;
   durationSeconds: number | null;
@@ -699,7 +704,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
       // Mesmo princípio já usado pra dividir shortsEarnings/longEarnings
       // por criador (ver `creators` abaixo), só que agora vídeo a vídeo.
       const videoWeight = estimateEarnings(
-        first.view_count,
+        effectiveViews(youtubeVideoId, first.view_count, realRpmMap),
         first.is_short,
         realRpmMap.get(youtubeVideoId)?.rpm
       );
@@ -716,6 +721,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
         creatorLabel: "sem hashtag",
         isShort: first.is_short,
         viewCount: first.view_count,
+        intentionalViews: realRpmMap.get(youtubeVideoId)?.visualizacoesIntencionais ?? null,
         likeCount: first.like_count,
         commentCount: first.comment_count,
         durationSeconds: first.duration_seconds,
@@ -874,7 +880,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
       // vídeo longo aparece com receita muito abaixo do real na
       // Auditoria/Histórico.
       const videoWeight = estimateEarnings(
-        first.view_count,
+        effectiveViews(youtubeVideoId, first.view_count, realRpmMap),
         first.is_short,
         realRpmMap.get(youtubeVideoId)?.rpm
       );
@@ -891,6 +897,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
         creatorLabel,
         isShort: first.is_short,
         viewCount: first.view_count,
+        intentionalViews: realRpmMap.get(youtubeVideoId)?.visualizacoesIntencionais ?? null,
         likeCount: first.like_count,
         commentCount: first.comment_count,
         durationSeconds: first.duration_seconds,
@@ -932,11 +939,16 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
         creatorLabel,
         isShort: first.is_short,
         viewCount: first.view_count,
+        intentionalViews: realRpmMap.get(youtubeVideoId)?.visualizacoesIntencionais ?? null,
         likeCount: first.like_count,
         commentCount: first.comment_count,
         durationSeconds: first.duration_seconds,
         publishedAt: first.published_at,
-        revenue: estimateEarnings(first.view_count, first.is_short, realRpmMap.get(youtubeVideoId)?.rpm),
+        revenue: estimateEarnings(
+          effectiveViews(youtubeVideoId, first.view_count, realRpmMap),
+          first.is_short,
+          realRpmMap.get(youtubeVideoId)?.rpm
+        ),
       };
     })
     .sort((a, b) => b.revenue - a.revenue)

@@ -79,6 +79,14 @@ export function GanhosVideoHistory({
                 <span className="history-stat-value malachite">{formatNumber(v.viewCount)}</span>
                 <span className="history-stat-label">views</span>
               </div>
+              {v.intentionalViews != null && (
+                <div className="history-stat">
+                  <span className="history-stat-value malachite">
+                    {formatNumber(v.intentionalViews)}
+                  </span>
+                  <span className="history-stat-label">views intencionais</span>
+                </div>
+              )}
               <div className="history-stat">
                 <span className="history-stat-value">{formatNumber(v.likeCount)}</span>
                 <span className="history-stat-label">likes</span>

@@ -25,6 +25,11 @@ export type RealRpmEntry = {
   rpm: number;
   receita: number | null;
   views: number | null;
+  // Visualizações intencionais do vídeo, importadas via CSV do YouTube
+  // Studio (coluna "Visualizações intencionais"). Quando presente, é o
+  // valor usado pra calcular receita — em vez das views gerais — porque
+  // é a métrica que o YouTube realmente considera pra monetização.
+  visualizacoesIntencionais: number | null;
 };
 
 export type RealRpmMap = Map<string, RealRpmEntry>;
@@ -42,7 +47,7 @@ export async function getRealRpmMap(): Promise<RealRpmMap> {
   const db = getServiceSupabase();
   const { data, error } = await db
     .from("video_rpm_real")
-    .select("youtube_video_id, rpm, receita, views");
+    .select("youtube_video_id, rpm, receita, views, visualizacoes_intencionais");
 
   if (error) {
     console.error("❌ Erro ao ler video_rpm_real:", error);
@@ -55,10 +60,27 @@ export async function getRealRpmMap(): Promise<RealRpmMap> {
       rpm: Number(row.rpm),
       receita: row.receita == null ? null : Number(row.receita),
       views: row.views == null ? null : Number(row.views),
+      visualizacoesIntencionais:
+        row.visualizacoes_intencionais == null ? null : Number(row.visualizacoes_intencionais),
     });
   }
 
   return map;
+}
+
+/**
+ * Views "efetivas" pra cálculo de receita de um vídeo: usa as visualizações
+ * intencionais importadas via CSV quando existirem (essas são as que o
+ * YouTube realmente considera pra monetização), senão cai pro view_count
+ * geral (API/scraping) como fallback.
+ */
+export function effectiveViews(
+  youtubeVideoId: string,
+  fallbackViewCount: number,
+  realRpmMap: RealRpmMap
+): number {
+  const entry = realRpmMap.get(youtubeVideoId);
+  return entry?.visualizacoesIntencionais ?? fallbackViewCount ?? 0;
 }
 
 /**
@@ -96,10 +118,10 @@ export function sumEstimatedEarnings(
   realRpmMap: RealRpmMap
 ): number {
   return Math.round(
-    rows.reduce(
-      (sum, r) =>
-        sum + estimateEarnings(r.view_count || 0, r.is_short, realRpmMap.get(r.youtube_video_id)?.rpm),
-      0
-    ) * 100
+    rows.reduce((sum, r) => {
+      const entry = realRpmMap.get(r.youtube_video_id);
+      const views = entry?.visualizacoesIntencionais ?? r.view_count ?? 0;
+      return sum + estimateEarnings(views, r.is_short, entry?.rpm);
+    }, 0) * 100
   ) / 100;
 }
