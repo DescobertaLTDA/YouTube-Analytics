@@ -185,17 +185,72 @@ a {
     flex-direction: column;
   }
 
+  /* No mobile o menu vira uma barra fixa no topo (sticky), em vez da
+     coluna lateral: avatar e nome encolhem e ficam lado a lado, e os
+     links de navegação rolam horizontalmente se não couberem — assim a
+     barra fica sempre visível e nunca ocupa a tela toda de altura. */
   .sidebar {
-    position: static;
+    position: sticky;
+    top: 0;
+    z-index: 40;
     width: 100%;
     height: auto;
     flex-direction: row;
     align-items: center;
+    justify-content: flex-start;
+    gap: 4px;
+    padding: 10px 12px;
     overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-brand {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px 4px 4px;
+    text-align: left;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    margin-right: 4px;
+  }
+
+  .sidebar-brand-avatar {
+    width: 30px;
+    height: 30px;
+    margin-bottom: 0;
+  }
+
+  .sidebar-brand-label {
+    display: none;
+  }
+
+  .sidebar-brand-title {
+    justify-content: flex-start;
+    font-size: 12px;
+    white-space: nowrap;
   }
 
   .sidebar-nav {
     flex-direction: row;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-nav-link {
+    padding: 8px 12px;
+    white-space: nowrap;
+    border-left: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 20px;
+  }
+
+  .sidebar-nav-link.active {
+    border-left: none;
+    border-bottom: 2px solid transparent;
   }
 }
 
@@ -1628,11 +1683,16 @@ footer.page-footer {
 
 @media (max-width: 768px) {
   .page {
-    padding: 32px 16px 64px;
+    padding: 24px 16px 64px;
   }
 
   .title {
-    font-size: 32px;
+    font-size: 24px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    max-width: none;
   }
 
   .grid-6 {
@@ -1658,7 +1718,33 @@ footer.page-footer {
 
   .header-row {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .header-row-actions {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .header-row-actions-inline {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-row-actions-top {
+    width: 100%;
+  }
+
+  .sync-pill {
+    width: 100%;
+    box-sizing: border-box;
+    white-space: normal;
+    text-align: left;
+  }
+
+  .nav-links {
+    flex-wrap: wrap;
   }
 
   .modal {
@@ -1715,7 +1801,11 @@ footer.page-footer {
   }
 
   .title {
-    font-size: 26px;
+    font-size: 22px;
+  }
+
+  .eyebrow {
+    font-size: 10px;
   }
 
   .modal {
@@ -1729,6 +1819,56 @@ footer.page-footer {
   .modal-actions .btn {
     width: 100%;
     text-align: center;
+  }
+
+  .creator-name {
+    font-size: 19px;
+  }
+
+  .creator-total-value {
+    font-size: 32px;
+  }
+
+  .creator-card {
+    padding: 16px;
+  }
+
+  .creator-card-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .rpm-badges {
+    width: 100%;
+  }
+
+  .insights-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .history-row {
+    gap: 10px;
+  }
+
+  .history-thumb {
+    width: 56px;
+    height: 32px;
+  }
+
+  .history-stats {
+    gap: 12px;
+  }
+
+  .yt-thumb-wrap {
+    width: 84px;
+    height: 48px;
+  }
+
+  .ai-chat-fab,
+  .ai-chat-voice-indicator {
+    right: 16px;
+    bottom: 16px;
   }
 }
 
@@ -2239,8 +2379,22 @@ footer.page-footer {
 @media (max-width: 768px) {
   .ganhos-actions-group {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     width: 100%;
+  }
+
+  .ganhos-actions-group .btn-atualizar,
+  .ganhos-actions-group .atualizar-wrap,
+  .ganhos-actions-group > * {
+    width: 100%;
+  }
+
+  .atualizar-wrap {
+    align-items: stretch;
+  }
+
+  .btn-atualizar {
+    text-align: center;
   }
 }
 
@@ -3050,6 +3204,27 @@ footer.page-footer {
   .yt-table thead th.yt-col-optional,
   .yt-table td.yt-col-optional {
     display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .yt-table thead th.yt-checkbox-cell,
+  .yt-table td.yt-checkbox-cell {
+    display: none;
+  }
+
+  .yt-table thead th.yt-col-video {
+    min-width: 230px;
+  }
+
+  .yt-thumb-wrap {
+    width: 88px;
+    height: 50px;
+  }
+
+  .yt-table td,
+  .yt-table thead th {
+    padding: 10px 10px;
   }
 }
 

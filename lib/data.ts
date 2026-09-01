@@ -546,16 +546,51 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     .map((r) => ({ ...r, view_count: periodViewsFor(r.youtube_video_id, r.view_count || 0, r.published_at) }))
     .filter((r) => r.view_count > 0);
 
-  // Dia 01 do mês atual até agora — usado pro "ganhos do mês" de cada card.
-  // Continua baseado em data de publicação de propósito: aqui a pergunta é
-  // "quanto renderam os vídeos publicados esse mês", não "quantas views o
-  // canal recebeu esse mês" — então o filtro por published_at é o certo.
+  // Dia 01 do mês atual até agora. `monthRows` (por published_at) segue
+  // usado só pra CONTAGEM de vídeos publicados no mês (metas de
+  // quantidade, tipo "Meta de Shorts"). Views e receita do mês usam
+  // `monthViewRows` logo abaixo, que soma o que cada vídeo ganhou de
+  // views DENTRO do mês — inclusive vídeos antigos que continuam
+  // recebendo views — em vez de só os publicados esse mês.
   const monthStart = new Date(periodEnd.getFullYear(), periodEnd.getMonth(), 1);
   const monthRows = allRows.filter((r) => {
     if (!r.published_at) return false;
     const published = new Date(r.published_at).getTime();
     return published >= monthStart.getTime() && published <= periodEnd.getTime();
   });
+
+  // Views "do mês" = views ganhas desde o dia 01 até agora, pra QUALQUER
+  // vídeo (novo ou antigo) — mesma lógica de `periodViewsFor`, só que com
+  // baseline no início do mês em vez de 28 dias atrás.
+  const monthStartDate = monthStart.toISOString().slice(0, 10);
+  const baselineAtOrBeforeMonthStart = new Map<string, number>();
+
+  for (const h of (historyData as { youtube_video_id: string; view_count: number; captured_date: string }[]) || []) {
+    if (h.captured_date <= monthStartDate) {
+      baselineAtOrBeforeMonthStart.set(h.youtube_video_id, h.view_count || 0);
+    }
+  }
+
+  function monthViewsFor(videoId: string, currentViews: number, publishedAt: string | null): number {
+    // Vídeo publicado dentro do mês: todas as views dele são "do mês".
+    if (publishedAt && new Date(publishedAt).getTime() >= monthStart.getTime()) {
+      return currentViews;
+    }
+    // Vídeo antigo com histórico de antes/no início do mês: delta real.
+    if (baselineAtOrBeforeMonthStart.has(videoId)) {
+      return Math.max(currentViews - (baselineAtOrBeforeMonthStart.get(videoId) || 0), 0);
+    }
+    // Só passamos a rastreá-lo depois do início do mês: usa a captura
+    // mais antiga como baseline (mesma limitação do periodViewsFor).
+    if (earliestByVideo.has(videoId)) {
+      return Math.max(currentViews - (earliestByVideo.get(videoId) || 0), 0);
+    }
+    return 0;
+  }
+
+  const monthViewRows = allRows
+    .map((r) => ({ ...r, view_count: monthViewsFor(r.youtube_video_id, r.view_count || 0, r.published_at) }))
+    .filter((r) => r.view_count > 0);
 
   // Vendas reais na Cakto (28 dias) por criador — identificadas pela UTM
   // utm_campaign=<key> no link de checkout de cada um. Se a API não estiver
@@ -707,20 +742,26 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     // quando houver, estimado quando não houver) em vez de sempre estimar
     // por RPM fixo, pra ficar consistente com o card de "Vídeos longos" /
     // "Shorts" do período.
+    // Contagem de vídeos publicados esse mês (meta de quantidade) —
+    // continua baseada em published_at, sem mudança.
     const monthCreatorRows = monthRows.filter((r) => r.creator === key);
-    const monthShortsViews = monthCreatorRows
+    const monthCount = monthCreatorRows.length;
+    const monthShortsCount = monthCreatorRows.filter((r) => r.is_short).length;
+    const monthLongCount = monthCount - monthShortsCount;
+
+    // Views/receita do mês — agora inclui views ganhas esse mês por
+    // vídeos antigos, não só vídeos publicados esse mês.
+    const monthViewCreatorRows = monthViewRows.filter((r) => r.creator === key);
+    const monthShortsViews = monthViewCreatorRows
       .filter((r) => r.is_short)
       .reduce((sum, r) => sum + (r.view_count || 0), 0);
-    const monthLongViews = monthCreatorRows
+    const monthLongViews = monthViewCreatorRows
       .filter((r) => !r.is_short)
       .reduce((sum, r) => sum + (r.view_count || 0), 0);
     const monthViews = monthShortsViews + monthLongViews;
     const monthShortsEarnings = Math.round((monthShortsViews / 1000) * effectiveShortsRpm * 100) / 100;
     const monthLongEarnings = Math.round((monthLongViews / 1000) * effectiveLongRpm * 100) / 100;
     const monthEarnings = Math.round((monthShortsEarnings + monthLongEarnings) * 100) / 100;
-    const monthCount = monthCreatorRows.length;
-    const monthShortsCount = monthCreatorRows.filter((r) => r.is_short).length;
-    const monthLongCount = monthCount - monthShortsCount;
 
     const cakto = caktoSales[key];
     const shopee = shopeeSales[key];
