@@ -567,6 +567,9 @@ a {
 
 .stats-grid-ganhos .stat-card {
   padding: 18px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .stats-grid-ganhos .stat-value-large {
