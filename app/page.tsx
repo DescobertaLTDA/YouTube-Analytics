@@ -73,7 +73,7 @@ export default async function GanhosPage({
         </div>
         <div className="stat-card">
           <div className="stat-value-large">{formatCurrency(data.avgLongRpm)}</div>
-          <div className="stat-label">RPM médio · Vídeos longos</div>
+          <div className="stat-label">RPM médio · Vídeos</div>
         </div>
         <NoCreatorDrawer
           count={data.noHashtagCount}
