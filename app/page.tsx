@@ -67,6 +67,14 @@ export default async function GanhosPage({
           <div className="stat-value-large">{formatNumber(data.totalVideosScanned)}</div>
           <div className="stat-label">Vídeos escaneados</div>
         </div>
+        <div className="stat-card">
+          <div className="stat-value-large">{formatCurrency(data.avgShortsRpm)}</div>
+          <div className="stat-label">RPM médio · Shorts</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value-large">{formatCurrency(data.avgLongRpm)}</div>
+          <div className="stat-label">RPM médio · Vídeos longos</div>
+        </div>
         <NoCreatorDrawer
           count={data.noHashtagCount}
           amount={noCreatorEarnings}

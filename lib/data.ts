@@ -380,6 +380,12 @@ export type GanhosData = {
   // Histórico de Vídeos quanto no Top 10 do Mês, pra um mesmo vídeo não
   // mostrar multiplicadores diferentes em cada card.
   avgVphByFormat: Record<VphFormat, number | null>;
+  // RPM médio efetivo do canal no período (28d), por formato — usa RPM
+  // real (CSV) quando disponível por vídeo, senão o RPM fixo do formato.
+  // Mesmo cálculo do RPM efetivo por criador, só que agregado pro canal
+  // inteiro (inclusive vídeos sem hashtag de criador).
+  avgShortsRpm: number;
+  avgLongRpm: number;
 };
 
 // Lê a tabela `creator_videos` (populada pela varredura por hashtag em
@@ -629,6 +635,32 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     sumEstimatedEarnings(rows.filter((r) => r.is_short), realRpmMap) +
     sumEstimatedEarnings(rows.filter((r) => !r.is_short), realRpmMap);
   const periodEarnings = isManualRevenue ? (manualAmount as number) : estimatedPeriodEarnings;
+
+  // RPM médio efetivo do canal inteiro no período (28d), separado por
+  // formato — mesmo princípio do `effectiveShortsRpm`/`effectiveLongRpm`
+  // calculado por criador logo abaixo, só que agregando todos os vídeos
+  // (inclusive os sem hashtag de criador). Com valor manual digitado,
+  // divide a receita real entre os dois formatos proporcionalmente ao
+  // peso RPM de cada um (mesma lógica de rateio usada no resto do
+  // arquivo), pra o RPM médio exibido continuar batendo com a receita
+  // real informada.
+  let periodShortsEarnings: number;
+  let periodLongEarnings: number;
+  if (isManualRevenue) {
+    const shortsWeight = sumEstimatedEarnings(rows.filter((r) => r.is_short), realRpmMap);
+    const longWeight = sumEstimatedEarnings(rows.filter((r) => !r.is_short), realRpmMap);
+    const totalWeight = shortsWeight + longWeight;
+    periodShortsEarnings =
+      totalWeight > 0 ? Math.round(periodEarnings * (shortsWeight / totalWeight) * 100) / 100 : 0;
+    periodLongEarnings = Math.round((periodEarnings - periodShortsEarnings) * 100) / 100;
+  } else {
+    periodShortsEarnings = sumEstimatedEarnings(rows.filter((r) => r.is_short), realRpmMap);
+    periodLongEarnings = sumEstimatedEarnings(rows.filter((r) => !r.is_short), realRpmMap);
+  }
+  const avgShortsRpm =
+    periodShortsViews > 0 ? (periodShortsEarnings / periodShortsViews) * 1000 : estimateEarnings(1000, true);
+  const avgLongRpm =
+    periodLongViews > 0 ? (periodLongEarnings / periodLongViews) * 1000 : estimateEarnings(1000, false);
 
   // Vídeos órfãos (sem hashtag de criador) do período — alimenta o modal
   // que abre ao clicar nos cards "Vídeos sem criador" / "Saldo sem
@@ -929,6 +961,8 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     periodVideos,
     topVideosMonth,
     avgVphByFormat,
+    avgShortsRpm,
+    avgLongRpm,
   };
 }
 
