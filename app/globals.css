@@ -2108,6 +2108,11 @@ footer.page-footer {
   color: var(--ink);
 }
 
+.shopee-sales-toggle-spacer {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .shopee-sales-list {
   display: flex;
   flex-direction: column;

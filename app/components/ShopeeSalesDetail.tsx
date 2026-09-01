@@ -7,7 +7,17 @@ import { formatCurrency, formatDateShort as formatDate } from "@/lib/format-br";
 export function ShopeeSalesDetail({ sales }: { sales: ShopeeSaleDetail[] }) {
   const [open, setOpen] = useState(false);
 
-  if (sales.length === 0) return null;
+  // Quando não há vendas, ainda reserva a mesma altura que o botão "ver X
+  // compra(s)" ocuparia (em vez de sumir com o espaço) — assim o card de
+  // Shopee fica com a mesma altura em todo criador, e o botão de Auditoria
+  // logo abaixo se mantém alinhado entre os 3 cards, tenha venda ou não.
+  if (sales.length === 0) {
+    return (
+      <div className="shopee-sales-detail shopee-sales-toggle shopee-sales-toggle-spacer" aria-hidden="true">
+        ver compra(s) ▼
+      </div>
+    );
+  }
 
   return (
     <div className="shopee-sales-detail">
