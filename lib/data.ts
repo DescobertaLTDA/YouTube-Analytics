@@ -500,10 +500,35 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
   // view_count por vídeo por dia) pra calcular, por vídeo, o delta entre
   // o view_count de hoje e o de ~28 dias atrás — incluindo vídeos antigos
   // que continuam recebendo views, que o filtro por published_at ignorava.
-  const { data: historyData, error: historyError } = await db
-    .from("creator_video_view_history")
-    .select("youtube_video_id, view_count, captured_date")
-    .order("captured_date", { ascending: true });
+  // Busca em páginas de 1000 linhas até esgotar a tabela. Um único
+  // .select() nunca é suficiente aqui: o Supabase/PostgREST corta em
+  // 1000 linhas por chamada (Max Rows do projeto), e com a tabela já
+  // passando de 2500+ linhas isso truncava o histórico — como o order é
+  // ascending, sempre cortava os dias mais RECENTES de fora, fazendo o
+  // "baseline" usado no cálculo de views/ganhos do período cair numa
+  // data mais antiga que o esperado e inflar o resultado. Mesmo bug já
+  // corrigido em getCreatorDailyEarnings, replicado aqui.
+  type HistoryRow = { youtube_video_id: string; view_count: number; captured_date: string };
+  const PAGE_SIZE = 1000;
+  const historyData: HistoryRow[] = [];
+  let historyError: unknown = null;
+  for (let page = 0; ; page++) {
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+    const { data: pageData, error: pageError } = await db
+      .from("creator_video_view_history")
+      .select("youtube_video_id, view_count, captured_date")
+      .order("captured_date", { ascending: true })
+      .range(from, to);
+
+    if (pageError) {
+      historyError = pageError;
+      break;
+    }
+    const rows = (pageData as HistoryRow[]) || [];
+    historyData.push(...rows);
+    if (rows.length < PAGE_SIZE) break; // última página
+  }
 
   if (historyError) {
     console.error("❌ Erro ao ler creator_video_view_history:", historyError);
@@ -513,7 +538,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
   const earliestByVideo = new Map<string, number>();
   const baselineAtOrBeforePeriod = new Map<string, number>();
 
-  for (const h of (historyData as { youtube_video_id: string; view_count: number; captured_date: string }[]) || []) {
+  for (const h of historyData) {
     if (!earliestByVideo.has(h.youtube_video_id)) {
       earliestByVideo.set(h.youtube_video_id, h.view_count || 0);
     }
