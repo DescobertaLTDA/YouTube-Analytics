@@ -657,7 +657,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     periodShortsEarnings = sumEstimatedEarnings(rows.filter((r) => r.is_short), realRpmMap);
     periodLongEarnings = sumEstimatedEarnings(rows.filter((r) => !r.is_short), realRpmMap);
   }
-  // RPM médio exibido no card = média dos 5 maiores RPMs REAIS (importados
+  // RPM médio exibido no card = média dos 20 maiores RPMs REAIS (importados
   // via CSV do YouTube Studio) entre os vídeos do período, por formato —
   // em vez da média ponderada por views (receita total / views totais).
   // Pedido explícito: refletir o RPM dos vídeos que mais pagam, não
@@ -674,8 +674,8 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     if (realRpms.length === 0) return estimateEarnings(1000, isShort);
     return realRpms.reduce((sum, rpm) => sum + rpm, 0) / realRpms.length;
   }
-  const avgShortsRpm = topRealRpmAverage(rows.filter((r) => r.is_short), 5, true);
-  const avgLongRpm = topRealRpmAverage(rows.filter((r) => !r.is_short), 5, false);
+  const avgShortsRpm = topRealRpmAverage(rows.filter((r) => r.is_short), 20, true);
+  const avgLongRpm = topRealRpmAverage(rows.filter((r) => !r.is_short), 20, false);
 
   // Vídeos órfãos (sem hashtag de criador) do período — alimenta o modal
   // que abre ao clicar nos cards "Vídeos sem criador" / "Saldo sem
