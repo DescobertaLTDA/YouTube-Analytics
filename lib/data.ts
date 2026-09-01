@@ -657,10 +657,25 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     periodShortsEarnings = sumEstimatedEarnings(rows.filter((r) => r.is_short), realRpmMap);
     periodLongEarnings = sumEstimatedEarnings(rows.filter((r) => !r.is_short), realRpmMap);
   }
-  const avgShortsRpm =
-    periodShortsViews > 0 ? (periodShortsEarnings / periodShortsViews) * 1000 : estimateEarnings(1000, true);
-  const avgLongRpm =
-    periodLongViews > 0 ? (periodLongEarnings / periodLongViews) * 1000 : estimateEarnings(1000, false);
+  // RPM médio exibido no card = média dos 5 maiores RPMs REAIS (importados
+  // via CSV do YouTube Studio) entre os vídeos do período, por formato —
+  // em vez da média ponderada por views (receita total / views totais).
+  // Pedido explícito: refletir o RPM dos vídeos que mais pagam, não
+  // diluir no RPM baixo da maioria dos vídeos. Vídeos sem RPM real
+  // importado (só estimativa fixa) ficam de fora dessa conta. Se não
+  // houver nenhum vídeo com RPM real pro formato, cai no RPM fixo padrão
+  // (mesmo fallback de antes).
+  function topRealRpmAverage(formatRows: CreatorVideoRow[], topN: number, isShort: boolean): number {
+    const realRpms = formatRows
+      .map((r) => realRpmMap.get(r.youtube_video_id)?.rpm)
+      .filter((rpm): rpm is number => rpm != null)
+      .sort((a, b) => b - a)
+      .slice(0, topN);
+    if (realRpms.length === 0) return estimateEarnings(1000, isShort);
+    return realRpms.reduce((sum, rpm) => sum + rpm, 0) / realRpms.length;
+  }
+  const avgShortsRpm = topRealRpmAverage(rows.filter((r) => r.is_short), 5, true);
+  const avgLongRpm = topRealRpmAverage(rows.filter((r) => !r.is_short), 5, false);
 
   // Vídeos órfãos (sem hashtag de criador) do período — alimenta o modal
   // que abre ao clicar nos cards "Vídeos sem criador" / "Saldo sem
