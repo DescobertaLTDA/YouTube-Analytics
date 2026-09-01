@@ -747,10 +747,9 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
       // Com valor real digitado, não dá pra saber o breakdown exato por
       // tipo — mas em vez de ratear só pela % de views (o que ignora que
       // vídeo longo rende muito mais por view que Shorts), pesa a fatia de
-      // cada tipo pela receita estimada de cada formato (RPM + divisor
-      // próprios de cada um — vídeo longo não tem o /2 que Shorts tem).
-      // Assim o total bate com o valor real digitado, mas a divisão
-      // respeita a diferença de monetização entre os dois formatos.
+      // cada tipo pela receita estimada de cada formato (RPM próprio de
+      // cada um). Assim o total bate com o valor real digitado, mas a
+      // divisão respeita a diferença de monetização entre os dois formatos.
       const totalEarnings =
         periodViews > 0 ? Math.round(periodEarnings * (totalViews / periodViews) * 100) / 100 : 0;
       const shortsWeight = sumEstimatedEarnings(shorts, realRpmMap);

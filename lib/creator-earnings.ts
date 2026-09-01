@@ -28,27 +28,31 @@ export const LONG_COUNT_GOAL = 15;
 export const SHORTS_REVENUE_GOAL = 1700;
 export const LONG_REVENUE_GOAL = 1700;
 
-// views = receita * 1000 * 2 / rpm pra Shorts (tem o /2);
-// views = receita * 1000 / rpm pra vídeo longo (sem o /2).
+// views = receita * 1000 / rpm, pros dois formatos (sem /2 — ver nota no
+// estimateEarnings abaixo sobre a remoção do split fixo).
 // Inverso de estimateEarnings pro RPM de cada formato.
-export const SHORTS_VIEWS_GOAL = Math.round((SHORTS_REVENUE_GOAL * 2000) / SHORTS_RPM);
+export const SHORTS_VIEWS_GOAL = Math.round((SHORTS_REVENUE_GOAL * 1000) / SHORTS_RPM);
 export const LONG_VIEWS_GOAL = Math.round((LONG_REVENUE_GOAL * 1000) / LONG_RPM);
 
 /**
- * Ganhos estimados:
- * - Shorts: views * RPM / 1000 / 2 (o /2 é a divisão fixa entre os 2 lados
- *   combinada com você — ex: parceria de canal, split entre editor/criador).
- * - Vídeo longo: views * RPM / 1000 (sem o /2).
+ * Ganhos estimados: views * RPM / 1000, pros dois formatos.
  *
  * `isShort` decide qual RPM usar — Shorts (R$0,32) ou vídeo longo (R$5,50).
  *
  * `realRpm` é o RPM real daquele vídeo específico, importado via CSV do
  * YouTube Studio (tabela `video_rpm_real` — ver `lib/rpm-real.ts`). Quando
- * informado (não nulo/undefined), substitui o RPM fixo no cálculo; o /2 de
- * Shorts continua se aplicando normalmente, porque é uma regra de split
- * nossa, não algo que o YouTube Studio reporta. Sem `realRpm`, o
- * comportamento é idêntico ao de antes (RPM fixo) — nenhuma chamada
- * existente precisa mudar.
+ * informado (não nulo/undefined), substitui o RPM fixo no cálculo.
+ *
+ * NOTA (2026): até aqui, Shorts tinha um `/2` extra fixo embutido nessa
+ * função — não era correção de RPM do YouTube, era uma regra de split
+ * interna (fatia que ficava com vocês vs a outra parte). Isso fazia o
+ * "Receita estimada" do dashboard ficar bem abaixo do valor real reportado
+ * pelo YouTube Studio (diferença de centenas de reais/mês). Removido daqui
+ * porque essa função hoje é usada tanto pro card de comparação com o
+ * Studio quanto pro valor mostrado por criador — se o split ainda for
+ * necessário em algum lugar (pagamento entre editor/criador, por
+ * exemplo), aplique-o separadamente na hora de decidir quanto cada pessoa
+ * recebe, fora dessa função.
  */
 export function estimateEarnings(
   views: number,
@@ -57,7 +61,7 @@ export function estimateEarnings(
 ): number {
   if (!views) return 0;
   const rpm = realRpm != null ? realRpm : isShort ? SHORTS_RPM : LONG_RPM;
-  const raw = isShort ? (views * rpm) / 1000 / 2 : (views * rpm) / 1000;
+  const raw = (views * rpm) / 1000;
   return Math.round(raw * 100) / 100;
 }
 

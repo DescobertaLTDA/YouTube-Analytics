@@ -39,12 +39,13 @@ function effectiveLongRpm(stats: CreatorStats): number {
   return (stats.longEarnings * 1000) / stats.longViews;
 }
 
-// Mesma ideia pro RPM médio efetivo de Shorts, mas invertendo a fórmula
-// de Shorts (que tem o `/2` do split): earnings = views * rpm / 1000 / 2
-// → rpm = earnings * 1000 * 2 / views.
+// Mesma ideia pro RPM médio efetivo de Shorts, invertendo a fórmula de
+// estimateEarnings pra Shorts: earnings = views * rpm / 1000 → rpm =
+// earnings * 1000 / views. (Até 2026 essa função tinha um /2 extra fixo
+// embutido — removido, ver nota em lib/creator-earnings.ts.)
 function effectiveShortsRpm(stats: CreatorStats): number {
   if (stats.shortsViews <= 0) return SHORTS_RPM;
-  return (stats.shortsEarnings * 1000 * 2) / stats.shortsViews;
+  return (stats.shortsEarnings * 1000) / stats.shortsViews;
 }
 
 export function CreatorCard({
