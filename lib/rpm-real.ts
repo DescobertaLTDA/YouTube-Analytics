@@ -8,8 +8,17 @@
 //
 // Se não houver RPM real pra um vídeo, o mapa simplesmente não tem aquela
 // chave — quem consome decide o fallback (RPM fixo).
+//
+// Usa o cliente de service_role (não o anônimo) porque `video_rpm_real`
+// tem RLS ligado sem nenhuma política de leitura cadastrada — com o
+// cliente anônimo, toda consulta aqui falhava silenciosamente (erro
+// logado, mapa vazio) e o cálculo de ganhos caía 100% no RPM fixo mesmo
+// quando havia RPM real importado via CSV. Este módulo só é chamado a
+// partir de `lib/data.ts`, sempre em código de servidor, então usar
+// service_role aqui é seguro (mesmo padrão já usado pras outras tabelas
+// da aba Ganhos).
 
-import { supabase } from "./supabase";
+import { getServiceSupabase } from "./supabase";
 import { estimateEarnings } from "./creator-earnings";
 
 export type RealRpmEntry = {
@@ -30,7 +39,8 @@ export type RealRpmMap = Map<string, RealRpmEntry>;
 export async function getRealRpmMap(): Promise<RealRpmMap> {
   const map: RealRpmMap = new Map();
 
-  const { data, error } = await supabase
+  const db = getServiceSupabase();
+  const { data, error } = await db
     .from("video_rpm_real")
     .select("youtube_video_id, rpm, receita, views");
 
@@ -56,7 +66,8 @@ export async function getRealRpmMap(): Promise<RealRpmMap> {
  * consultar vários vídeos (evita 1 query por vídeo).
  */
 export async function getRealRpmForVideo(youtubeVideoId: string): Promise<number | null> {
-  const { data, error } = await supabase
+  const db = getServiceSupabase();
+  const { data, error } = await db
     .from("video_rpm_real")
     .select("rpm")
     .eq("youtube_video_id", youtubeVideoId)
