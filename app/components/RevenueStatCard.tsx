@@ -91,9 +91,6 @@ export function RevenueStatCard({
         aria-label="Editar valor real"
         title="Clique para inserir o valor real"
       >
-        <span className="stat-edit-pencil" aria-hidden="true">
-          ✎
-        </span>
         <div className="stat-value-large malachite">{formatCurrency(periodEarnings)}</div>
         <div className="stat-label">
           {isManualRevenue ? "Receita real · 28d" : "Receita estimada · 28d"}
