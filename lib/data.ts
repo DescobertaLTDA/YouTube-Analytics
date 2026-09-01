@@ -610,11 +610,22 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
   const noHashtagVideos: GanhosVideoRow[] = Array.from(noHashtagByVideoId.entries())
     .map(([youtubeVideoId, group]) => {
       const first = group[0];
+      // Com valor manual ativo, o total bate com o que foi digitado — mas
+      // a fatia de CADA vídeo é proporcional ao peso RPM dele (não à sua
+      // % bruta de views), senão vídeo longo (RPM bem mais alto) fica
+      // artificialmente esmagado num pool de views dominado por Shorts.
+      // Mesmo princípio já usado pra dividir shortsEarnings/longEarnings
+      // por criador (ver `creators` abaixo), só que agora vídeo a vídeo.
+      const videoWeight = estimateEarnings(
+        first.view_count,
+        first.is_short,
+        realRpmMap.get(youtubeVideoId)?.rpm
+      );
       const revenue = isManualRevenue
-        ? periodViews > 0
-          ? Math.round(periodEarnings * (first.view_count / periodViews) * 100) / 100
+        ? estimatedPeriodEarnings > 0
+          ? Math.round(periodEarnings * (videoWeight / estimatedPeriodEarnings) * 100) / 100
           : 0
-        : estimateEarnings(first.view_count, first.is_short, realRpmMap.get(youtubeVideoId)?.rpm);
+        : videoWeight;
 
       return {
         youtubeVideoId,
@@ -770,11 +781,21 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
           ? taggedGroup.map((r) => CREATORS.find((c) => c.key === r.creator)?.label || r.creator).join(" + ")
           : "sem hashtag";
 
+      // Mesma correção do bloco de `noHashtagVideos` acima: com valor
+      // manual ativo, divide o total pelo peso RPM de cada vídeo (formato
+      // + RPM real quando existir), não pela % bruta de views — senão
+      // vídeo longo aparece com receita muito abaixo do real na
+      // Auditoria/Histórico.
+      const videoWeight = estimateEarnings(
+        first.view_count,
+        first.is_short,
+        realRpmMap.get(youtubeVideoId)?.rpm
+      );
       const revenue = isManualRevenue
-        ? periodViews > 0
-          ? Math.round(periodEarnings * (first.view_count / periodViews) * 100) / 100
+        ? estimatedPeriodEarnings > 0
+          ? Math.round(periodEarnings * (videoWeight / estimatedPeriodEarnings) * 100) / 100
           : 0
-        : estimateEarnings(first.view_count, first.is_short, realRpmMap.get(youtubeVideoId)?.rpm);
+        : videoWeight;
 
       return {
         youtubeVideoId,
