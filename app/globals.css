@@ -2143,6 +2143,87 @@ footer.page-footer {
   white-space: nowrap;
 }
 
+/* ===== BOTÃO E DRAWER DE AUDITORIA (card de cada criador) ===== */
+.creator-audit {
+  margin-top: 4px;
+}
+
+.btn-auditoria {
+  appearance: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  justify-content: center;
+  padding: 9px 14px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 8px;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.btn-auditoria:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.audit-section {
+  margin-bottom: 22px;
+}
+
+.audit-section:last-child {
+  margin-bottom: 0;
+}
+
+.audit-section-title {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.audit-note {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  background: var(--surface-raised);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 0 0 16px;
+}
+
+.audit-shopee-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.audit-shopee-row:last-child {
+  border-bottom: none;
+}
+
+.audit-cakto-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink);
+}
+
 /* Grupo dos botões Atualizar + Carregar CSV (aba Ganhos) */
 .ganhos-actions-group {
   display: flex;

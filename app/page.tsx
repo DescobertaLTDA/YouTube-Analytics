@@ -85,6 +85,8 @@ export default async function GanhosPage({
             monthFullLabel={monthFullLabel}
             daysLeft={daysLeft}
             daysElapsed={daysElapsed}
+            videos={data.periodVideos.filter((v) => v.creatorLabel.split(" + ").includes(stats.label))}
+            isManualRevenue={data.isManualRevenue}
           />
         ))}
       </div>

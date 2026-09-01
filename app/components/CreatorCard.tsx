@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import type { CreatorStats } from "@/lib/data";
+import type { CreatorStats, GanhosVideoRow } from "@/lib/data";
 import { ShopeeSalesDetail } from "@/app/components/ShopeeSalesDetail";
 import { CreatorGoalsButton } from "@/app/components/CreatorGoalsButton";
+import { CreatorAuditButton } from "@/app/components/CreatorAuditButton";
 import { CreatorInsightsModal } from "@/app/components/CreatorInsightsModal";
 import { LONG_RPM, SHORTS_RPM } from "@/lib/creator-earnings";
 import { IconFilm, IconZap, IconDollar, IconCalendar, IconCart } from "@/app/components/Icons";
@@ -31,6 +32,8 @@ export function CreatorCard({
   monthFullLabel,
   daysLeft,
   daysElapsed,
+  videos,
+  isManualRevenue,
 }: {
   stats: CreatorStats;
   // Labels de data (fuso São Paulo) calculados uma vez no server component
@@ -40,6 +43,10 @@ export function CreatorCard({
   monthFullLabel: string;
   daysLeft: number;
   daysElapsed: number;
+  // Vídeos desse criador no período de 28 dias, com receita por vídeo —
+  // alimenta o drawer de Auditoria.
+  videos: GanhosVideoRow[];
+  isManualRevenue: boolean;
 }) {
   const [insightsOpen, setInsightsOpen] = useState(false);
 
@@ -201,6 +208,10 @@ export function CreatorCard({
               <ShopeeSalesDetail sales={stats.shopeeSales} />
             </div>
           )}
+        </div>
+
+        <div className="creator-audit" onClick={(e) => e.stopPropagation()}>
+          <CreatorAuditButton stats={stats} videos={videos} isManualRevenue={isManualRevenue} />
         </div>
       </div>
 
