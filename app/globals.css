@@ -555,10 +555,11 @@ a {
   box-shadow: 0 4px 14px rgba(17, 17, 17, 0.07);
 }
 
-/* Página de Ganhos: 4 cards (3 números + o form de valor real ao lado de
-   "Vídeos escaneados"), então usa 4 colunas em vez das 6 padrão. */
+/* Página de Ganhos: 7 cards (Views, Receita, Vídeos escaneados, RPM Shorts,
+   RPM Longos, Vídeos sem criador, Saldo sem criador), então usa 7 colunas
+   para caberem todos numa única linha. */
 .stats-grid-ganhos {
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(7, 1fr);
 }
 
 .stat-card-form {
