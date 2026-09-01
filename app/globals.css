@@ -557,9 +557,26 @@ a {
 
 /* Página de Ganhos: 7 cards (Views, Receita, Vídeos escaneados, RPM Shorts,
    RPM Longos, Vídeos sem criador, Saldo sem criador), então usa 7 colunas
-   para caberem todos numa única linha. */
+   para caberem todos numa única linha. Cada coluna fica mais estreita que
+   o padrão de 6, então reduzimos fonte/padding e travamos o valor numérico
+   em uma linha só para não quebrar feio no meio do número. */
 .stats-grid-ganhos {
   grid-template-columns: repeat(7, 1fr);
+  gap: 12px;
+}
+
+.stats-grid-ganhos .stat-card {
+  padding: 18px 10px;
+}
+
+.stats-grid-ganhos .stat-value-large {
+  font-size: 20px;
+  white-space: nowrap;
+}
+
+.stats-grid-ganhos .stat-label {
+  font-size: 10px;
+  text-wrap: balance;
 }
 
 .stat-card-form {
@@ -1673,6 +1690,19 @@ footer.page-footer {
 
   .stats-grid-ganhos {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stats-grid-ganhos .stat-card {
+    padding: 22px 20px;
+  }
+
+  .stats-grid-ganhos .stat-value-large {
+    font-size: 28px;
+    white-space: normal;
+  }
+
+  .stats-grid-ganhos .stat-label {
+    font-size: 11px;
   }
 }
 
