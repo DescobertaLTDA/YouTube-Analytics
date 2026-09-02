@@ -667,8 +667,8 @@ a {
 
 /* ===== GRÁFICO DE LINHA ===== */
 .chart-section {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: #000000;
+  border: 1px solid #000000;
   padding: 24px;
   border-radius: 12px;
   margin-bottom: 32px;
@@ -678,12 +678,12 @@ a {
   font-family: var(--font-display);
   font-size: 20px;
   margin-bottom: 16px;
-  color: var(--ink);
+  color: #ffffff;
 }
 
 .chart-subtitle {
   font-size: 13px;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.55);
   margin-top: -12px;
   margin-bottom: 16px;
 }
@@ -703,7 +703,7 @@ a {
   width: 100%;
   min-width: 400px;
   height: 200px;
-  background: var(--surface);
+  background: #000000;
   border-radius: 8px;
   cursor: crosshair;
 }
@@ -712,9 +712,10 @@ a {
   position: absolute;
   top: 8px;
   transform: translateX(-50%);
-  background: #ffffff;
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
   padding: 10px 14px;
   pointer-events: none;
   z-index: 5;
@@ -722,7 +723,7 @@ a {
 
 .chart-tooltip-date {
   font-size: 12px;
-  color: #6b7280;
+  color: rgba(255, 255, 255, 0.55);
   margin-bottom: 6px;
   white-space: nowrap;
 }
@@ -747,16 +748,17 @@ a {
 }
 
 .chart-tooltip-name {
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.75);
   flex: 1;
 }
 
 .chart-tooltip-value {
   font-weight: 700;
+  color: #ffffff;
 }
 
 .chart-empty {
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.55);
   text-align: center;
   padding: 40px 0;
 }
@@ -767,7 +769,7 @@ a {
   flex-wrap: wrap;
   margin-top: 4px;
   padding-top: 12px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .chart-legend-item {
@@ -775,7 +777,7 @@ a {
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .chart-legend-dot {
