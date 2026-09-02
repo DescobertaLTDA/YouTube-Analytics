@@ -16,8 +16,8 @@ const CREATOR_COLORS: Record<CreatorKey, string> = {
 
 const HEIGHT = 220;
 const PAD_TOP = 16;
-const PAD_BOTTOM = 28;
-const PAD_LEFT = 4;
+const PAD_BOTTOM = 42;
+const PAD_LEFT = 32;
 const PAD_RIGHT = 4;
 const FALLBACK_WIDTH = 700;
 
@@ -156,7 +156,15 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
           onMouseLeave={() => setHoverIndex(null)}
         >
           {gridLines.map((y, i) => (
-            <line key={i} x1={PAD_LEFT} y1={y} x2={width - PAD_RIGHT} y2={y} stroke="#e9ecef" strokeWidth={1} />
+            <line
+              key={i}
+              x1={PAD_LEFT}
+              y1={y}
+              x2={width - PAD_RIGHT}
+              y2={y}
+              stroke="rgba(255,255,255,0.12)"
+              strokeWidth={1}
+            />
           ))}
 
           {hoverX !== null && (
@@ -165,7 +173,7 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
               y1={PAD_TOP}
               x2={hoverX}
               y2={PAD_TOP + chartHeight}
-              stroke="#c4c9cf"
+              stroke="rgba(255,255,255,0.3)"
               strokeWidth={1}
               strokeDasharray="3 3"
             />
@@ -199,11 +207,38 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
             </g>
           ))}
 
-          <text x={PAD_LEFT} y={HEIGHT - 8} fontSize="11" fill="#909090">
+          <text x={PAD_LEFT} y={PAD_TOP + chartHeight + 18} fontSize="11" fill="rgba(255,255,255,0.55)">
             {shortDate(timestamps[0])}
           </text>
-          <text x={width - PAD_RIGHT} y={HEIGHT - 8} fontSize="11" fill="#909090" textAnchor="end">
+          <text
+            x={width - PAD_RIGHT}
+            y={PAD_TOP + chartHeight + 18}
+            fontSize="11"
+            fill="rgba(255,255,255,0.55)"
+            textAnchor="end"
+          >
             {shortDate(timestamps[timestamps.length - 1])}
+          </text>
+
+          <text
+            x={PAD_LEFT + chartWidth / 2}
+            y={HEIGHT - 6}
+            fontSize="11"
+            fill="rgba(255,255,255,0.8)"
+            textAnchor="middle"
+          >
+            Dia
+          </text>
+
+          <text
+            x={12}
+            y={PAD_TOP + chartHeight / 2}
+            fontSize="11"
+            fill="rgba(255,255,255,0.8)"
+            textAnchor="middle"
+            transform={`rotate(-90, 12, ${PAD_TOP + chartHeight / 2})`}
+          >
+            Receita
           </text>
         </svg>
 
