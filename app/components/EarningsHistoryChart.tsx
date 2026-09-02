@@ -17,9 +17,15 @@ const CREATOR_COLORS: Record<CreatorKey, string> = {
 const HEIGHT = 220;
 const PAD_TOP = 16;
 const PAD_BOTTOM = 42;
-const PAD_LEFT = 56;
+const PAD_LEFT = 76;
 const PAD_RIGHT = 4;
 const FALLBACK_WIDTH = 700;
+
+// Versão curta pros rótulos do eixo Y — sem centavos, pra não brigar de
+// espaço com o título "Receita" rotacionado do lado esquerdo do gráfico.
+function formatAxisCurrency(value: number): string {
+  return `R$ ${new Intl.NumberFormat("pt-BR").format(Math.round(value))}`;
+}
 
 const TZ = "America/Sao_Paulo";
 
@@ -170,8 +176,8 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
           {gridLines.map(({ y, value }, i) => (
             <g key={i}>
               <line x1={PAD_LEFT} y1={y} x2={width - PAD_RIGHT} y2={y} stroke="rgba(255,255,255,0.12)" strokeWidth={1} />
-              <text x={PAD_LEFT - 8} y={y + 3} fontSize="10" fill="rgba(255,255,255,0.55)" textAnchor="end">
-                {formatCurrency(value)}
+              <text x={PAD_LEFT - 10} y={y + 3} fontSize="10" fill="rgba(255,255,255,0.55)" textAnchor="end">
+                {formatAxisCurrency(value)}
               </text>
             </g>
           ))}
@@ -240,12 +246,12 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
           </text>
 
           <text
-            x={12}
+            x={10}
             y={PAD_TOP + chartHeight / 2}
             fontSize="11"
             fill="rgba(255,255,255,0.8)"
             textAnchor="middle"
-            transform={`rotate(-90, 12, ${PAD_TOP + chartHeight / 2})`}
+            transform={`rotate(-90, 10, ${PAD_TOP + chartHeight / 2})`}
           >
             Receita
           </text>
