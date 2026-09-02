@@ -17,7 +17,7 @@ const CREATOR_COLORS: Record<CreatorKey, string> = {
 const HEIGHT = 220;
 const PAD_TOP = 16;
 const PAD_BOTTOM = 42;
-const PAD_LEFT = 32;
+const PAD_LEFT = 56;
 const PAD_RIGHT = 4;
 const FALLBACK_WIDTH = 700;
 
@@ -100,7 +100,10 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
     PAD_LEFT + (timestamps.length > 1 ? (i / (timestamps.length - 1)) * chartWidth : 0);
   const yFor = (value: number) => PAD_TOP + chartHeight - (value / maxEarnings) * chartHeight;
 
-  const gridLines = [0.25, 0.5, 0.75, 1].map((f) => PAD_TOP + chartHeight * (1 - f));
+  const gridLines = [0, 0.25, 0.5, 0.75, 1].map((f) => ({
+    y: PAD_TOP + chartHeight * (1 - f),
+    value: maxEarnings * f,
+  }));
 
   // Pontos de cada criador pré-calculados uma vez só, reaproveitados pela
   // linha, pelos círculos e pelo tooltip.
@@ -155,16 +158,22 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
           onMouseMove={handlePointerMove}
           onMouseLeave={() => setHoverIndex(null)}
         >
-          {gridLines.map((y, i) => (
-            <line
-              key={i}
-              x1={PAD_LEFT}
-              y1={y}
-              x2={width - PAD_RIGHT}
-              y2={y}
-              stroke="rgba(255,255,255,0.12)"
-              strokeWidth={1}
-            />
+          <line
+            x1={PAD_LEFT}
+            y1={PAD_TOP}
+            x2={PAD_LEFT}
+            y2={PAD_TOP + chartHeight}
+            stroke="rgba(255,255,255,0.35)"
+            strokeWidth={1}
+          />
+
+          {gridLines.map(({ y, value }, i) => (
+            <g key={i}>
+              <line x1={PAD_LEFT} y1={y} x2={width - PAD_RIGHT} y2={y} stroke="rgba(255,255,255,0.12)" strokeWidth={1} />
+              <text x={PAD_LEFT - 8} y={y + 3} fontSize="10" fill="rgba(255,255,255,0.55)" textAnchor="end">
+                {formatCurrency(value)}
+              </text>
+            </g>
           ))}
 
           {hoverX !== null && (
