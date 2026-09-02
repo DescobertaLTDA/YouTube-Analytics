@@ -2225,13 +2225,26 @@ footer.page-footer {
 }
 
 .creator-month {
-  background: var(--malachite-dim);
-  border: 1px solid var(--malachite);
+  background: #000000;
+  border: 1px solid #000000;
+}
+
+.creator-month .creator-breakdown-header {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.creator-month .icon-label svg {
+  stroke: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.65);
 }
 
 .creator-month-value {
   font-size: 18px;
   font-weight: 600;
+}
+
+.creator-month .creator-month-value.malachite {
+  color: #ffffff;
 }
 
 .creator-outside-month {
