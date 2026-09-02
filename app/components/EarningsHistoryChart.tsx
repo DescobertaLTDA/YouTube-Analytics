@@ -204,21 +204,23 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
-              {points.map((p, i) => (
-                <circle
-                  key={i}
-                  cx={p.x}
-                  cy={p.y}
-                  r={hoverIndex === i ? 5 : 3}
-                  fill={CREATOR_COLORS[key]}
-                  stroke="#ffffff"
-                  strokeWidth={hoverIndex === i ? 2 : 1.5}
-                >
-                  <title>
-                    {`${CREATORS.find((c) => c.key === key)?.label} · ${longDate(timestamps[i])} · ${formatCurrency(p.value)}`}
-                  </title>
-                </circle>
-              ))}
+              {points.map((p, i) =>
+                hoverIndex === i ? (
+                  <circle
+                    key={i}
+                    cx={p.x}
+                    cy={p.y}
+                    r={5}
+                    fill={CREATOR_COLORS[key]}
+                    stroke="#ffffff"
+                    strokeWidth={2}
+                  >
+                    <title>
+                      {`${CREATORS.find((c) => c.key === key)?.label} · ${longDate(timestamps[i])} · ${formatCurrency(p.value)}`}
+                    </title>
+                  </circle>
+                ) : null
+              )}
             </g>
           ))}
 
