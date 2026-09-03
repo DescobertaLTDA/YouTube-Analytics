@@ -667,8 +667,8 @@ a {
 
 /* ===== GRÁFICO DE LINHA ===== */
 .chart-section {
-  background: #000000;
-  border: 1px solid #000000;
+  background: var(--surface);
+  border: 1px solid var(--border);
   padding: 24px;
   border-radius: 12px;
   margin-bottom: 32px;
@@ -678,12 +678,12 @@ a {
   font-family: var(--font-display);
   font-size: 20px;
   margin-bottom: 16px;
-  color: #ffffff;
+  color: var(--ink);
 }
 
 .chart-subtitle {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--text-muted);
   margin-top: -12px;
   margin-bottom: 16px;
 }
@@ -703,7 +703,7 @@ a {
   width: 100%;
   min-width: 400px;
   height: 200px;
-  background: #000000;
+  background: var(--surface);
   border-radius: 8px;
   cursor: crosshair;
 }
@@ -712,10 +712,9 @@ a {
   position: absolute;
   top: 8px;
   transform: translateX(-50%);
-  background: #1a1a1a;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #ffffff;
   border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
   padding: 10px 14px;
   pointer-events: none;
   z-index: 5;
@@ -723,7 +722,7 @@ a {
 
 .chart-tooltip-date {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.55);
+  color: #6b7280;
   margin-bottom: 6px;
   white-space: nowrap;
 }
@@ -748,17 +747,16 @@ a {
 }
 
 .chart-tooltip-name {
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--text-secondary);
   flex: 1;
 }
 
 .chart-tooltip-value {
   font-weight: 700;
-  color: #ffffff;
 }
 
 .chart-empty {
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--text-muted);
   text-align: center;
   padding: 40px 0;
 }
@@ -769,7 +767,7 @@ a {
   flex-wrap: wrap;
   margin-top: 4px;
   padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid var(--border);
 }
 
 .chart-legend-item {
@@ -777,7 +775,7 @@ a {
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--text-secondary);
 }
 
 .chart-legend-dot {
@@ -2227,26 +2225,13 @@ footer.page-footer {
 }
 
 .creator-month {
-  background: #000000;
-  border: 1px solid #000000;
-}
-
-.creator-month .creator-breakdown-header {
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.creator-month .icon-label svg {
-  stroke: rgba(255, 255, 255, 0.65);
-  color: rgba(255, 255, 255, 0.65);
+  background: var(--malachite-dim);
+  border: 1px solid var(--malachite);
 }
 
 .creator-month-value {
   font-size: 18px;
   font-weight: 600;
-}
-
-.creator-month .creator-month-value.malachite {
-  color: #ffffff;
 }
 
 .creator-outside-month {

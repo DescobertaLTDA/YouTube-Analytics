@@ -501,20 +501,22 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
   // o view_count de hoje e o de ~28 dias atrás — incluindo vídeos antigos
   // que continuam recebendo views, que o filtro por published_at ignorava.
   // Busca em páginas de 1000 linhas até esgotar a tabela. Um único
-  // .select() nunca é suficiente aqui: o Supabase/PostgREST corta em
-  // 1000 linhas por chamada (Max Rows do projeto), e com a tabela já
-  // passando de 2500+ linhas isso truncava o histórico — como o order é
-  // ascending, sempre cortava os dias mais RECENTES de fora, fazendo o
-  // "baseline" usado no cálculo de views/ganhos do período cair numa
-  // data mais antiga que o esperado e inflar o resultado. Mesmo bug já
-  // corrigido em getCreatorDailyEarnings, replicado aqui.
+  // .select() nunca é suficiente aqui: a tabela já passa de 1000 linhas
+  // (uma por vídeo por dia) e o Supabase/PostgREST corta em 1000 linhas
+  // por chamada (Max Rows do projeto), não importa quantas existiriam —
+  // como a ordenação é ascendente, isso pegava só as linhas mais antigas
+  // e nunca chegava perto do início do mês/período atual, fazendo as
+  // baselines caírem em datas muito mais antigas do que deveriam e
+  // inflando "views do mês"/"views do período". Paginando com .range()
+  // em loop (mesmo padrão já usado em getCreatorEarningsHistory),
+  // buscamos a tabela inteira independente do tamanho.
   type HistoryRow = { youtube_video_id: string; view_count: number; captured_date: string };
-  const PAGE_SIZE = 1000;
+  const HISTORY_PAGE_SIZE = 1000;
   const historyData: HistoryRow[] = [];
   let historyError: unknown = null;
   for (let page = 0; ; page++) {
-    const from = page * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
+    const from = page * HISTORY_PAGE_SIZE;
+    const to = from + HISTORY_PAGE_SIZE - 1;
     const { data: pageData, error: pageError } = await db
       .from("creator_video_view_history")
       .select("youtube_video_id, view_count, captured_date")
@@ -527,7 +529,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     }
     const rows = (pageData as HistoryRow[]) || [];
     historyData.push(...rows);
-    if (rows.length < PAGE_SIZE) break; // última página
+    if (rows.length < HISTORY_PAGE_SIZE) break; // última página
   }
 
   if (historyError) {
@@ -538,7 +540,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
   const earliestByVideo = new Map<string, number>();
   const baselineAtOrBeforePeriod = new Map<string, number>();
 
-  for (const h of historyData) {
+  for (const h of (historyData as { youtube_video_id: string; view_count: number; captured_date: string }[]) || []) {
     if (!earliestByVideo.has(h.youtube_video_id)) {
       earliestByVideo.set(h.youtube_video_id, h.view_count || 0);
     }
@@ -836,33 +838,8 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
       .filter((r) => !r.is_short)
       .reduce((sum, r) => sum + (r.view_count || 0), 0);
     const monthViews = monthShortsViews + monthLongViews;
-    // Receita do mês: soma vídeo a vídeo (RPM real de cada um quando
-    // existir, fixo quando não) — igual ao resto do arquivo (Top 10,
-    // "Ganhos do período"). Antes isso aplicava a MÉDIA de RPM do
-    // período de 28 dias (effectiveShortsRpm/effectiveLongRpm) em cima
-    // do total de views do mês, o que dava um valor errado sempre que
-    // os vídeos do mês tinham RPM diferente da média do período — ex.:
-    // vídeo novo sem RPM real ainda (cai no fixo R$0,32/R$5,50) só que
-    // no período tem outros vídeos com RPM real bem mais baixo puxando
-    // a média pra baixo, fazendo a "Meta de Receita" mostrar menos do
-    // que a soma real dos vídeos do mês no Top 10. Só mantém a média
-    // quando há valor manual digitado, porque aí não tem como saber a
-    // receita real de cada vídeo — é só um rateio aproximado.
-    let monthShortsEarnings: number;
-    let monthLongEarnings: number;
-    if (isManualRevenue) {
-      monthShortsEarnings = Math.round((monthShortsViews / 1000) * effectiveShortsRpm * 100) / 100;
-      monthLongEarnings = Math.round((monthLongViews / 1000) * effectiveLongRpm * 100) / 100;
-    } else {
-      monthShortsEarnings = sumEstimatedEarnings(
-        monthViewCreatorRows.filter((r) => r.is_short),
-        realRpmMap
-      );
-      monthLongEarnings = sumEstimatedEarnings(
-        monthViewCreatorRows.filter((r) => !r.is_short),
-        realRpmMap
-      );
-    }
+    const monthShortsEarnings = Math.round((monthShortsViews / 1000) * effectiveShortsRpm * 100) / 100;
+    const monthLongEarnings = Math.round((monthLongViews / 1000) * effectiveLongRpm * 100) / 100;
     const monthEarnings = Math.round((monthShortsEarnings + monthLongEarnings) * 100) / 100;
 
     const cakto = caktoSales[key];

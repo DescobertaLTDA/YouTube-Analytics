@@ -16,16 +16,10 @@ const CREATOR_COLORS: Record<CreatorKey, string> = {
 
 const HEIGHT = 220;
 const PAD_TOP = 16;
-const PAD_BOTTOM = 42;
-const PAD_LEFT = 76;
+const PAD_BOTTOM = 28;
+const PAD_LEFT = 4;
 const PAD_RIGHT = 4;
 const FALLBACK_WIDTH = 700;
-
-// Versão curta pros rótulos do eixo Y — sem centavos, pra não brigar de
-// espaço com o título "Receita" rotacionado do lado esquerdo do gráfico.
-function formatAxisCurrency(value: number): string {
-  return `R$ ${new Intl.NumberFormat("pt-BR").format(Math.round(value))}`;
-}
 
 const TZ = "America/Sao_Paulo";
 
@@ -106,10 +100,7 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
     PAD_LEFT + (timestamps.length > 1 ? (i / (timestamps.length - 1)) * chartWidth : 0);
   const yFor = (value: number) => PAD_TOP + chartHeight - (value / maxEarnings) * chartHeight;
 
-  const gridLines = [0, 0.25, 0.5, 0.75, 1].map((f) => ({
-    y: PAD_TOP + chartHeight * (1 - f),
-    value: maxEarnings * f,
-  }));
+  const gridLines = [0.25, 0.5, 0.75, 1].map((f) => PAD_TOP + chartHeight * (1 - f));
 
   // Pontos de cada criador pré-calculados uma vez só, reaproveitados pela
   // linha, pelos círculos e pelo tooltip.
@@ -164,22 +155,8 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
           onMouseMove={handlePointerMove}
           onMouseLeave={() => setHoverIndex(null)}
         >
-          <line
-            x1={PAD_LEFT}
-            y1={PAD_TOP}
-            x2={PAD_LEFT}
-            y2={PAD_TOP + chartHeight}
-            stroke="rgba(255,255,255,0.35)"
-            strokeWidth={1}
-          />
-
-          {gridLines.map(({ y, value }, i) => (
-            <g key={i}>
-              <line x1={PAD_LEFT} y1={y} x2={width - PAD_RIGHT} y2={y} stroke="rgba(255,255,255,0.12)" strokeWidth={1} />
-              <text x={PAD_LEFT - 10} y={y + 3} fontSize="10" fill="rgba(255,255,255,0.55)" textAnchor="end">
-                {formatAxisCurrency(value)}
-              </text>
-            </g>
+          {gridLines.map((y, i) => (
+            <line key={i} x1={PAD_LEFT} y1={y} x2={width - PAD_RIGHT} y2={y} stroke="#e9ecef" strokeWidth={1} />
           ))}
 
           {hoverX !== null && (
@@ -188,7 +165,7 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
               y1={PAD_TOP}
               x2={hoverX}
               y2={PAD_TOP + chartHeight}
-              stroke="rgba(255,255,255,0.3)"
+              stroke="#c4c9cf"
               strokeWidth={1}
               strokeDasharray="3 3"
             />
@@ -204,58 +181,29 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
-              {points.map((p, i) =>
-                hoverIndex === i ? (
-                  <circle
-                    key={i}
-                    cx={p.x}
-                    cy={p.y}
-                    r={5}
-                    fill={CREATOR_COLORS[key]}
-                    stroke="#ffffff"
-                    strokeWidth={2}
-                  >
-                    <title>
-                      {`${CREATORS.find((c) => c.key === key)?.label} · ${longDate(timestamps[i])} · ${formatCurrency(p.value)}`}
-                    </title>
-                  </circle>
-                ) : null
-              )}
+              {points.map((p, i) => (
+                <circle
+                  key={i}
+                  cx={p.x}
+                  cy={p.y}
+                  r={hoverIndex === i ? 5 : 3}
+                  fill={CREATOR_COLORS[key]}
+                  stroke="#ffffff"
+                  strokeWidth={hoverIndex === i ? 2 : 1.5}
+                >
+                  <title>
+                    {`${CREATORS.find((c) => c.key === key)?.label} · ${longDate(timestamps[i])} · ${formatCurrency(p.value)}`}
+                  </title>
+                </circle>
+              ))}
             </g>
           ))}
 
-          <text x={PAD_LEFT} y={PAD_TOP + chartHeight + 18} fontSize="11" fill="rgba(255,255,255,0.55)">
+          <text x={PAD_LEFT} y={HEIGHT - 8} fontSize="11" fill="#909090">
             {shortDate(timestamps[0])}
           </text>
-          <text
-            x={width - PAD_RIGHT}
-            y={PAD_TOP + chartHeight + 18}
-            fontSize="11"
-            fill="rgba(255,255,255,0.55)"
-            textAnchor="end"
-          >
+          <text x={width - PAD_RIGHT} y={HEIGHT - 8} fontSize="11" fill="#909090" textAnchor="end">
             {shortDate(timestamps[timestamps.length - 1])}
-          </text>
-
-          <text
-            x={PAD_LEFT + chartWidth / 2}
-            y={HEIGHT - 6}
-            fontSize="11"
-            fill="rgba(255,255,255,0.8)"
-            textAnchor="middle"
-          >
-            Dia
-          </text>
-
-          <text
-            x={10}
-            y={PAD_TOP + chartHeight / 2}
-            fontSize="11"
-            fill="rgba(255,255,255,0.8)"
-            textAnchor="middle"
-            transform={`rotate(-90, 10, ${PAD_TOP + chartHeight / 2})`}
-          >
-            Receita
           </text>
         </svg>
 
