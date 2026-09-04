@@ -42,12 +42,12 @@ export function NoCreatorDrawer({
     <>
       <button type="button" className="stat-card stat-card-clickable" onClick={() => setOpen(true)}>
         <div className="stat-value-large">{formatNumber(count)}</div>
-        <div className="stat-label">Vídeos sem criador</div>
+        <div className="stat-label">Sem criador</div>
       </button>
 
       <button type="button" className="stat-card stat-card-clickable" onClick={() => setOpen(true)}>
         <div className="stat-value-large amber">{formatCurrency(amount)}</div>
-        <div className="stat-label">Saldo sem criador</div>
+        <div className="stat-label">Saldo s/ criador</div>
       </button>
 
       {open && (

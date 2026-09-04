@@ -93,7 +93,7 @@ export function RevenueStatCard({
       >
         <div className="stat-value-large malachite">{formatCurrency(periodEarnings)}</div>
         <div className="stat-label">
-          {isManualRevenue ? "Receita real · 28d" : "Receita estimada · 28d"}
+          {isManualRevenue ? "Receita real · 28d" : "Receita est. · 28d"}
         </div>
       </button>
 

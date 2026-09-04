@@ -97,7 +97,7 @@ a {
 }
 
 .page {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 32px 32px 96px;
 }
@@ -597,7 +597,7 @@ a {
    valor numérico em uma linha só para não quebrar feio no meio do número. */
 .stats-grid-ganhos {
   grid-template-columns: repeat(8, 1fr);
-  gap: 12px;
+  gap: 14px;
 }
 
 .stats-grid-ganhos .stat-card {
