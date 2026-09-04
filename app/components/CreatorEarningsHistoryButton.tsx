@@ -37,33 +37,63 @@ export function CreatorEarningsHistoryButton({
     };
   }, [open]);
 
+  // fetchKey muda toda vez que o usuário clica em "Tentar de novo" —
+  // força o efeito abaixo a rodar de novo mesmo já tendo dado erro antes.
+  const [fetchKey, setFetchKey] = useState(0);
+
   useEffect(() => {
-    if (!open || months !== null || loading) return;
+    if (!open || months !== null) return;
 
     let cancelled = false;
     setLoading(true);
     setError(null);
 
-    fetch("/api/ganhos/historico")
-      .then((res) => res.json())
+    // A varredura de histórico mensal é pesada (tabela inteira +
+    // chamadas à API do YouTube por vídeo) e pode legitimamente demorar
+    // — mas sem um limite no lado do cliente, uma falha de rede ou uma
+    // function que trava na Vercel deixa o drawer preso em "Carregando
+    // histórico..." pra sempre, sem qualquer sinal pro criador. 55s dá
+    // uma folga curta em relação ao maxDuration=60s da function, pra
+    // quase sempre ser a própria resposta do servidor a chegar primeiro.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 55_000);
+
+    fetch("/api/ganhos/historico", { signal: controller.signal })
+      .then(async (res) => {
+        const result = await res.json().catch(() => null);
+        if (!res.ok) {
+          throw new Error(result?.error || `Erro ${res.status} ao carregar histórico`);
+        }
+        return result;
+      })
       .then((result) => {
         if (cancelled) return;
-        if (result.error) throw new Error(result.error);
-        const history = result.history?.[creatorKey] ?? [];
+        if (result?.error) throw new Error(result.error);
+        const history = result?.history?.[creatorKey] ?? [];
         setMonths(history as MonthlyEarningsPoint[]);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Erro ao carregar histórico");
+        const isAbort = err instanceof DOMException && err.name === "AbortError";
+        setError(
+          isAbort
+            ? "Demorou demais pra responder. Tente de novo em alguns segundos."
+            : err instanceof Error
+            ? err.message
+            : "Erro ao carregar histórico"
+        );
       })
       .finally(() => {
+        clearTimeout(timeout);
         if (!cancelled) setLoading(false);
       });
 
     return () => {
       cancelled = true;
+      clearTimeout(timeout);
+      controller.abort();
     };
-  }, [open, months, loading, creatorKey]);
+  }, [open, months, creatorKey, fetchKey]);
 
   return (
     <>
@@ -98,7 +128,21 @@ export function CreatorEarningsHistoryButton({
 
               {loading && <div className="no-changes">Carregando histórico...</div>}
 
-              {error && <div className="no-changes">Não deu pra carregar o histórico: {error}</div>}
+              {error && (
+                <div className="no-changes history-error">
+                  <span>Não deu pra carregar o histórico: {error}</span>
+                  <button
+                    type="button"
+                    className="btn-historico-retry"
+                    onClick={() => {
+                      setMonths(null);
+                      setFetchKey((k) => k + 1);
+                    }}
+                  >
+                    Tentar de novo
+                  </button>
+                </div>
+              )}
 
               {!loading && !error && months && months.length === 0 && (
                 <div className="no-changes">

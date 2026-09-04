@@ -1291,36 +1291,52 @@ export async function getCreatorMonthlyEarningsHistory(): Promise<
   const emptyResult = {} as Record<CreatorKey, MonthlyEarningsPoint[]>;
   for (const { key } of CREATORS) emptyResult[key] = [];
 
-  // Busca a tabela de histórico diário de views INTEIRA, paginada em
-  // blocos de 1000 (mesma técnica de getCreatorDailyEarnings) — aqui não
-  // dá pra filtrar por data porque queremos todo o histórico já
-  // coletado, não só uma janela de N dias.
+  // Busca a tabela de histórico diário de views INTEIRA — aqui não dá pra
+  // filtrar por data porque queremos todo o histórico já coletado, não só
+  // uma janela de N dias. Diferente de getCreatorDailyEarnings (que pagina
+  // em blocos de 1000 SEQUENCIALMENTE, um .range() esperando o anterior
+  // terminar), aqui isso ficaria lento demais: sem filtro de data, a
+  // tabela cresce sem parar, e paginação sequencial vira O(páginas ×
+  // latência da rede) — fácil estourar o maxDuration da function na
+  // Vercel só nessa etapa. Em vez disso, pedimos o total de linhas
+  // primeiro (count "exact", sem trazer dado) e disparamos todas as
+  // páginas em PARALELO com Promise.all — o tempo de parede vira só ~1
+  // rodada de latência de rede, não uma por página.
   type HistoryRow = { youtube_video_id: string; view_count: number; captured_date: string; is_short: boolean };
   const PAGE_SIZE = 1000;
-  const historyRows: HistoryRow[] = [];
-  let historyError: unknown = null;
-  for (let page = 0; ; page++) {
-    const from = page * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
-    const { data: pageData, error: pageError } = await db
-      .from("creator_video_view_history")
-      .select("youtube_video_id, view_count, captured_date, is_short")
-      .order("captured_date", { ascending: true })
-      .range(from, to);
 
-    if (pageError) {
-      historyError = pageError;
-      break;
-    }
-    const rows = (pageData as HistoryRow[]) || [];
-    historyRows.push(...rows);
-    if (rows.length < PAGE_SIZE) break; // última página
-  }
+  const { count: totalRows, error: countError } = await db
+    .from("creator_video_view_history")
+    .select("*", { count: "exact", head: true });
 
-  if (historyError) {
-    console.error("❌ Erro ao ler creator_video_view_history (histórico mensal):", historyError);
+  if (countError) {
+    console.error("❌ Erro ao contar creator_video_view_history (histórico mensal):", countError);
     return emptyResult;
   }
+  if (!totalRows || totalRows === 0) return emptyResult;
+
+  const pageCount = Math.ceil(totalRows / PAGE_SIZE);
+  const pageResults = await Promise.all(
+    Array.from({ length: pageCount }, (_, page) => {
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      return db
+        .from("creator_video_view_history")
+        .select("youtube_video_id, view_count, captured_date, is_short")
+        .order("captured_date", { ascending: true })
+        .range(from, to);
+    })
+  );
+
+  const historyRows: HistoryRow[] = [];
+  for (const { data: pageData, error: pageError } of pageResults) {
+    if (pageError) {
+      console.error("❌ Erro ao ler creator_video_view_history (histórico mensal):", pageError);
+      return emptyResult;
+    }
+    historyRows.push(...((pageData as HistoryRow[]) || []));
+  }
+
   if (historyRows.length === 0) return emptyResult;
 
   const { data: creatorVideoRows, error: creatorError } = await db
