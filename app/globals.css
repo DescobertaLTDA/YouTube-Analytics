@@ -2412,6 +2412,9 @@ footer.page-footer {
 /* ===== BOTÃO E DRAWER DE AUDITORIA (card de cada criador) ===== */
 .creator-audit {
   margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .btn-auditoria {
@@ -2437,6 +2440,68 @@ footer.page-footer {
 .btn-auditoria:hover {
   opacity: 0.85;
   transform: translateY(-1px);
+}
+
+/* Botão "Histórico de Ganhos" — mesma forma do de Auditoria, mas
+   secundário (contornado) pra não competir visualmente com ele. */
+.btn-historico {
+  appearance: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  justify-content: center;
+  padding: 9px 14px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.btn-historico:hover {
+  color: var(--ink);
+  border-color: #c2c2c2;
+  transform: translateY(-1px);
+}
+
+.history-month-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.history-month-row:last-child {
+  border-bottom: none;
+}
+
+.history-month-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.history-month-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  text-transform: capitalize;
+}
+
+.history-month-value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
 }
 
 .audit-section {

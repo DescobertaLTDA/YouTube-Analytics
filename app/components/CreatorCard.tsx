@@ -5,6 +5,7 @@ import type { CreatorStats, GanhosVideoRow } from "@/lib/data";
 import { ShopeeSalesDetail } from "@/app/components/ShopeeSalesDetail";
 import { CreatorGoalsButton } from "@/app/components/CreatorGoalsButton";
 import { CreatorAuditButton } from "@/app/components/CreatorAuditButton";
+import { CreatorEarningsHistoryButton } from "@/app/components/CreatorEarningsHistoryButton";
 import { CreatorInsightsModal } from "@/app/components/CreatorInsightsModal";
 import { LONG_RPM, SHORTS_RPM } from "@/lib/creator-earnings";
 import { IconFilm, IconZap, IconDollar, IconCalendar, IconCart } from "@/app/components/Icons";
@@ -244,6 +245,7 @@ export function CreatorCard({
 
         <div className="creator-audit" onClick={(e) => e.stopPropagation()}>
           <CreatorAuditButton stats={stats} videos={videos} isManualRevenue={isManualRevenue} />
+          <CreatorEarningsHistoryButton creatorKey={stats.key} creatorLabel={stats.label} />
         </div>
       </div>
 

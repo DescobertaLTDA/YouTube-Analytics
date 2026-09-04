@@ -15,6 +15,7 @@ import { isShortVideo } from "./youtube-channel";
 import { CREATORS, CreatorKey, SHORTS_RPM, estimateEarnings } from "./creator-earnings";
 import { getRealRpmMap, sumEstimatedEarnings, effectiveViews } from "./rpm-real";
 import { getDailyVideoRevenue } from "./youtube-revenue";
+import { nowInSaoPaulo } from "./date-br";
 import { getAllOrders, sumPaidAmount } from "./cakto";
 import { averageVphByFormat, VphFormat } from "./vph";
 import {
@@ -1236,4 +1237,185 @@ export async function getCreatorDailyEarnings(days = 28): Promise<EarningsHistor
   }
 
   return points;
+}
+
+export type MonthlyEarningsPoint = {
+  monthKey: string; // "2026-07" (ano-mês, fuso São Paulo)
+  label: string; // "Julho de 2026"
+  rangeLabel: string; // "01 a 31 de julho"
+  views: number;
+  earnings: number;
+};
+
+function monthKeyToPoint(monthKey: string, views: number, earnings: number): MonthlyEarningsPoint {
+  const [yearStr, monthStr] = monthKey.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr); // 1-12
+  const refDate = new Date(year, month - 1, 1);
+  const monthNameRaw = new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(refDate);
+  const monthName = monthNameRaw.charAt(0).toUpperCase() + monthNameRaw.slice(1);
+  const lastDay = new Date(year, month, 0).getDate();
+
+  return {
+    monthKey,
+    label: `${monthName} de ${year}`,
+    rangeLabel: `01 a ${lastDay} de ${monthNameRaw}`,
+    views,
+    earnings: Math.round(earnings * 100) / 100,
+  };
+}
+
+// Ganhos estimados por CRIADOR, agrupados por MÊS CALENDÁRIO (dia 01 até o
+// último dia do mês, fuso São Paulo) — alimenta o botão "Histórico de
+// Ganhos" de cada card. Reaproveita a mesma lógica de
+// getCreatorDailyEarnings (delta diário de views em
+// `creator_video_view_history` × RPM real/fixo, com receita oficial do
+// YouTube quando disponível), só que somando os dias em baldes de mês em
+// vez de manter um ponto por dia — e sem limite de janela: pega TODO o
+// histórico já coletado desde que a sincronização diária começou a rodar
+// (não dá pra ir além disso, o YouTube não expõe view count histórico
+// retroativo por dia).
+//
+// IMPORTANTE: só cobre a receita do YouTube (Shorts + vídeos longos). As
+// vendas de Shopee e Cakto de meses passados não ficam guardadas em
+// lugar nenhum — as APIs delas só respondem pelo período pedido na hora
+// (28 dias), não existe uma tabela de histórico mensal pra elas como
+// existe pra views do YouTube em `creator_video_view_history`. Por isso o
+// histórico mensal não soma Shopee/Cakto; a UI deixa essa limitação
+// explícita pro criador não achar que é o ganho total do mês.
+export async function getCreatorMonthlyEarningsHistory(): Promise<
+  Record<CreatorKey, MonthlyEarningsPoint[]>
+> {
+  const db = getServiceSupabase();
+
+  const emptyResult = {} as Record<CreatorKey, MonthlyEarningsPoint[]>;
+  for (const { key } of CREATORS) emptyResult[key] = [];
+
+  // Busca a tabela de histórico diário de views INTEIRA, paginada em
+  // blocos de 1000 (mesma técnica de getCreatorDailyEarnings) — aqui não
+  // dá pra filtrar por data porque queremos todo o histórico já
+  // coletado, não só uma janela de N dias.
+  type HistoryRow = { youtube_video_id: string; view_count: number; captured_date: string; is_short: boolean };
+  const PAGE_SIZE = 1000;
+  const historyRows: HistoryRow[] = [];
+  let historyError: unknown = null;
+  for (let page = 0; ; page++) {
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+    const { data: pageData, error: pageError } = await db
+      .from("creator_video_view_history")
+      .select("youtube_video_id, view_count, captured_date, is_short")
+      .order("captured_date", { ascending: true })
+      .range(from, to);
+
+    if (pageError) {
+      historyError = pageError;
+      break;
+    }
+    const rows = (pageData as HistoryRow[]) || [];
+    historyRows.push(...rows);
+    if (rows.length < PAGE_SIZE) break; // última página
+  }
+
+  if (historyError) {
+    console.error("❌ Erro ao ler creator_video_view_history (histórico mensal):", historyError);
+    return emptyResult;
+  }
+  if (historyRows.length === 0) return emptyResult;
+
+  const { data: creatorVideoRows, error: creatorError } = await db
+    .from("creator_videos")
+    .select("creator, youtube_video_id");
+
+  if (creatorError) {
+    console.error("❌ Erro ao ler creator_videos (histórico mensal):", creatorError);
+  }
+
+  const creatorsByVideo = new Map<string, CreatorKey[]>();
+  for (const row of (creatorVideoRows as { creator: string; youtube_video_id: string }[]) || []) {
+    if (!CREATORS.some((c) => c.key === row.creator)) continue;
+    const list = creatorsByVideo.get(row.youtube_video_id) || [];
+    list.push(row.creator as CreatorKey);
+    creatorsByVideo.set(row.youtube_video_id, list);
+  }
+
+  const firstDate = historyRows[0].captured_date;
+  const lastDate = historyRows[historyRows.length - 1].captured_date;
+  const relevantVideoIds = Array.from(creatorsByVideo.keys());
+  const [realRevenueRows, realRpmMap] = await Promise.all([
+    getDailyVideoRevenue(firstDate, lastDate, relevantVideoIds),
+    getRealRpmMap(),
+  ]);
+  const realRevenueByKey = new Map<string, number>();
+  for (const row of realRevenueRows || []) {
+    realRevenueByKey.set(`${row.date}|${row.videoId}`, row.estimatedRevenue);
+  }
+
+  const byVideo = new Map<string, HistoryRow[]>();
+  for (const row of historyRows) {
+    const list = byVideo.get(row.youtube_video_id) || [];
+    list.push(row);
+    byVideo.set(row.youtube_video_id, list);
+  }
+
+  type Bucket = Record<CreatorKey, { views: number; earnings: number }>;
+  const emptyBucket = (): Bucket => ({
+    lucas: { views: 0, earnings: 0 },
+    matheus: { views: 0, earnings: 0 },
+    rafael: { views: 0, earnings: 0 },
+  });
+
+  // "YYYY-MM" -> bucket por criador
+  const byMonth = new Map<string, Bucket>();
+
+  for (const [videoId, rows] of byVideo) {
+    const creators = creatorsByVideo.get(videoId);
+    if (!creators || creators.length === 0) continue; // vídeo sem hashtag não entra
+
+    const sorted = rows.slice().sort((a, b) => (a.captured_date < b.captured_date ? -1 : 1));
+
+    for (let i = 1; i < sorted.length; i++) {
+      const prev = sorted[i - 1];
+      const curr = sorted[i];
+      const deltaViews = Math.max((curr.view_count || 0) - (prev.view_count || 0), 0);
+      if (deltaViews === 0) continue;
+
+      const realRevenue = realRevenueByKey.get(`${curr.captured_date}|${videoId}`);
+      const dayEarnings =
+        realRevenue ?? estimateEarnings(deltaViews, curr.is_short, realRpmMap.get(videoId)?.rpm);
+
+      const monthKey = curr.captured_date.slice(0, 7); // "YYYY-MM"
+      const bucket = byMonth.get(monthKey) || emptyBucket();
+      for (const creator of creators) {
+        bucket[creator].views += deltaViews;
+        bucket[creator].earnings += dayEarnings;
+      }
+      byMonth.set(monthKey, bucket);
+    }
+  }
+
+  // O mês em andamento fica de fora do histórico — ele já aparece no
+  // bloco "Ganhos do mês" de cada card, mostrar de novo aqui só
+  // duplicaria informação e ainda estaria incompleto (mês não fechou).
+  const nowSP = nowInSaoPaulo();
+  const currentMonthKey = `${nowSP.getFullYear()}-${String(nowSP.getMonth() + 1).padStart(2, "0")}`;
+
+  const result = {} as Record<CreatorKey, MonthlyEarningsPoint[]>;
+  for (const { key } of CREATORS) result[key] = [];
+
+  const monthKeys = Array.from(byMonth.keys())
+    .filter((mk) => mk !== currentMonthKey)
+    .sort()
+    .reverse(); // mês mais recente primeiro
+
+  for (const monthKey of monthKeys) {
+    const bucket = byMonth.get(monthKey)!;
+    for (const { key } of CREATORS) {
+      const { views, earnings } = bucket[key];
+      if (views === 0 && earnings === 0) continue; // sem dado nesse mês pra esse criador
+      result[key].push(monthKeyToPoint(monthKey, views, earnings));
+    }
+  }
+
+  return result;
 }
