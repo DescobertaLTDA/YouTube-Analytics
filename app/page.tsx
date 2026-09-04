@@ -28,6 +28,10 @@ export default async function GanhosPage({
   const daysElapsed = nowInSaoPaulo().getDate();
   const earningsHistory = await getCreatorDailyEarnings(28);
   const page = Number(searchParams.page) || 1;
+  // Maior "Ganhos do mês" entre os criadores — usado pra destacar o card
+  // vencedor do dia com o selo dourado. Só entra em jogo se houver ganho
+  // de fato (> 0), pra não destacar todo mundo quando ainda está zerado.
+  const topMonthEarnings = Math.max(0, ...data.creators.map((c) => c.monthEarnings));
   const creatorsEarnings = data.creators.reduce((sum, c) => sum + c.totalEarnings, 0);
   const noCreatorEarnings = Math.round((data.periodEarnings - creatorsEarnings) * 100) / 100;
 
@@ -95,6 +99,7 @@ export default async function GanhosPage({
             daysElapsed={daysElapsed}
             videos={data.periodVideos.filter((v) => v.creatorLabel.split(" + ").includes(stats.label))}
             isManualRevenue={data.isManualRevenue}
+            isMonthLeader={topMonthEarnings > 0 && stats.monthEarnings === topMonthEarnings}
           />
         ))}
       </div>

@@ -2227,11 +2227,86 @@ footer.page-footer {
 .creator-month {
   background: var(--malachite-dim);
   border: 1px solid var(--malachite);
+  position: relative;
 }
 
 .creator-month-value {
   font-size: 18px;
   font-weight: 600;
+  color: var(--malachite);
+}
+
+/* Destaque do criador com o maior "Ganhos do mês" entre os cards: fundo
+   preto com borda e texto dourados, leve brilho e um selo de troféu no
+   canto — chama atenção sem sair do tom geral (preto/branco) do site. */
+.creator-month-leader {
+  background: #0a0a0a;
+  border: 1px solid #d4af37;
+  box-shadow:
+    0 0 0 1px rgba(212, 175, 55, 0.35),
+    0 4px 18px rgba(212, 175, 55, 0.25);
+  overflow: hidden;
+}
+
+.creator-month-leader::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    transparent 35%,
+    rgba(255, 223, 128, 0.28) 48%,
+    rgba(255, 223, 128, 0.28) 52%,
+    transparent 65%,
+    transparent 100%
+  );
+  background-size: 250% 250%;
+  animation: creator-month-leader-shine 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.creator-month-leader .icon-label,
+.creator-month-leader .text-muted-small {
+  color: #e8c568;
+  position: relative;
+}
+
+.creator-month-leader .creator-month-value {
+  position: relative;
+  color: #f5d576;
+  text-shadow: 0 0 12px rgba(245, 213, 118, 0.55);
+}
+
+.creator-month-leader-badge {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px 3px 7px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #1a1200;
+  background: linear-gradient(135deg, #fff3c4, #d4af37 55%, #a8791f);
+  border-bottom-left-radius: 8px;
+  border-top-right-radius: 8px;
+  box-shadow: 0 1px 6px rgba(212, 175, 55, 0.5);
+}
+
+@keyframes creator-month-leader-shine {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
 }
 
 .creator-outside-month {
