@@ -7,7 +7,7 @@ import { CreatorGoalsButton } from "@/app/components/CreatorGoalsButton";
 import { CreatorAuditButton } from "@/app/components/CreatorAuditButton";
 import { CreatorInsightsModal } from "@/app/components/CreatorInsightsModal";
 import { LONG_RPM, SHORTS_RPM } from "@/lib/creator-earnings";
-import { IconFilm, IconZap, IconDollar, IconCalendar, IconCart, IconTrophy } from "@/app/components/Icons";
+import { IconFilm, IconZap, IconDollar, IconCalendar, IconCart } from "@/app/components/Icons";
 import { formatNumber, formatCurrency } from "@/lib/format-br";
 
 const SHORTS_GOAL = 30;
@@ -152,11 +152,6 @@ export function CreatorCard({
             : "creator-breakdown-item creator-month"
         }
       >
-        {isMonthLeader && (
-          <span className="creator-month-leader-badge">
-            <IconTrophy size={12} /> Maior do dia
-          </span>
-        )}
         <div className="creator-breakdown-header">
           <span className="icon-label">
             <IconCalendar /> Ganhos do mês ({monthLabel})
