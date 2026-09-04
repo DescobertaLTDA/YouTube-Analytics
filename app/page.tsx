@@ -39,8 +39,9 @@ export default async function GanhosPage({
     <main className="page">
       <div className="header-row">
         <div>
+          <p className="greeting">Olá 👋</p>
           <span className="eyebrow">Canal de Pedras e Minerais</span>
-          <h1 className="title">Ganhos</h1>
+          <h1 className="title">Seus ganhos</h1>
           <p className="subtitle">
             Views e receita estimada dos últimos 28 dias, por criador — coletados
             automaticamente via varredura de hashtag no YouTube Data API v3.
