@@ -28,6 +28,12 @@
   --amber-dim: #fbf0dc;
   --rose: #d1264f;
 
+  /* Verde — usado só no card de Vendas Cakto, pra destacar receita externa
+     à parte do roxo/âmbar do resto da grid. */
+  --emerald: #0a8a4a;
+  --emerald-dim: #e6f6ec;
+  --emerald-border: #bfe8cf;
+
   /* Selo de VPH (views/hora) — cores "vivas" do site, de propósito, pra
      chamar atenção mesmo na paleta roxa/neutra. */
   --vph-explosive: #820ad1;
@@ -584,13 +590,13 @@ a {
   transform: translateY(-2px);
 }
 
-/* Página de Ganhos: 7 cards (Views, Receita, Vídeos escaneados, RPM Shorts,
-   RPM Longos, Vídeos sem criador, Saldo sem criador), então usa 7 colunas
-   para caberem todos numa única linha. Cada coluna fica mais estreita que
-   o padrão de 6, então reduzimos fonte/padding e travamos o valor numérico
-   em uma linha só para não quebrar feio no meio do número. */
+/* Página de Ganhos: 8 cards (Views, Receita, Vídeos escaneados, RPM Shorts,
+   RPM Longos, Vendas Cakto, Vídeos sem criador, Saldo sem criador), então
+   usa 8 colunas para caberem todos numa única linha. Cada coluna fica mais
+   estreita que o padrão de 6, então reduzimos fonte/padding e travamos o
+   valor numérico em uma linha só para não quebrar feio no meio do número. */
 .stats-grid-ganhos {
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(8, 1fr);
   gap: 12px;
 }
 
@@ -631,6 +637,22 @@ a {
 
 .stat-value-large.amber {
   color: var(--amber);
+}
+
+.stat-value-large.emerald {
+  color: var(--emerald);
+}
+
+/* Card verde de destaque pras Vendas Cakto — mesmo padrão dos outros
+   stat-cards, só com fundo/borda tingidos de verde pra separar visualmente
+   das métricas de YouTube (roxo/âmbar) do resto da grid. */
+.stat-card-cakto {
+  background: var(--emerald-dim);
+  border-color: var(--emerald-border);
+}
+
+.stat-card-cakto:hover {
+  border-color: var(--emerald);
 }
 
 .stat-card .stat-label {

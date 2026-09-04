@@ -34,6 +34,12 @@ export default async function GanhosPage({
   const topMonthEarnings = Math.max(0, ...data.creators.map((c) => c.monthEarnings));
   const creatorsEarnings = data.creators.reduce((sum, c) => sum + c.totalEarnings, 0);
   const noCreatorEarnings = Math.round((data.periodEarnings - creatorsEarnings) * 100) / 100;
+  // Soma das vendas da Cakto (28d) de todos os criadores — mesma janela da
+  // Cakto por criador já calculada em getCreatorEarnings. null vira 0 na
+  // soma, mas só marcamos "indisponível" se TODOS vierem null (API fora do ar).
+  const caktoAllNull = data.creators.every((c) => c.caktoAmount == null);
+  const caktoTotalAmount = data.creators.reduce((sum, c) => sum + (c.caktoAmount || 0), 0);
+  const caktoTotalOrders = data.creators.reduce((sum, c) => sum + (c.caktoOrders || 0), 0);
 
   return (
     <main className="page">
@@ -79,6 +85,14 @@ export default async function GanhosPage({
         <div className="stat-card">
           <div className="stat-value-large">{formatCurrency(data.avgLongRpm)}</div>
           <div className="stat-label">RPM médio · Vídeos</div>
+        </div>
+        <div className="stat-card stat-card-cakto">
+          <div className="stat-value-large emerald">
+            {caktoAllNull ? "—" : formatCurrency(caktoTotalAmount)}
+          </div>
+          <div className="stat-label">
+            Vendas Cakto · 28d{!caktoAllNull && ` (${caktoTotalOrders})`}
+          </div>
         </div>
         <NoCreatorDrawer
           count={data.noHashtagCount}
