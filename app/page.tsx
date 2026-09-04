@@ -34,12 +34,13 @@ export default async function GanhosPage({
   const topMonthEarnings = Math.max(0, ...data.creators.map((c) => c.monthEarnings));
   const creatorsEarnings = data.creators.reduce((sum, c) => sum + c.totalEarnings, 0);
   const noCreatorEarnings = Math.round((data.periodEarnings - creatorsEarnings) * 100) / 100;
-  // Soma das vendas da Cakto (28d) de todos os criadores — mesma janela da
-  // Cakto por criador já calculada em getCreatorEarnings. null vira 0 na
-  // soma, mas só marcamos "indisponível" se TODOS vierem null (API fora do ar).
-  const caktoAllNull = data.creators.every((c) => c.caktoAmount == null);
-  const caktoTotalAmount = data.creators.reduce((sum, c) => sum + (c.caktoAmount || 0), 0);
-  const caktoTotalOrders = data.creators.reduce((sum, c) => sum + (c.caktoOrders || 0), 0);
+  // Total de vendas da Cakto (28d) — soma TODOS os pedidos pagos da conta,
+  // sem depender de UTM por criador (na prática os links de checkout não
+  // usam utm_campaign=lucas/matheus/rafael, então o filtro por criador
+  // sempre voltava 0 mesmo com vendas reais). "—" só quando a chamada à
+  // API da Cakto falha de verdade.
+  const caktoAllNull = data.caktoTotalAmount == null;
+  const caktoTotalAmount = data.caktoTotalAmount || 0;
 
   return (
     <main className="page">
@@ -90,9 +91,7 @@ export default async function GanhosPage({
           <div className="stat-value-large emerald">
             {caktoAllNull ? "—" : formatCurrency(caktoTotalAmount)}
           </div>
-          <div className="stat-label">
-            Vendas Cakto · 28d{!caktoAllNull && ` (${caktoTotalOrders})`}
-          </div>
+          <div className="stat-label">Vendas Cakto</div>
         </div>
         <NoCreatorDrawer
           count={data.noHashtagCount}

@@ -601,20 +601,37 @@ a {
 }
 
 .stats-grid-ganhos .stat-card {
-  padding: 18px 10px;
+  padding: 20px 10px 16px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  align-items: center;
+  /* Valor sempre começa no topo do card, não centralizado como bloco —
+     assim ele fica na MESMA altura em todos os cards, independente do
+     rótulo quebrar em 1 ou 2 linhas embaixo (era isso que causava o
+     desalinhamento entre os cards). */
+  justify-content: flex-start;
 }
 
 .stats-grid-ganhos .stat-value-large {
-  font-size: 20px;
+  font-size: 19px;
   white-space: nowrap;
+  margin-bottom: 6px;
 }
 
 .stats-grid-ganhos .stat-label {
   font-size: 10px;
+  line-height: 1.35;
+  letter-spacing: 0.03em;
   text-wrap: balance;
+  /* Reserva espaço fixo pra até 2 linhas (10px * 1.35 * 2 ≈ 27px) e
+     centraliza o texto dentro dessa área — rótulos de 1 linha ficam
+     centralizados verticalmente nesse espaço, então a distância entre o
+     valor e o texto fica igual em todos os cards. */
+  min-height: 27px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 2px;
 }
 
 .stat-card-form {

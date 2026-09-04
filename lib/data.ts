@@ -392,6 +392,12 @@ export type GanhosData = {
   // inteiro (inclusive vídeos sem hashtag de criador).
   avgShortsRpm: number;
   avgLongRpm: number;
+  // Total de vendas pagas na Cakto no período (28d), somando TODOS os
+  // pedidos da conta sem filtrar por UTM/criador — alimenta o card
+  // agregado "Vendas Cakto" da Home. null quando a API da Cakto não está
+  // configurada ou a chamada falhou.
+  caktoTotalOrders: number | null;
+  caktoTotalAmount: number | null;
 };
 
 // Lê a tabela `creator_videos` (populada pela varredura por hashtag em
@@ -406,6 +412,15 @@ export type GanhosData = {
 // Falha de forma isolada: se a API da Cakto não estiver configurada ou der
 // erro, retorna null pra todos os criadores em vez de derrubar a página
 // inteira de Ganhos (que também depende do Supabase).
+//
+// ATENÇÃO: na prática, os links de checkout usados não seguem a convenção
+// utm_campaign=lucas/matheus/rafael (o utm_campaign real é o nome da
+// campanha/vídeo, tipo "vsl_tesouro_esquecido"; o nome do criador às vezes
+// aparece em utm_content, não utm_campaign — e boa parte das vendas não tem
+// UTM nenhum). Então essa função por criador tende a retornar 0 pra todo
+// mundo mesmo havendo vendas reais. O card agregado da Home usa
+// `getCaktoTotalSales` (abaixo), que soma TODOS os pedidos pagos sem
+// depender de UTM, exatamente por causa disso.
 async function getCaktoSalesByCreator(
   periodStart: Date,
   periodEnd: Date
@@ -432,6 +447,28 @@ async function getCaktoSalesByCreator(
   }
 
   return result;
+}
+
+// Soma TODOS os pedidos pagos na Cakto no período, sem filtrar por UTM —
+// usado no card agregado "Vendas Cakto" da Home. Diferente de
+// `getCaktoSalesByCreator`, não depende de convenção nenhuma de UTM, então
+// reflete o valor real vendido mesmo quando o link de checkout não carrega
+// nenhum parâmetro de rastreio. Falha de forma isolada, igual as outras.
+async function getCaktoTotalSales(
+  periodStart: Date,
+  periodEnd: Date
+): Promise<{ orders: number; amount: number } | null> {
+  try {
+    const orders = await getAllOrders({
+      status: "paid",
+      paidAt__gte: periodStart.toISOString(),
+      paidAt__lt: periodEnd.toISOString(),
+    });
+    return { orders: orders.length, amount: sumPaidAmount(orders) };
+  } catch (error) {
+    console.error("❌ Erro ao buscar total de vendas na Cakto:", error);
+    return null;
+  }
 }
 
 // Busca as vendas pagas na Shopee de cada criador. Traz TODAS as vendas do
@@ -635,8 +672,9 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
   // utm_campaign=<key> no link de checkout de cada um. Se a API não estiver
   // configurada (ou alguma chamada falhar), cai tudo pra null e o card
   // mostra "—" em vez de derrubar a página de Ganhos inteira.
-  const [caktoSales, shopeeSales] = await Promise.all([
+  const [caktoSales, caktoTotal, shopeeSales] = await Promise.all([
     getCaktoSalesByCreator(periodStart, periodEnd),
+    getCaktoTotalSales(periodStart, periodEnd),
     getShopeeSalesByCreator(periodStart, periodEnd),
   ]);
 
@@ -1017,6 +1055,8 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     avgVphByFormat,
     avgShortsRpm,
     avgLongRpm,
+    caktoTotalOrders: caktoTotal ? caktoTotal.orders : null,
+    caktoTotalAmount: caktoTotal ? caktoTotal.amount : null,
   };
 }
 
