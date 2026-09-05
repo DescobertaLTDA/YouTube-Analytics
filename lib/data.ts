@@ -703,6 +703,33 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     .map((r) => ({ ...r, view_count: monthViewsFor(r.youtube_video_id, r.view_count || 0, r.published_at) }))
     .filter((r) => r.view_count > 0);
 
+  // Receita OFICIAL por vídeo/dia (via OAuth), cobrindo desde o início do
+  // período/mês (o que vier primeiro) até hoje — usada pra substituir a
+  // estimativa por RPM nos cards de vídeo individual (órfãos, histórico do
+  // período, top do mês) sempre que o YouTube já tiver liberado o dado real
+  // pra aquele vídeo. Só entra na conta quando NÃO há valor manual digitado
+  // (o valor manual já é a fonte de verdade do total, e ratear ele por
+  // vídeo usa o peso RPM de propósito — ver comentários mais abaixo).
+  const revenueRangeStart = periodStartDate < monthStartDate ? periodStartDate : monthStartDate;
+  const revenueRangeEnd = periodEnd.toISOString().slice(0, 10);
+  const allTaggedVideoIds = Array.from(new Set(allRows.map((r) => r.youtube_video_id)));
+  const realRevenueRows = await getDailyVideoRevenue(revenueRangeStart, revenueRangeEnd, allTaggedVideoIds);
+  const realRevenueByVideo = new Map<string, { date: string; revenue: number }[]>();
+  for (const row of realRevenueRows || []) {
+    const list = realRevenueByVideo.get(row.videoId) || [];
+    list.push({ date: row.date, revenue: row.estimatedRevenue });
+    realRevenueByVideo.set(row.videoId, list);
+  }
+  // Soma a receita real de um vídeo a partir de uma data (inclusive).
+  // Retorna 0 quando não há nada (integração não configurada, ou nada
+  // liberado ainda pra esse vídeo nesse intervalo) — quem chama decide o
+  // fallback pra estimativa, sempre comparando com `> 0` (nunca `??`).
+  function sumRealRevenueSince(videoId: string, sinceDate: string): number {
+    const entries = realRevenueByVideo.get(videoId);
+    if (!entries) return 0;
+    return entries.filter((e) => e.date >= sinceDate).reduce((sum, e) => sum + e.revenue, 0);
+  }
+
   // Vendas reais na Cakto (28 dias) por criador — identificadas pela UTM
   // utm_campaign=<key> no link de checkout de cada um. Se a API não estiver
   // configurada (ou alguma chamada falhar), cai tudo pra null e o card
@@ -809,11 +836,14 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
         first.is_short,
         realRpmMap.get(youtubeVideoId)?.rpm
       );
+      const realRevenueSum = sumRealRevenueSince(youtubeVideoId, periodStartDate);
       const revenue = isManualRevenue
         ? estimatedPeriodEarnings > 0
           ? Math.round(periodEarnings * (videoWeight / estimatedPeriodEarnings) * 100) / 100
           : 0
-        : videoWeight;
+        : realRevenueSum > 0
+          ? Math.round(realRevenueSum * 100) / 100
+          : videoWeight;
 
       return {
         youtubeVideoId,
@@ -985,11 +1015,14 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
         first.is_short,
         realRpmMap.get(youtubeVideoId)?.rpm
       );
+      const realRevenueSum = sumRealRevenueSince(youtubeVideoId, periodStartDate);
       const revenue = isManualRevenue
         ? estimatedPeriodEarnings > 0
           ? Math.round(periodEarnings * (videoWeight / estimatedPeriodEarnings) * 100) / 100
           : 0
-        : videoWeight;
+        : realRevenueSum > 0
+          ? Math.round(realRevenueSum * 100) / 100
+          : videoWeight;
 
       return {
         youtubeVideoId,
@@ -1045,11 +1078,15 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
         commentCount: first.comment_count,
         durationSeconds: first.duration_seconds,
         publishedAt: first.published_at,
-        revenue: estimateEarnings(
-          effectiveViews(youtubeVideoId, first.view_count, realRpmMap),
-          first.is_short,
-          realRpmMap.get(youtubeVideoId)?.rpm
-        ),
+        revenue: (() => {
+          const realRevenueSum = sumRealRevenueSince(youtubeVideoId, monthStartDate);
+          if (realRevenueSum > 0) return Math.round(realRevenueSum * 100) / 100;
+          return estimateEarnings(
+            effectiveViews(youtubeVideoId, first.view_count, realRpmMap),
+            first.is_short,
+            realRpmMap.get(youtubeVideoId)?.rpm
+          );
+        })(),
       };
     })
     .sort((a, b) => b.revenue - a.revenue)
