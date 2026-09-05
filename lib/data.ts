@@ -1246,9 +1246,16 @@ export async function getCreatorDailyEarnings(days = 28): Promise<EarningsHistor
 
       // Receita real desse vídeo nesse dia, se o YouTube já liberou;
       // senão cai pra estimativa por RPM em cima do delta de views.
+      // IMPORTANTE: usamos > 0 (não `??`) de propósito — um `estimatedRevenue`
+      // real igual a 0 (vídeo ainda não monetizado no período, dado
+      // incompleto da API pra dias antigos, etc.) não pode "vencer" a
+      // estimativa por RPM; só confiamos no valor real quando ele for
+      // genuinamente positivo.
       const realRevenue = realRevenueByKey.get(`${curr.captured_date}|${videoId}`);
       const dayEarnings =
-        realRevenue ?? estimateEarnings(deltaViews, curr.is_short, realRpmMap.get(videoId)?.rpm);
+        realRevenue != null && realRevenue > 0
+          ? realRevenue
+          : estimateEarnings(deltaViews, curr.is_short, realRpmMap.get(videoId)?.rpm);
 
       const bucket = byDate.get(curr.captured_date) || emptyBucket();
       for (const creator of creators) {
@@ -1436,9 +1443,14 @@ export async function getCreatorMonthlyEarningsHistory(): Promise<
       const deltaViews = Math.max((curr.view_count || 0) - (prev.view_count || 0), 0);
       if (deltaViews === 0) continue;
 
+      // Mesmo motivo do bloco de getCreatorEarnings acima: > 0 em vez de
+      // `??`, pra um `estimatedRevenue` real igual a 0 não apagar a
+      // estimativa por RPM.
       const realRevenue = realRevenueByKey.get(`${curr.captured_date}|${videoId}`);
       const dayEarnings =
-        realRevenue ?? estimateEarnings(deltaViews, curr.is_short, realRpmMap.get(videoId)?.rpm);
+        realRevenue != null && realRevenue > 0
+          ? realRevenue
+          : estimateEarnings(deltaViews, curr.is_short, realRpmMap.get(videoId)?.rpm);
 
       const monthKey = curr.captured_date.slice(0, 7); // "YYYY-MM"
       const bucket = byMonth.get(monthKey) || emptyBucket();
