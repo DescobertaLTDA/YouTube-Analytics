@@ -152,6 +152,32 @@ async function getAutoDiscoveredRows(): Promise<VideoWithStats[]> {
     byVideoId.set(row.youtube_video_id, list);
   }
 
+  // Receita OFICIAL somada (todos os dias já liberados pelo YouTube) por
+  // vídeo, quando o OAuth estiver configurado — pra usar no lugar da
+  // estimativa por RPM nos cards de Vídeos/Shorts. `null` (integração não
+  // configurada/falhou) ou soma 0 (nada liberado ainda) caem no fallback.
+  const taggedVideoIds = Array.from(byVideoId.entries())
+    .filter(([, group]) => group.some((r) => r.creator !== ""))
+    .map(([id]) => id);
+  const earliestPublished = rows.reduce<string | null>((min, r) => {
+    if (!r.published_at) return min;
+    return !min || r.published_at < min ? r.published_at : min;
+  }, null);
+  const realRevenueRows = earliestPublished
+    ? await getDailyVideoRevenue(
+        earliestPublished.slice(0, 10),
+        nowInSaoPaulo().toISOString().slice(0, 10),
+        taggedVideoIds
+      )
+    : null;
+  const realRevenueTotalByVideo = new Map<string, number>();
+  for (const row of realRevenueRows || []) {
+    realRevenueTotalByVideo.set(
+      row.videoId,
+      (realRevenueTotalByVideo.get(row.videoId) || 0) + row.estimatedRevenue
+    );
+  }
+
   const results: VideoWithStats[] = [];
 
   for (const [youtubeVideoId, group] of byVideoId) {
@@ -202,11 +228,20 @@ async function getAutoDiscoveredRows(): Promise<VideoWithStats[]> {
       viewsPerDay,
       daysLive,
       manual: null,
-      revenue: estimateEarnings(
-        effectiveViews(youtubeVideoId, first.view_count, realRpmMap),
-        first.is_short,
-        realRpmMap.get(youtubeVideoId)?.rpm
-      ),
+      // Prioriza a soma da receita OFICIAL já liberada pelo YouTube pra
+      // esse vídeo (via OAuth); só cai pra estimativa por RPM (fixo ou
+      // CSV real) quando não há OAuth configurado ou nada foi liberado
+      // ainda (soma real <= 0 — ver nota em getCreatorEarnings sobre por
+      // que não usamos `??` aqui).
+      revenue: (() => {
+        const realTotal = realRevenueTotalByVideo.get(youtubeVideoId);
+        if (realTotal != null && realTotal > 0) return Math.round(realTotal * 100) / 100;
+        return estimateEarnings(
+          effectiveViews(youtubeVideoId, first.view_count, realRpmMap),
+          first.is_short,
+          realRpmMap.get(youtubeVideoId)?.rpm
+        );
+      })(),
       changes: [],
       history: [fakeSnapshot],
       isShort: first.is_short,
