@@ -2465,12 +2465,35 @@ footer.page-footer {
 .creator-projection .icon-label {
   color: var(--amber);
   font-weight: 600;
+  white-space: nowrap;
+}
+
+.creator-projection-days {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--amber);
+  background: rgba(169, 114, 11, 0.14);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+.creator-projection-stats {
+  align-items: baseline;
+  justify-content: space-between;
 }
 
 .creator-projection-value {
-  font-size: 19px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--amber);
+}
+
+.creator-projection-views {
+  font-size: 12px;
+  color: #8a6a2a;
+  white-space: nowrap;
 }
 
 .creator-projection-note {

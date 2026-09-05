@@ -201,16 +201,19 @@ export function CreatorCard({
       <div className="creator-breakdown-item creator-projection">
         <div className="creator-breakdown-header">
           <span className="icon-label">
-            <IconTrendingUp /> Projeção de fechamento do mês
+            <IconTrendingUp /> Projeção do mês
           </span>
-          <span className="text-muted-small">{formatNumber(Math.round(projection.views))} views (proj.)</span>
+          <span className="creator-projection-days">faltam {daysLeft} dia(s)</span>
         </div>
-        <div className="creator-breakdown-stats">
+        <div className="creator-breakdown-stats creator-projection-stats">
           <span className="creator-projection-value">{formatCurrency(projection.earnings)}</span>
+          <span className="creator-projection-views">
+            {formatNumber(Math.round(projection.views))} views (proj.)
+          </span>
         </div>
         <p className="creator-projection-note">
-          Baseado na média diária de {formatCurrency(projection.dailyAvg)} (vídeos longos + Shorts) nos{" "}
-          {daysElapsed} dia(s) já passados do mês, projetada para os {daysLeft} dia(s) restantes.
+          Média diária de {formatCurrency(projection.dailyAvg)} (vídeos longos + Shorts) nos{" "}
+          {daysElapsed} dia(s) já passados.
         </p>
       </div>
 
