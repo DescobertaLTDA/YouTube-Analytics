@@ -746,6 +746,31 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     return (realRevPeriod / periodViewCount) * 1000;
   }
 
+  // Receita REAL da API por vídeo (desde o início do período), com
+  // fallback pro RPM estimado (real/CSV/fixo) vídeo a vídeo quando o
+  // YouTube ainda não liberou receita oficial pra ele — mesma soma que
+  // `sumEstimatedEarnings` já fazia, só trocando `realRevenue > 0 ? real :
+  // estimativa` no lugar de aplicar direto a estimativa (mesmo padrão já
+  // usado em getAutoDiscoveredRows/getCreatorMonthlyEarningsHistory).
+  // Soma por LINHA, não por vídeo deduplicado — um vídeo com 2 hashtags
+  // (colab) entra 2x, igual todo o resto do cálculo do período já fazia
+  // (ver comentário acima de `periodViews`). Usada SÓ pra alimentar o
+  // valor exibido no card "Receita Est. · 28d" — nunca como peso de
+  // rateio (ver comentário acima de `estimatedPeriodEarnings`).
+  function sumRealOrEstimatedEarnings(
+    formatRows: { view_count: number; is_short: boolean; youtube_video_id: string }[]
+  ): number {
+    return Math.round(
+      formatRows.reduce((sum, r) => {
+        const realRev = sumRealRevenueSince(r.youtube_video_id, periodStartDate);
+        if (realRev > 0) return sum + realRev;
+        const entry = realRpmMap.get(r.youtube_video_id);
+        const views = entry?.visualizacoesIntencionais ?? r.view_count ?? 0;
+        return sum + estimateEarnings(views, r.is_short, entry?.rpm);
+      }, 0) * 100
+    ) / 100;
+  }
+
   // Vendas reais na Cakto (28 dias) por criador — identificadas pela UTM
   // utm_campaign=<key> no link de checkout de cada um. Se a API não estiver
   // configurada (ou alguma chamada falhar), cai tudo pra null e o card
@@ -775,15 +800,36 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
   // Zero ou não preenchido conta como "sem valor manual" — volta a usar a
   // estimativa por RPM automaticamente, sem precisar de um botão separado.
   const isManualRevenue = manualAmount != null && manualAmount > 0;
-  // Estimativa por RPM: Shorts e vídeos longos usam RPM diferente (longos
-  // rendem bem mais — R$5,50 contra R$0,32 dos Shorts), então soma cada um
-  // separado em vez de aplicar um RPM único pra tudo. E dentro de cada
-  // formato, soma vídeo a vídeo (não views totais x 1 RPM), porque cada
-  // vídeo pode ter seu próprio RPM real importado via CSV.
+  // Estimativa por RPM (Shorts e vídeos longos usam RPM diferente — longos
+  // rendem bem mais — R$5,50 contra R$0,32 dos Shorts —, então soma cada
+  // um separado; dentro de cada formato soma vídeo a vídeo, não views
+  // totais x 1 RPM, porque cada vídeo pode ter seu próprio RPM real
+  // importado via CSV).
+  //
+  // IMPORTANTE: esta variável (`estimatedPeriodEarnings`, só RPM/CSV, sem
+  // receita real da API) é usada como PESO em outros pontos deste arquivo
+  // pra ratear um valor manual digitado entre Shorts/vídeos longos e entre
+  // vídeos individuais (ver `noHashtagVideos`/`topVideosMonth` mais abaixo
+  // e o rateio por criador) — ali ela não representa "quanto o canal
+  // ganhou de verdade", só o peso relativo entre vídeos/formatos. Por isso
+  // ela continua puramente estimada mesmo agora que existe receita real:
+  // se o numerador dessas contas (sempre estimativa) e o denominador
+  // (esta variável) não usarem a mesma base, as fatias do rateio param de
+  // somar exatamente o valor manual digitado. NÃO usar esta variável pra
+  // exibir "quanto o canal ganhou" — pra isso existe
+  // `realOrEstimatedPeriodEarnings` logo abaixo.
   const estimatedPeriodEarnings =
     sumEstimatedEarnings(rows.filter((r) => r.is_short), realRpmMap) +
     sumEstimatedEarnings(rows.filter((r) => !r.is_short), realRpmMap);
-  const periodEarnings = isManualRevenue ? (manualAmount as number) : estimatedPeriodEarnings;
+  // Valor de fato exibido no card "Receita Est. · 28d" quando NÃO há valor
+  // manual digitado: prioriza a receita OFICIAL já liberada pela API,
+  // vídeo a vídeo, caindo pra estimativa por RPM só onde o YouTube ainda
+  // não liberou nada — mesmo padrão de receita real já aplicado nos cards
+  // de Shorts/Vídeos, RPM Shorts/Vídeos e Histórico de Ganhos.
+  const realOrEstimatedPeriodEarnings =
+    sumRealOrEstimatedEarnings(rows.filter((r) => r.is_short)) +
+    sumRealOrEstimatedEarnings(rows.filter((r) => !r.is_short));
+  const periodEarnings = isManualRevenue ? (manualAmount as number) : realOrEstimatedPeriodEarnings;
 
   // RPM médio efetivo do canal inteiro no período (28d), separado por
   // formato — mesmo princípio do `effectiveShortsRpm`/`effectiveLongRpm`
