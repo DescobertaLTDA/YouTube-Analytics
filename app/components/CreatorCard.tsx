@@ -7,6 +7,7 @@ import { CreatorGoalsButton } from "@/app/components/CreatorGoalsButton";
 import { CreatorAuditButton } from "@/app/components/CreatorAuditButton";
 import { CreatorEarningsHistoryButton } from "@/app/components/CreatorEarningsHistoryButton";
 import { CreatorInsightsModal } from "@/app/components/CreatorInsightsModal";
+import { usePreviousMonthEarnings } from "@/app/components/PreviousMonthEarningsContext";
 import { LONG_RPM, SHORTS_RPM } from "@/lib/creator-earnings";
 import { IconFilm, IconZap, IconDollar, IconCalendar, IconCart } from "@/app/components/Icons";
 import { formatNumber, formatCurrency } from "@/lib/format-br";
@@ -76,6 +77,10 @@ export function CreatorCard({
   isMonthLeader?: boolean;
 }) {
   const [insightsOpen, setInsightsOpen] = useState(false);
+  // Mês calendário fechado mais recente (dia 01 ao último dia do mês
+  // passado) — ver PreviousMonthEarningsContext. Cobre só receita de
+  // YouTube (Shorts + vídeos longos), igual o botão "Histórico de Ganhos".
+  const previousMonth = usePreviousMonthEarnings(stats.key);
 
   return (
     <div
@@ -167,19 +172,32 @@ export function CreatorCard({
       <div className="creator-breakdown-item creator-outside-month">
         <div className="creator-breakdown-header">
           <span className="icon-label">
-            <IconCalendar /> Ganhos anteriores ao mês
+            <IconCalendar />
+            {previousMonth.month ? `Ganhos de ${previousMonth.month.label}` : "Ganhos do mês anterior"}
           </span>
           <span className="text-muted-small">
-            {formatNumber(Math.max(stats.totalViews - stats.monthViews, 0))} views
+            {previousMonth.loading
+              ? "carregando…"
+              : previousMonth.month
+              ? `${formatNumber(previousMonth.month.views)} views`
+              : "—"}
           </span>
         </div>
         <div className="creator-breakdown-stats">
           <span className="creator-outside-month-value">
-            {formatCurrency(Math.max(stats.totalEarnings - stats.monthEarnings, 0))}
+            {previousMonth.loading
+              ? "…"
+              : previousMonth.error
+              ? "—"
+              : formatCurrency(previousMonth.month?.earnings ?? 0)}
           </span>
         </div>
         <p className="creator-outside-month-note">
-          Parte do período de 28 dias que cai antes do dia 01 — não conta na meta do mês.
+          {previousMonth.error
+            ? `Não deu pra carregar: ${previousMonth.error}`
+            : previousMonth.month
+            ? `Total do mês fechado (${previousMonth.month.rangeLabel}) — não conta na meta do mês atual.`
+            : "Ainda não há um mês fechado no histórico."}
         </p>
       </div>
 

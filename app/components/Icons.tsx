@@ -50,6 +50,15 @@ export function IconCalendar({ size = 14, className }: IconProps) {
   );
 }
 
+export function IconClock({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} className={className} {...base}>
+      <circle cx="12" cy="12" r="9" />
+      <polyline points="12 7 12 12 16 14" />
+    </svg>
+  );
+}
+
 export function IconHistory({ size = 14, className }: IconProps) {
   return (
     <svg width={size} height={size} className={className} {...base}>

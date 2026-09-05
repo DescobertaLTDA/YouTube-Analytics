@@ -52,3 +52,35 @@ export function daysLeftInMonth(): number {
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   return Math.max(lastDay - now.getDate() + 1, 1);
 }
+
+// Dados pra contagem regressiva do dia de pagamento (todo dia 25). Calcula
+// um instante UTC "de verdade" (não o truque de wall-clock do
+// nowInSaoPaulo) porque isso aqui alimenta um contador ao vivo no cliente
+// — o cliente compara com Date.now() dele, então o alvo precisa ser um
+// timestamp absoluto correto, e não um Date "fake" que só faz sentido
+// dentro do mesmo processo que o criou.
+// Brasil aboliu o horário de verão em 2019, então America/Sao_Paulo hoje é
+// um fuso fixo de UTC-3 o ano inteiro — dá pra usar esse offset fixo sem
+// se preocupar com DST.
+export function getPaymentCountdown(paymentDay = 25): {
+  targetUtcIso: string;
+  isPaymentDayToday: boolean;
+} {
+  const now = nowInSaoPaulo();
+  const day = now.getDate();
+  const isPaymentDayToday = day === paymentDay;
+
+  // Se hoje já é (ou passou d)o dia 25, o próximo pagamento é no mês que
+  // vem; o `Date.UTC` abaixo normaliza o ano sozinho se o mês passar de 11.
+  let year = now.getFullYear();
+  let month = now.getMonth(); // 0-indexed
+  if (day >= paymentDay) month += 1;
+
+  // 00:00 em São Paulo (UTC-3) = 03:00 UTC do mesmo dia.
+  const targetUtcMs = Date.UTC(year, month, paymentDay, 3, 0, 0);
+
+  return {
+    targetUtcIso: new Date(targetUtcMs).toISOString(),
+    isPaymentDayToday,
+  };
+}

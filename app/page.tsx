@@ -7,7 +7,15 @@ import { GanhosVideoHistory } from "@/app/components/GanhosVideoHistory";
 import { TopVideosMonth } from "@/app/components/TopVideosMonth";
 import { NoCreatorDrawer } from "@/app/components/NoCreatorDrawer";
 import { EarningsHistoryChart } from "@/app/components/EarningsHistoryChart";
-import { monthRangeLabel, monthRangeFullLabel, daysLeftInMonth, nowInSaoPaulo } from "@/lib/date-br";
+import { PaymentCountdownCard } from "@/app/components/PaymentCountdownCard";
+import { PreviousMonthEarningsProvider } from "@/app/components/PreviousMonthEarningsContext";
+import {
+  monthRangeLabel,
+  monthRangeFullLabel,
+  daysLeftInMonth,
+  nowInSaoPaulo,
+  getPaymentCountdown,
+} from "@/lib/date-br";
 import { formatNumber, formatCurrency, formatDateFull as formatDate } from "@/lib/format-br";
 
 export const revalidate = 0;
@@ -26,6 +34,7 @@ export default async function GanhosPage({
   const monthFullLabel = monthRangeFullLabel();
   const daysLeft = daysLeftInMonth();
   const daysElapsed = nowInSaoPaulo().getDate();
+  const paymentCountdown = getPaymentCountdown();
   const earningsHistory = await getCreatorDailyEarnings(28);
   const page = Number(searchParams.page) || 1;
   // Maior "Ganhos do mês" entre os criadores — usado pra destacar o card
@@ -98,25 +107,31 @@ export default async function GanhosPage({
           amount={noCreatorEarnings}
           videos={data.noHashtagVideos}
         />
+        <PaymentCountdownCard
+          targetUtcIso={paymentCountdown.targetUtcIso}
+          isPaymentDayToday={paymentCountdown.isPaymentDayToday}
+        />
       </div>
 
       <EarningsHistoryChart history={earningsHistory} />
 
-      <div className="creator-grid">
-        {data.creators.map((stats) => (
-          <CreatorCard
-            key={stats.key}
-            stats={stats}
-            monthLabel={monthLabel}
-            monthFullLabel={monthFullLabel}
-            daysLeft={daysLeft}
-            daysElapsed={daysElapsed}
-            videos={data.periodVideos.filter((v) => v.creatorLabel.split(" + ").includes(stats.label))}
-            isManualRevenue={data.isManualRevenue}
-            isMonthLeader={topMonthEarnings > 0 && stats.monthEarnings === topMonthEarnings}
-          />
-        ))}
-      </div>
+      <PreviousMonthEarningsProvider>
+        <div className="creator-grid">
+          {data.creators.map((stats) => (
+            <CreatorCard
+              key={stats.key}
+              stats={stats}
+              monthLabel={monthLabel}
+              monthFullLabel={monthFullLabel}
+              daysLeft={daysLeft}
+              daysElapsed={daysElapsed}
+              videos={data.periodVideos.filter((v) => v.creatorLabel.split(" + ").includes(stats.label))}
+              isManualRevenue={data.isManualRevenue}
+              isMonthLeader={topMonthEarnings > 0 && stats.monthEarnings === topMonthEarnings}
+            />
+          ))}
+        </div>
+      </PreviousMonthEarningsProvider>
 
       <TopVideosMonth videos={data.topVideosMonth} />
 
