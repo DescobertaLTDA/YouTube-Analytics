@@ -730,6 +730,22 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     return entries.filter((e) => e.date >= sinceDate).reduce((sum, e) => sum + e.revenue, 0);
   }
 
+  // RPM real do PERÍODO (28d) de um vídeo: receita oficial da API já
+  // liberada desde o início do período, dividida pelas views que ele
+  // ganhou dentro do período (não views totais). Usado pra dar prioridade
+  // à receita real da API sobre o RPM importado via CSV nos cards "RPM
+  // Shorts"/"RPM Vídeos" — o CSV é uma foto fixa (pode ser de qualquer
+  // época), enquanto isso reflete o RPM efetivo do vídeo especificamente
+  // nesses últimos 28 dias. `null` quando não há receita real liberada
+  // ainda pra esse vídeo no período (ou zero views no período) — quem
+  // chama cai pro RPM do CSV, sempre comparando com `> 0` (nunca `??`).
+  function periodRealRpm(videoId: string, periodViewCount: number): number | null {
+    if (!periodViewCount || periodViewCount <= 0) return null;
+    const realRevPeriod = sumRealRevenueSince(videoId, periodStartDate);
+    if (realRevPeriod <= 0) return null;
+    return (realRevPeriod / periodViewCount) * 1000;
+  }
+
   // Vendas reais na Cakto (28 dias) por criador — identificadas pela UTM
   // utm_campaign=<key> no link de checkout de cada um. Se a API não estiver
   // configurada (ou alguma chamada falhar), cai tudo pra null e o card
@@ -790,17 +806,24 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
     periodShortsEarnings = sumEstimatedEarnings(rows.filter((r) => r.is_short), realRpmMap);
     periodLongEarnings = sumEstimatedEarnings(rows.filter((r) => !r.is_short), realRpmMap);
   }
-  // RPM médio exibido no card = média dos 20 maiores RPMs REAIS (importados
-  // via CSV do YouTube Studio) entre os vídeos do período, por formato —
-  // em vez da média ponderada por views (receita total / views totais).
-  // Pedido explícito: refletir o RPM dos vídeos que mais pagam, não
-  // diluir no RPM baixo da maioria dos vídeos. Vídeos sem RPM real
-  // importado (só estimativa fixa) ficam de fora dessa conta. Se não
-  // houver nenhum vídeo com RPM real pro formato, cai no RPM fixo padrão
-  // (mesmo fallback de antes).
+  // RPM médio exibido no card = média dos 20 maiores RPMs REAIS entre os
+  // vídeos do período, por formato — em vez da média ponderada por views
+  // (receita total / views totais). Pedido explícito: refletir o RPM dos
+  // vídeos que mais pagam, não diluir no RPM baixo da maioria dos vídeos.
+  // "RPM real" de cada vídeo, em ordem de prioridade: (1) receita OFICIAL
+  // já liberada pela API no período dividida pelas views do período
+  // (periodRealRpm) — mais precisa por refletir o RPM efetivo dos últimos
+  // 28 dias, não uma foto de outra época; (2) na ausência dela, o RPM
+  // importado via CSV do YouTube Studio (realRpmMap), como antes. Vídeos
+  // sem nenhum dos dois (só estimativa fixa) ficam de fora dessa conta. Se
+  // não houver nenhum vídeo com RPM real pro formato, cai no RPM fixo
+  // padrão (mesmo fallback de antes).
   function topRealRpmAverage(formatRows: CreatorVideoRow[], topN: number, isShort: boolean): number {
     const realRpms = formatRows
-      .map((r) => realRpmMap.get(r.youtube_video_id)?.rpm)
+      .map((r) => {
+        const apiRpm = periodRealRpm(r.youtube_video_id, r.view_count);
+        return apiRpm != null && apiRpm > 0 ? apiRpm : realRpmMap.get(r.youtube_video_id)?.rpm;
+      })
       .filter((rpm): rpm is number => rpm != null)
       .sort((a, b) => b - a)
       .slice(0, topN);
