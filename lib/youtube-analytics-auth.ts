@@ -35,6 +35,7 @@ export async function getYoutubeAccessToken(): Promise<string | null> {
         refresh_token: refreshToken,
         grant_type: "refresh_token",
       }),
+      cache: "no-store",
     });
 
     if (!response.ok) {
