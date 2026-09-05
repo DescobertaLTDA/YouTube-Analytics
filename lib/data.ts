@@ -965,12 +965,16 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
         totalWeight > 0 ? Math.round(totalEarnings * (shortsWeight / totalWeight) * 100) / 100 : 0;
       longEarnings = Math.round((totalEarnings - shortsEarnings) * 100) / 100;
     } else {
-      // Estimativa: soma vídeo a vídeo, usando o RPM real de cada um
-      // quando existir (fallback pro fixo do formato) — bem mais preciso
-      // que aplicar um RPM único em cima da soma de views do criador,
-      // ainda mais agora que RPMs reais variam vídeo a vídeo.
-      shortsEarnings = sumEstimatedEarnings(shorts, realRpmMap);
-      longEarnings = sumEstimatedEarnings(longs, realRpmMap);
+      // Receita real da API vídeo a vídeo, com fallback pro RPM estimado —
+      // mesma lógica e mesma função usada em `realOrEstimatedPeriodEarnings`
+      // acima. PRECISA ser exatamente a mesma base de cálculo usada ali:
+      // "Saldo sem criador" (em app/page.tsx) é `periodEarnings - soma dos
+      // totalEarnings dos 3 criadores` — se aqui usasse só estimativa
+      // enquanto o total usa receita real, os dois números de referência
+      // deixam de bater e esse saldo pode até ficar negativo (foi
+      // exatamente isso que aconteceu antes desse ajuste).
+      shortsEarnings = sumRealOrEstimatedEarnings(shorts);
+      longEarnings = sumRealOrEstimatedEarnings(longs);
     }
 
     const totalEarnings = Math.round((shortsEarnings + longEarnings) * 100) / 100;
