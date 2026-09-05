@@ -2429,6 +2429,57 @@ footer.page-footer {
   }
 }
 
+/* Card de projeção de fechamento do mês — estilo "ticket dourado",
+   visualmente distinto dos cards roxo/malaquita ao redor pra deixar claro
+   que é uma estimativa (não um valor já realizado). Borda pontilhada +
+   entalhes nas laterais imitam um ticket/cupom físico. */
+.creator-projection {
+  position: relative;
+  background: linear-gradient(160deg, #fff8e8 0%, var(--amber-dim) 100%);
+  border: 1.5px dashed var(--amber);
+  box-shadow: 0 4px 16px rgba(169, 114, 11, 0.16);
+}
+
+.creator-projection::before,
+.creator-projection::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  background: var(--bg);
+  border-radius: 50%;
+  transform: translateY(-50%);
+}
+
+.creator-projection::before {
+  left: -9px;
+  border-right: 1.5px dashed var(--amber);
+}
+
+.creator-projection::after {
+  right: -9px;
+  border-left: 1.5px dashed var(--amber);
+}
+
+.creator-projection .icon-label {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.creator-projection-value {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--amber);
+}
+
+.creator-projection-note {
+  margin-top: 8px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: #8a6a2a;
+}
+
 .creator-outside-month {
   background: linear-gradient(160deg, var(--purple-deep) 0%, #2c0650 100%);
   border: 1px solid var(--purple-deep);

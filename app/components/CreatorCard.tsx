@@ -9,7 +9,14 @@ import { CreatorEarningsHistoryButton } from "@/app/components/CreatorEarningsHi
 import { CreatorInsightsModal } from "@/app/components/CreatorInsightsModal";
 import { usePreviousMonthEarnings } from "@/app/components/PreviousMonthEarningsContext";
 import { LONG_RPM, SHORTS_RPM } from "@/lib/creator-earnings";
-import { IconFilm, IconZap, IconDollar, IconCalendar, IconCart } from "@/app/components/Icons";
+import {
+  IconFilm,
+  IconZap,
+  IconDollar,
+  IconCalendar,
+  IconCart,
+  IconTrendingUp,
+} from "@/app/components/Icons";
 import { formatNumber, formatCurrency } from "@/lib/format-br";
 
 const SHORTS_GOAL = 30;
@@ -50,6 +57,27 @@ function effectiveShortsRpm(stats: CreatorStats): number {
   return (stats.shortsEarnings * 1000) / stats.shortsViews;
 }
 
+// Projeção de fechamento do mês: pega a média diária de ganhos do
+// criador no mês corrente (vídeos longos + Shorts somados, já é o que
+// `monthEarnings` representa) e projeta essa média pros dias que ainda
+// faltam. Ou seja: ganhos-já-feitos + (média/dia × dias restantes).
+// Mesma lógica pras views, só pra dar contexto de volume por trás do
+// valor projetado.
+function projectMonthEnd(
+  stats: CreatorStats,
+  daysElapsed: number,
+  daysLeft: number
+): { earnings: number; views: number; dailyAvg: number } {
+  const safeDaysElapsed = daysElapsed > 0 ? daysElapsed : 1;
+  const dailyAvg = stats.monthEarnings / safeDaysElapsed;
+  const dailyAvgViews = stats.monthViews / safeDaysElapsed;
+  return {
+    earnings: stats.monthEarnings + dailyAvg * daysLeft,
+    views: stats.monthViews + dailyAvgViews * daysLeft,
+    dailyAvg,
+  };
+}
+
 export function CreatorCard({
   stats,
   monthLabel,
@@ -81,6 +109,7 @@ export function CreatorCard({
   // passado) — ver PreviousMonthEarningsContext. Cobre só receita de
   // YouTube (Shorts + vídeos longos), igual o botão "Histórico de Ganhos".
   const previousMonth = usePreviousMonthEarnings(stats.key);
+  const projection = projectMonthEnd(stats, daysElapsed, daysLeft);
 
   return (
     <div
@@ -167,6 +196,22 @@ export function CreatorCard({
         <div className="creator-breakdown-stats">
           <span className="creator-month-value">{formatCurrency(stats.monthEarnings)}</span>
         </div>
+      </div>
+
+      <div className="creator-breakdown-item creator-projection">
+        <div className="creator-breakdown-header">
+          <span className="icon-label">
+            <IconTrendingUp /> Projeção de fechamento do mês
+          </span>
+          <span className="text-muted-small">{formatNumber(Math.round(projection.views))} views (proj.)</span>
+        </div>
+        <div className="creator-breakdown-stats">
+          <span className="creator-projection-value">{formatCurrency(projection.earnings)}</span>
+        </div>
+        <p className="creator-projection-note">
+          Baseado na média diária de {formatCurrency(projection.dailyAvg)} (vídeos longos + Shorts) nos{" "}
+          {daysElapsed} dia(s) já passados do mês, projetada para os {daysLeft} dia(s) restantes.
+        </p>
       </div>
 
       <div className="creator-breakdown-item creator-outside-month">
