@@ -61,6 +61,15 @@ export async function getDailyVideoRevenue(
       dimensions: "day",
       filters: `video==${videoId}`,
       maxResults: "366",
+      // Sem esse parâmetro, a API devolve estimatedRevenue em USD por
+      // padrão (documentado em developers.google.com/youtube/analytics/metrics)
+      // — e o resto do app trata esse número como se já fosse R$ (formata
+      // com formatCurrency/símbolo R$). Sem essa conversão, todo RPM/receita
+      // vindo da API real ficava ~5x mais baixo que o valor de fato em
+      // reais (ex: RPM Shorts aparecendo R$0,06 em vez de ~R$0,31 já
+      // convertido, quase idêntico ao RPM fixo estimado de R$0,32 — a
+      // pista que confirmou o bug).
+      currency: "BRL",
     });
 
     try {
