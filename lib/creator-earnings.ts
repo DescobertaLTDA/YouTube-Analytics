@@ -75,3 +75,29 @@ export function matchCreators(text: string): CreatorKey[] {
   const lower = text.toLowerCase();
   return CREATORS.filter((c) => lower.includes(c.hashtag)).map((c) => c.key);
 }
+
+/**
+ * Projeção de fechamento do mês: total já feito + (ritmo médio diário
+ * observado até agora × dias restantes).
+ *
+ * ATENÇÃO ao `daysLeft`: `daysLeftInMonth()` (lib/date-br.ts) já inclui o
+ * dia de hoje na contagem de "dias restantes" (é feito assim de propósito,
+ * pro contador de "faltam N dias" nunca zerar antes do fim do dia). Só que
+ * hoje TAMBÉM já está embutido em `total`/`daysElapsed` — o que já rendeu
+ * hoje já entrou na conta. Por isso aqui usamos `daysLeft - 1`: senão hoje
+ * seria contado duas vezes (uma como "já ganho", outra como "dia futuro"),
+ * inflando a projeção em uma média diária inteira.
+ *
+ * Função única usada tanto no card de "Projeção do mês" (CreatorCard) quanto
+ * no drawer de Insights (CreatorInsightsModal) — se precisar mexer na
+ * fórmula, mexe só aqui pros dois lugares não voltarem a divergir.
+ */
+export function projectMonthEnd(
+  total: number,
+  daysElapsed: number,
+  daysLeft: number
+): { projected: number; dailyAvg: number } {
+  const dailyAvg = daysElapsed > 0 ? total / daysElapsed : 0;
+  const remainingDays = Math.max(daysLeft - 1, 0);
+  return { projected: total + dailyAvg * remainingDays, dailyAvg };
+}

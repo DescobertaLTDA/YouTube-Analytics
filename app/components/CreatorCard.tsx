@@ -8,7 +8,7 @@ import { CreatorAuditButton } from "@/app/components/CreatorAuditButton";
 import { CreatorEarningsHistoryButton } from "@/app/components/CreatorEarningsHistoryButton";
 import { CreatorInsightsModal } from "@/app/components/CreatorInsightsModal";
 import { usePreviousMonthEarnings } from "@/app/components/PreviousMonthEarningsContext";
-import { LONG_RPM, SHORTS_RPM } from "@/lib/creator-earnings";
+import { LONG_RPM, SHORTS_RPM, projectMonthEnd as computeProjection } from "@/lib/creator-earnings";
 import {
   IconFilm,
   IconZap,
@@ -57,24 +57,21 @@ function effectiveShortsRpm(stats: CreatorStats): number {
   return (stats.shortsEarnings * 1000) / stats.shortsViews;
 }
 
-// Projeção de fechamento do mês: pega a média diária de ganhos do
-// criador no mês corrente (vídeos longos + Shorts somados, já é o que
-// `monthEarnings` representa) e projeta essa média pros dias que ainda
-// faltam. Ou seja: ganhos-já-feitos + (média/dia × dias restantes).
-// Mesma lógica pras views, só pra dar contexto de volume por trás do
-// valor projetado.
+// Projeção de fechamento do mês pro card: usa a mesma `projectMonthEnd`
+// de lib/creator-earnings.ts (também usada no drawer de Insights) pros
+// ganhos, e replica a mesma lógica de "dias restantes sem contar hoje em
+// dobro" pras views — só pra dar contexto de volume por trás do valor.
 function projectMonthEnd(
   stats: CreatorStats,
   daysElapsed: number,
   daysLeft: number
 ): { earnings: number; views: number; dailyAvg: number } {
-  const safeDaysElapsed = daysElapsed > 0 ? daysElapsed : 1;
-  const dailyAvg = stats.monthEarnings / safeDaysElapsed;
-  const dailyAvgViews = stats.monthViews / safeDaysElapsed;
+  const earningsProjection = computeProjection(stats.monthEarnings, daysElapsed, daysLeft);
+  const viewsProjection = computeProjection(stats.monthViews, daysElapsed, daysLeft);
   return {
-    earnings: stats.monthEarnings + dailyAvg * daysLeft,
-    views: stats.monthViews + dailyAvgViews * daysLeft,
-    dailyAvg,
+    earnings: earningsProjection.projected,
+    views: viewsProjection.projected,
+    dailyAvg: earningsProjection.dailyAvg,
   };
 }
 

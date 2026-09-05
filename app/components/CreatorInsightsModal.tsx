@@ -16,6 +16,7 @@ import {
   LONG_COUNT_GOAL,
   SHORTS_REVENUE_GOAL,
   LONG_REVENUE_GOAL,
+  projectMonthEnd,
 } from "@/lib/creator-earnings";
 import { formatNumber as formatNumberBr, formatCurrency as formatCurrencyBr } from "@/lib/format-br";
 
@@ -127,9 +128,13 @@ export function CreatorInsightsModal({
 
   // Projeção simples de fechamento do mês: ganhos já feitos + (ritmo médio
   // diário observado até agora × dias restantes). Usa a mesma janela do
-  // "Ganhos do mês" do card.
-  const dailyPaceObserved = daysElapsed > 0 ? stats.monthEarnings / daysElapsed : 0;
-  const projectedMonthEnd = stats.monthEarnings + dailyPaceObserved * (daysLeft - 1);
+  // "Ganhos do mês" do card. Fórmula centralizada em lib/creator-earnings.ts
+  // (mesma usada no card "Projeção do mês" da grid) pra nunca divergir.
+  const { projected: projectedMonthEnd } = projectMonthEnd(
+    stats.monthEarnings,
+    daysElapsed,
+    daysLeft
+  );
 
   const goalPct =
     totalRevenueGoal > 0
