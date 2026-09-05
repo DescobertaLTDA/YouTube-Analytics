@@ -695,6 +695,63 @@ a {
   letter-spacing: 0.01em;
 }
 
+/* Banner de largura total com a contagem regressiva do pagamento — fica
+   entre o gráfico de histórico e a grade de criadores, no mesmo roxo
+   escuro usado nos cards "Ganhos do mês anterior" (creator-outside-month)
+   pra formar um bloco visual coerente logo acima deles. */
+.payment-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: linear-gradient(135deg, var(--purple-deep) 0%, #2c0650 100%);
+  border: 1px solid var(--purple-deep);
+  border-radius: var(--radius-md);
+  padding: 18px 24px;
+  margin: 0 0 28px;
+  box-shadow: var(--card-shadow);
+}
+
+.payment-banner-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #e9d5fb;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.payment-banner-value {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.payment-banner-today {
+  background: linear-gradient(135deg, var(--emerald) 0%, #05502b 100%);
+  border-color: var(--emerald);
+}
+
+.payment-banner-today .payment-banner-label {
+  color: #d3f5e2;
+}
+
+@media (max-width: 640px) {
+  .payment-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .payment-banner-value {
+    font-size: 19px;
+  }
+}
+
 .stat-card .stat-label {
   font-size: 11px;
   color: var(--text-muted);
@@ -2373,21 +2430,29 @@ footer.page-footer {
 }
 
 .creator-outside-month {
-  background: var(--surface);
-  border: 1px dashed var(--border);
+  background: linear-gradient(160deg, var(--purple-deep) 0%, #2c0650 100%);
+  border: 1px solid var(--purple-deep);
+}
+
+.creator-outside-month .icon-label {
+  color: #e9d5fb;
+}
+
+.creator-outside-month .text-muted-small {
+  color: #c9a6ec;
 }
 
 .creator-outside-month-value {
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: #ffffff;
 }
 
 .creator-outside-month-note {
   margin-top: 8px;
   font-size: 11.5px;
   line-height: 1.4;
-  color: var(--text-faint);
+  color: #c9a6ec;
 }
 
 .creator-cakto {

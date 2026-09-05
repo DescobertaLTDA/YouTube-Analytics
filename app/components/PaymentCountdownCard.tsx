@@ -28,9 +28,11 @@ function diffParts(targetMs: number) {
 export function PaymentCountdownCard({
   targetUtcIso,
   isPaymentDayToday,
+  variant = "stat",
 }: {
   targetUtcIso: string;
   isPaymentDayToday: boolean;
+  variant?: "stat" | "banner";
 }) {
   const targetMs = new Date(targetUtcIso).getTime();
   const [parts, setParts] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(
@@ -43,6 +45,30 @@ export function PaymentCountdownCard({
     return () => clearInterval(id);
   }, [targetMs]);
 
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  if (variant === "banner") {
+    return (
+      <div
+        className={
+          isPaymentDayToday ? "payment-banner payment-banner-today" : "payment-banner"
+        }
+        title="Contagem regressiva até o próximo pagamento (dia 25)"
+      >
+        <span className="payment-banner-label">
+          <IconClock /> {isPaymentDayToday ? "Dia de pagamento" : "Próximo pagamento (dia 25)"}
+        </span>
+        <span className="payment-banner-value">
+          {isPaymentDayToday
+            ? "Hoje 🎉"
+            : parts
+            ? `${parts.days}d ${pad(parts.hours)}h ${pad(parts.minutes)}m ${pad(parts.seconds)}s`
+            : "—"}
+        </span>
+      </div>
+    );
+  }
+
   if (isPaymentDayToday) {
     return (
       <div className="stat-card stat-card-payment stat-card-payment-today" title="Pagamento cai hoje, dia 25">
@@ -53,8 +79,6 @@ export function PaymentCountdownCard({
       </div>
     );
   }
-
-  const pad = (n: number) => String(n).padStart(2, "0");
 
   return (
     <div className="stat-card stat-card-payment" title="Contagem regressiva até o próximo pagamento (dia 25)">

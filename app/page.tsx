@@ -107,13 +107,15 @@ export default async function GanhosPage({
           amount={noCreatorEarnings}
           videos={data.noHashtagVideos}
         />
-        <PaymentCountdownCard
-          targetUtcIso={paymentCountdown.targetUtcIso}
-          isPaymentDayToday={paymentCountdown.isPaymentDayToday}
-        />
       </div>
 
       <EarningsHistoryChart history={earningsHistory} />
+
+      <PaymentCountdownCard
+        variant="banner"
+        targetUtcIso={paymentCountdown.targetUtcIso}
+        isPaymentDayToday={paymentCountdown.isPaymentDayToday}
+      />
 
       <PreviousMonthEarningsProvider>
         <div className="creator-grid">
