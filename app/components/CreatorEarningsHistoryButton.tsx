@@ -15,9 +15,20 @@ import { formatNumber, formatCurrency } from "@/lib/format-br";
 export function CreatorEarningsHistoryButton({
   creatorKey,
   creatorLabel,
+  currentMonthLabel,
+  currentMonthEarnings,
+  currentMonthViews,
 }: {
   creatorKey: CreatorKey;
   creatorLabel: string;
+  // Mês em curso (ainda não fechado) — vem direto das stats já calculadas
+  // na página principal (stats.monthEarnings/monthViews), sem precisar de
+  // outra chamada pesada só pra mostrar isso no topo do histórico, igual
+  // o "Seus ganhos" do próprio YouTube Studio faz com "setembro (em
+  // curso)".
+  currentMonthLabel: string;
+  currentMonthEarnings: number;
+  currentMonthViews: number;
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -125,6 +136,21 @@ export function CreatorEarningsHistoryButton({
                 meses passados não entram aqui: essas duas fontes só guardam o total dos últimos 28
                 dias, sem histórico mensal.
               </p>
+
+              {/* Mês em curso primeiro, igual o "Seus ganhos" do YouTube Studio —
+                  não depende do fetch de histórico, então aparece na hora. */}
+              <div className="history-month-row history-month-row-current">
+                <div className="history-month-info">
+                  <span className="icon-label history-month-label">
+                    <IconCalendar /> {currentMonthLabel}
+                    <span className="history-current-badge">em curso</span>
+                  </span>
+                  <span className="text-muted-small">{formatNumber(currentMonthViews)} views</span>
+                </div>
+                <span className="history-month-value history-month-value-current">
+                  {formatCurrency(currentMonthEarnings)}
+                </span>
+              </div>
 
               {loading && <div className="no-changes">Carregando histórico...</div>}
 

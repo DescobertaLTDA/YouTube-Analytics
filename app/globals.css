@@ -2656,6 +2656,35 @@ footer.page-footer {
   white-space: nowrap;
 }
 
+/* Linha do mês em curso (ainda não fechado) no histórico — fica destacada
+   em verde e no topo da lista, igual o "setembro (em curso)" do próprio
+   YouTube Studio, pra deixar claro que é um número parcial/vivo e não um
+   mês fechado igual os de baixo. */
+.history-month-row-current {
+  background: var(--emerald-dim);
+  border: 1px solid var(--emerald-border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.history-current-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--emerald);
+  background: #ffffff;
+  border: 1px solid var(--emerald-border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  margin-left: 6px;
+}
+
+.history-month-value-current {
+  color: var(--emerald);
+}
+
 .audit-section {
   margin-bottom: 22px;
 }

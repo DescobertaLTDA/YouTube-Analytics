@@ -263,7 +263,13 @@ export function CreatorCard({
 
         <div className="creator-audit" onClick={(e) => e.stopPropagation()}>
           <CreatorAuditButton stats={stats} videos={videos} isManualRevenue={isManualRevenue} />
-          <CreatorEarningsHistoryButton creatorKey={stats.key} creatorLabel={stats.label} />
+          <CreatorEarningsHistoryButton
+            creatorKey={stats.key}
+            creatorLabel={stats.label}
+            currentMonthLabel={monthFullLabel}
+            currentMonthEarnings={stats.monthEarnings}
+            currentMonthViews={stats.monthViews}
+          />
         </div>
       </div>
 
