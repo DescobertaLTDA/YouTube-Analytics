@@ -1248,6 +1248,56 @@ export async function getCreatorEarningsHistory(limit = 60): Promise<EarningsHis
     }));
 }
 
+// Lista as datas (YYYY-MM-DD) estritamente depois de `fromDateExclusive`
+// até `toDateInclusive`, inclusive. Usada quando dois snapshots
+// consecutivos de `creator_video_view_history` NÃO são dias seguidos —
+// ou seja, o sync perdeu a gravação de 1+ dia no meio (lag de rede, cache
+// da API, deploy fora do ar na hora do cron etc.). Compara sempre em UTC
+// pra não depender do fuso do processo que roda o código.
+function datesBetweenExclusiveInclusive(fromDateExclusive: string, toDateInclusive: string): string[] {
+  const dates: string[] = [];
+  const from = new Date(`${fromDateExclusive}T00:00:00Z`);
+  const to = new Date(`${toDateInclusive}T00:00:00Z`);
+  const cursor = new Date(from.getTime() + 24 * 60 * 60 * 1000);
+  while (cursor.getTime() <= to.getTime()) {
+    dates.push(cursor.toISOString().slice(0, 10));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return dates;
+}
+
+// Soma a receita real de um vídeo em TODOS os dias entre dois snapshots
+// de view_count consecutivos — não só no dia do snapshot mais recente
+// (`toDateInclusive`). Isso corrige o resto do gap que sobrou depois do
+// fix do `deltaViews === 0`: mesmo com aquele fix, se o sync pulou um dia
+// no meio (o snapshot de ONTEM não existe, só o de HOJE), o par
+// prev/curr comparado vira "anteontem vs hoje", e o código só olhava a
+// receita real de "hoje" — a receita real de ONTEM, que a YouTube
+// Analytics API já tinha liberado normalmente, nunca era somada em lugar
+// nenhum. Aqui a gente varre o intervalo inteiro (exclusivo no início,
+// inclusive no fim, pra não contar o dia do snapshot anterior de novo) e
+// soma qualquer receita real conhecida — inclusive um real R$0 legítimo,
+// que ainda assim conta como "tem dado real" e não deve cair pra
+// estimativa por RPM.
+function sumRealRevenueInRange(
+  videoId: string,
+  fromDateExclusive: string,
+  toDateInclusive: string,
+  realRevenueByKey: Map<string, number>
+): { sum: number; hasReal: boolean } {
+  const dates = datesBetweenExclusiveInclusive(fromDateExclusive, toDateInclusive);
+  let sum = 0;
+  let hasReal = false;
+  for (const date of dates) {
+    const value = realRevenueByKey.get(`${date}|${videoId}`);
+    if (value != null) {
+      sum += value;
+      hasReal = true;
+    }
+  }
+  return { sum, hasReal };
+}
+
 // Ganho estimado POR DIA (não acumulado) de cada criador — o que alimenta
 // o gráfico de linha da aba Ganhos.
 //
@@ -1391,15 +1441,24 @@ export async function getCreatorDailyEarnings(days = 28): Promise<EarningsHistor
       // negativo no gráfico — só ficam de fora).
       const deltaViews = Math.max((curr.view_count || 0) - (prev.view_count || 0), 0);
 
-      // Receita real desse vídeo nesse dia, sempre que o YouTube já
-      // liberou o dado (mesmo que seja R$0 — um vídeo genuinamente sem
+      // Receita real desse vídeo em TODOS os dias entre o snapshot
+      // anterior e este (não só no dia de `curr`), sempre que o YouTube
+      // já liberou o dado (mesmo que seja R$0 — um vídeo genuinamente sem
       // receita naquele dia é uma resposta real, não "dado ausente").
-      // `realRevenue === undefined` é o único caso que cai pra estimativa
-      // por RPM: normalmente os últimos 1-2 dias, que o YouTube ainda não
-      // processou (~2 dias de atraso). Antes isso usava `> 0`, o que
-      // descartava um real R$0 legítimo e trocava pra estimativa por
-      // engano — uma das causas do valor do mês "pulando" entre cargas.
-      const realRevenue = realRevenueByKey.get(`${curr.captured_date}|${videoId}`);
+      // `hasReal === false` é o único caso que cai pra estimativa por
+      // RPM: normalmente os últimos 1-2 dias, que o YouTube ainda não
+      // processou (~2 dias de atraso). Antes isso olhava só
+      // `curr.captured_date`, o que perdia a receita real de qualquer dia
+      // no meio do intervalo em que o sync não gravou snapshot de views
+      // (lag de rede, cache, deploy fora do ar na hora do cron etc.) —
+      // essa receita real existia na API mas nunca era somada em lugar
+      // nenhum.
+      const { sum: realRevenueSum, hasReal } = sumRealRevenueInRange(
+        videoId,
+        prev.captured_date,
+        curr.captured_date,
+        realRevenueByKey
+      );
 
       // IMPORTANTE: só pula o dia quando não há NADA pra somar (sem
       // crescimento de views E sem receita real conhecida). Antes o
@@ -1411,12 +1470,12 @@ export async function getCreatorDailyEarnings(days = 28): Promise<EarningsHistor
       // aquele vídeo naquele dia. Confirmado como causa de boa parte da
       // diferença entre a soma dos cards por criador e o total oficial do
       // canal no Studio (ver /api/ganhos/canal-vs-rastreados).
-      if (deltaViews === 0 && realRevenue == null) continue;
+      if (deltaViews === 0 && !hasReal) continue;
 
-      const isEstimatedDay = realRevenue == null;
+      const isEstimatedDay = !hasReal;
       const dayEarnings = isEstimatedDay
         ? estimateEarnings(deltaViews, curr.is_short, realRpmMap.get(videoId)?.rpm)
-        : realRevenue;
+        : realRevenueSum;
 
       const bucket = byDate.get(curr.captured_date) || emptyBucket();
       for (const creator of creators) {
@@ -1612,7 +1671,18 @@ export async function getCreatorMonthlyEarningsHistory(): Promise<
       // só olha meses JÁ FECHADOS (mês em andamento é excluído mais
       // abaixo), isso na prática cobre quase 100% dos dias com dado real —
       // exatamente o "mês fechado 100% real e estável" que se busca aqui.
-      const realRevenue = realRevenueByKey.get(`${curr.captured_date}|${videoId}`);
+      //
+      // Soma o intervalo INTEIRO entre os dois snapshots (não só
+      // `curr.captured_date`): se o sync pulou um dia no meio (sem
+      // gravação de views naquele dia), a receita real desse dia ainda
+      // existia na API e precisa entrar aqui — antes ela era descartada
+      // silenciosamente, mesmo com o fix do `deltaViews === 0`.
+      const { sum: realRevenueSum, hasReal } = sumRealRevenueInRange(
+        videoId,
+        prev.captured_date,
+        curr.captured_date,
+        realRevenueByKey
+      );
 
       // IMPORTANTE: só pula o dia quando não há NADA pra somar (sem
       // crescimento de views E sem receita real conhecida). Antes o
@@ -1621,12 +1691,11 @@ export async function getCreatorMonthlyEarningsHistory(): Promise<
       // cache da API, sync sempre no mesmo horário etc.) descartava
       // também a receita REAL desse vídeo nesse dia, mesmo quando positiva
       // — dinheiro de verdade sumindo do card mensal por criador.
-      if (deltaViews === 0 && realRevenue == null) continue;
+      if (deltaViews === 0 && !hasReal) continue;
 
-      const dayEarnings =
-        realRevenue != null
-          ? realRevenue
-          : estimateEarnings(deltaViews, curr.is_short, realRpmMap.get(videoId)?.rpm);
+      const dayEarnings = hasReal
+        ? realRevenueSum
+        : estimateEarnings(deltaViews, curr.is_short, realRpmMap.get(videoId)?.rpm);
 
       const monthKey = curr.captured_date.slice(0, 7); // "YYYY-MM"
       const bucket = byMonth.get(monthKey) || emptyBucket();
