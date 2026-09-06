@@ -4900,25 +4900,14 @@ footer.page-footer {
   flex-direction: column;
 }
 
-/* Sem isso, `.chart-line-wrapper` fica travado na altura fixa do SVG
-   (260px) e sobra espaço vazio embaixo da tira de avatares sempre que o
-   `.realtime-card` ao lado for mais alto — o grid estica o
-   `.chart-section` inteiro (align-items: stretch acima), mas nada dizia
-   pro GRÁFICO em si crescer junto, só a caixa por fora dele. `flex: 1`
-   faz o wrapper ocupar toda a altura sobrando dentro do card; o SVG
-   preenche isso porque seu atributo `height` (em px, via JS — ver
-   ChannelViewsHistoryChart.tsx) é atualizado com a altura medida do
-   próprio wrapper.
-   IMPORTANTE: não usar `height: 100%` aqui no `.chart-line` — testamos
-   e isso cria uma referência circular (o SVG em % de um wrapper cuja
-   própria altura ainda não está definida nesse ponto do cálculo do
-   navegador) que faz o card crescer sem parar. O `max-height` abaixo é
-   só uma trava de segurança pra nunca mais estourar, mesmo se algo
-   nesse cálculo mudar de novo no futuro. */
+/* Antes esse wrapper crescia (`flex: 1`) pra acompanhar a altura do
+   `.realtime-card` ao lado, até um teto de 640px — mas isso deixava o
+   gráfico grande demais quando o card vizinho é bem alto (lista de
+   vídeos longa). Voltou a ser uma altura FIXA e compacta — pode sobrar
+   um espaço vazio embaixo dos avatares quando o card ao lado for mais
+   alto, mas o gráfico em si fica no tamanho certo. */
 .channels-hourly-grid > .chart-section .chart-line-wrapper {
-  flex: 1;
-  min-height: 260px;
-  max-height: 640px;
+  height: 300px;
 }
 
 @media (max-width: 900px) {
