@@ -1254,7 +1254,7 @@ export async function getCreatorEarningsHistory(limit = 60): Promise<EarningsHis
 // ou seja, o sync perdeu a gravação de 1+ dia no meio (lag de rede, cache
 // da API, deploy fora do ar na hora do cron etc.). Compara sempre em UTC
 // pra não depender do fuso do processo que roda o código.
-function datesBetweenExclusiveInclusive(fromDateExclusive: string, toDateInclusive: string): string[] {
+export function datesBetweenExclusiveInclusive(fromDateExclusive: string, toDateInclusive: string): string[] {
   const dates: string[] = [];
   const from = new Date(`${fromDateExclusive}T00:00:00Z`);
   const to = new Date(`${toDateInclusive}T00:00:00Z`);
@@ -1279,7 +1279,7 @@ function datesBetweenExclusiveInclusive(fromDateExclusive: string, toDateInclusi
 // soma qualquer receita real conhecida — inclusive um real R$0 legítimo,
 // que ainda assim conta como "tem dado real" e não deve cair pra
 // estimativa por RPM.
-function sumRealRevenueInRange(
+export function sumRealRevenueInRange(
   videoId: string,
   fromDateExclusive: string,
   toDateInclusive: string,
