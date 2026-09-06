@@ -150,3 +150,24 @@ export async function getTrackedChannelsViewsHistory(hours = 7 * 24): Promise<Tr
 
   return { channels, points };
 }
+
+// Soma o total de views ganhas por canal dentro das ÚLTIMAS `hours` horas
+// já presentes em `history.points` (não busca nada novo no banco — reusa
+// o mesmo histórico que já alimenta o gráfico de linha). Usado tanto pra
+// ordenar a tira de avatares (mais views primeiro) quanto pra decidir
+// qual canal fica pré-selecionado no card "Últimas 48 horas" quando a
+// pessoa ainda não clicou em nenhum.
+export function totalViewsByChannelInWindow(
+  history: TrackedChannelsHistory,
+  hours = 48
+): Map<string, number> {
+  const allHours = Array.from(new Set(history.points.map((p) => p.capturedAt))).sort();
+  const windowHours = new Set(allHours.slice(-hours));
+
+  const totals = new Map<string, number>();
+  for (const point of history.points) {
+    if (!windowHours.has(point.capturedAt)) continue;
+    totals.set(point.channelId, (totals.get(point.channelId) || 0) + point.totalViews);
+  }
+  return totals;
+}

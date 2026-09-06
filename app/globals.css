@@ -1036,6 +1036,17 @@ a {
   box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
 }
 
+/* Canal fixado por clique (controla o card "Últimas 48 horas" ao lado) —
+   anel sólido na cor do canal, pra diferenciar de só passar o mouse. */
+.chart-channel-avatar-item--selected .chart-channel-avatar-ring {
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
+}
+
+.chart-channel-avatar-item--selected .chart-channel-avatar-label {
+  color: var(--ink);
+  font-weight: 700;
+}
+
 .chart-channel-avatar-ring img {
   width: 100%;
   height: 100%;
@@ -4640,4 +4651,167 @@ footer.page-footer {
   height: 220px;
   border-radius: var(--radius-lg);
   margin-bottom: 24px;
+}
+
+/* Card "Últimas 48 horas" (ChannelRealtimeCard) — mesmo estilo do card
+   de tempo real do YouTube Studio, ao lado do gráfico "Views por hora". */
+.realtime-card {
+  gap: 8px;
+}
+
+.realtime-channel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: -4px;
+}
+
+.realtime-channel-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--border);
+  flex: 0 0 auto;
+}
+
+.realtime-channel-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.realtime-channel-avatar-fallback {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.realtime-channel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.realtime-total {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.realtime-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.realtime-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 56px;
+}
+
+.realtime-bar {
+  flex: 1 1 auto;
+  min-width: 2px;
+  background: var(--malachite, #00b341);
+  border-radius: 2px 2px 0 0;
+  opacity: 0.85;
+}
+
+.realtime-bars-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.realtime-videos-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.realtime-videos-empty {
+  padding: 8px 0;
+}
+
+.realtime-video-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.realtime-video-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.realtime-video-thumb {
+  width: 40px;
+  height: 24px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--border);
+  flex: 0 0 auto;
+}
+
+.realtime-video-thumb-fallback {
+  display: block;
+}
+
+.realtime-video-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.realtime-video-dot-short {
+  background: #00b341;
+}
+
+.realtime-video-dot-long {
+  background: #e21e2c;
+}
+
+.realtime-video-title {
+  font-size: 12.5px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.realtime-video-views {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: right;
+  flex: 0 0 auto;
+}
+
+.channels-hourly-grid {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .channels-hourly-grid {
+    grid-template-columns: 1fr;
+  }
 }

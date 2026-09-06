@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { IconEye } from "@/app/components/Icons";
-import type { TrackedChannelsHistory } from "@/lib/tracked-channels-history";
+import { totalViewsByChannelInWindow, type TrackedChannelsHistory } from "@/lib/tracked-channels-history";
 import { formatNumber, formatNumberCompact, formatDateHourShort, formatDateTime } from "@/lib/format-br";
 
 const HEIGHT = 260;
@@ -135,7 +135,19 @@ function niceYScale(maxValue: number, tickCount = 4): { max: number; ticks: numb
 
 type PlottedPoint = { x: number; y: number; value: number };
 
-export function ChannelViewsHistoryChart({ history }: { history: TrackedChannelsHistory }) {
+export function ChannelViewsHistoryChart({
+  history,
+  selectedChannelId,
+  onSelectChannel,
+}: {
+  history: TrackedChannelsHistory;
+  // Canal fixado por CLIQUE na tira de avatares — controla o card
+  // "Últimas 48 horas" ao lado. `null` = ninguém clicou ainda, o card
+  // usa o líder de views das últimas 48h como padrão (ver
+  // ChannelsHourlySection, que é quem decide o fallback).
+  selectedChannelId?: string | null;
+  onSelectChannel?: (channelId: string) => void;
+}) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(FALLBACK_WIDTH);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
@@ -157,6 +169,15 @@ export function ChannelViewsHistoryChart({ history }: { history: TrackedChannels
   }, []);
 
   const { channels, points } = history;
+
+  // Ordena a tira de avatares por views das últimas 48h (mais views
+  // primeiro), mas guarda o ÍNDICE ORIGINAL (ordem de `added_at`) pra
+  // cor continuar estável — reordenar a lista de exibição não pode fazer
+  // as cores do gráfico trocarem de canal a cada refresh.
+  const viewsWindow = totalViewsByChannelInWindow(history, 48);
+  const sortedChannels = channels
+    .map((channel, colorIndex) => ({ channel, colorIndex, views: viewsWindow.get(channel.channelId) || 0 }))
+    .sort((a, b) => b.views - a.views);
 
   const timestamps = useMemo(
     () =>
@@ -438,18 +459,22 @@ export function ChannelViewsHistoryChart({ history }: { history: TrackedChannels
           NÃO esmaecem (só a linha do gráfico faz isso) — aqui é só um
           hover leve pra indicar qual está ativo. */}
       <div className="chart-channel-avatars">
-        {channels.map((channel, i) => {
-          const color = colorForIndex(i);
-          const isActive = highlightedChannel === channel.channelId;
+        {sortedChannels.map(({ channel, colorIndex }) => {
+          const color = colorForIndex(colorIndex);
+          const isHighlighted = highlightedChannel === channel.channelId;
+          const isSelected = selectedChannelId === channel.channelId;
           return (
             <button
               type="button"
               key={channel.channelId}
-              className={`chart-channel-avatar-item${isActive ? " chart-channel-avatar-item--active" : ""}`}
+              className={`chart-channel-avatar-item${isHighlighted ? " chart-channel-avatar-item--active" : ""}${
+                isSelected ? " chart-channel-avatar-item--selected" : ""
+              }`}
               onMouseEnter={() => setHighlightedChannel(channel.channelId)}
               onMouseLeave={() => setHighlightedChannel(null)}
               onFocus={() => setHighlightedChannel(channel.channelId)}
               onBlur={() => setHighlightedChannel(null)}
+              onClick={() => onSelectChannel?.(channel.channelId)}
             >
               <span className="chart-channel-avatar-ring" style={{ borderColor: color }}>
                 {channel.avatarUrl ? (
