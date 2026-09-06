@@ -103,14 +103,24 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
   const gridLines = [0.25, 0.5, 0.75, 1].map((f) => PAD_TOP + chartHeight * (1 - f));
 
   // Pontos de cada criador pré-calculados uma vez só, reaproveitados pela
-  // linha, pelos círculos e pelo tooltip.
+  // linha, pelos círculos e pelo tooltip. `isEstimated` marca dias que
+  // ainda não têm receita oficial liberada pelo YouTube pra todos os
+  // vídeos daquele dia (normalmente só os últimos 1-2 dias) — o valor é
+  // uma estimativa provisória por RPM até o dado real chegar.
   const seriesPoints = CREATORS.map(({ key }) => ({
     key,
     points: timestamps.map((t, i) => {
       const point = history.find((h) => h.capturedAt === t && h.creator === key);
-      return { x: xFor(i), y: yFor(point?.totalEarnings ?? 0), value: point?.totalEarnings ?? 0 };
+      return {
+        x: xFor(i),
+        y: yFor(point?.totalEarnings ?? 0),
+        value: point?.totalEarnings ?? 0,
+        isEstimated: point?.isEstimated ?? false,
+      };
     }),
   }));
+
+  const hasEstimatedPoints = seriesPoints.some((s) => s.points.some((p) => p.isEstimated));
 
   const handlePointerMove = useCallback(
     (e: MouseEvent<SVGSVGElement>) => {
@@ -143,7 +153,16 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
   return (
     <div className="chart-section">
       <h2 className="icon-label"><IconTrendingUp /> Receita ao longo do tempo</h2>
-      <p className="chart-subtitle">Ganho estimado por dia (RPM) — não o acumulado do período de 28 dias.</p>
+      <p className="chart-subtitle">
+        Ganho por dia (receita oficial do YouTube quando já liberada, estimativa por RPM quando
+        ainda não) — não o acumulado do período de 28 dias.
+        {hasEstimatedPoints && (
+          <>
+            {" "}
+            <span className="chart-estimated-note">○ pontos vazados = estimativa provisória</span>
+          </>
+        )}
+      </p>
 
       <div className="chart-line-wrapper" ref={wrapperRef}>
         <svg
@@ -187,12 +206,17 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
                   cx={p.x}
                   cy={p.y}
                   r={hoverIndex === i ? 5 : 3}
-                  fill={CREATOR_COLORS[key]}
-                  stroke="#ffffff"
-                  strokeWidth={hoverIndex === i ? 2 : 1.5}
+                  // Ponto estimado (dado real ainda não liberado pelo YouTube
+                  // pra esse dia) fica "vazado" — miolo branco, só o contorno
+                  // na cor do criador — pra diferenciar visualmente de um
+                  // ponto 100% real, igual explicado na legenda acima.
+                  fill={p.isEstimated ? "#ffffff" : CREATOR_COLORS[key]}
+                  stroke={CREATOR_COLORS[key]}
+                  strokeWidth={p.isEstimated ? 2 : hoverIndex === i ? 2 : 1.5}
                 >
                   <title>
-                    {`${CREATORS.find((c) => c.key === key)?.label} · ${longDate(timestamps[i])} · ${formatCurrency(p.value)}`}
+                    {`${CREATORS.find((c) => c.key === key)?.label} · ${longDate(timestamps[i])} · ${formatCurrency(p.value)}` +
+                      (p.isEstimated ? " · estimativa provisória" : "")}
                   </title>
                 </circle>
               ))}
@@ -222,6 +246,7 @@ export function EarningsHistoryChart({ history }: { history: EarningsHistoryPoin
                 <span className="chart-tooltip-name">{CREATORS.find((c) => c.key === key)?.label}</span>
                 <span className="chart-tooltip-value" style={{ color: CREATOR_COLORS[key] }}>
                   {formatCurrency(points[hoverIndex].value)}
+                  {points[hoverIndex].isEstimated && " (estimativa)"}
                 </span>
               </div>
             ))}

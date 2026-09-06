@@ -13,6 +13,28 @@ export type DailyVideoRevenue = {
 // evita estourar limite de taxa (rate limit) da API.
 const CONCURRENCY = 5;
 
+// Falha passageira (rate limit, hiccup momentâneo da API do Google) não
+// pode virar "esse vídeo não tem receita real hoje" — isso é exatamente o
+// tipo de coisa que fazia o número trocar sozinho na tela (uma chamada
+// falha, cai pra estimativa; a próxima carga da página a chamada funciona,
+// volta pro valor real). Por isso cada vídeo tenta até MAX_ATTEMPTS vezes
+// antes de desistir e deixar a função de cima cair pra estimativa por RPM.
+const MAX_ATTEMPTS = 3;
+const RETRY_BASE_DELAY_MS = 500;
+
+// Só vale a pena tentar de novo erro que é claramente passageiro. 401/403
+// (token inválido/sem permissão) e 400 (request malformada) não se
+// resolvem tentando de novo — só 429 (rate limit) e 5xx (erro do lado do
+// Google) costumam ser transitórios.
+function isRetryableStatus(status: number | null): boolean {
+  if (status === null) return true; // erro de rede/timeout — tenta de novo
+  return status === 429 || status >= 500;
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // Busca a receita OFICIAL (relatório real do YouTube, métrica
 // `estimatedRevenue`) por vídeo e por dia, num intervalo — pra usar no
 // lugar da estimativa por RPM sempre que já estiver disponível.
@@ -72,40 +94,59 @@ export async function getDailyVideoRevenue(
       currency: "BRL",
     });
 
-    try {
-      const response = await fetch(`https://youtubeanalytics.googleapis.com/v2/reports?${params}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        // Dado de receita muda pouco de um request pro outro no mesmo dia,
-        // mas não custa nada garantir que não fica em cache do Next.
-        cache: "no-store",
-      });
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        const response = await fetch(`https://youtubeanalytics.googleapis.com/v2/reports?${params}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          // Dado de receita muda pouco de um request pro outro no mesmo dia,
+          // mas não custa nada garantir que não fica em cache do Next.
+          cache: "no-store",
+        });
 
-      if (!response.ok) {
-        const text = await response.text();
+        if (!response.ok) {
+          const text = await response.text();
+          const canRetry = isRetryableStatus(response.status) && attempt < MAX_ATTEMPTS;
+          console.error(
+            `❌ Erro ao buscar receita real do vídeo ${videoId} na YouTube Analytics API` +
+              (canRetry ? ` (tentativa ${attempt}/${MAX_ATTEMPTS}, vai tentar de novo):` : ":"),
+            text
+          );
+          if (canRetry) {
+            await sleep(RETRY_BASE_DELAY_MS * attempt);
+            continue;
+          }
+          onError?.(videoId, response.status, text);
+          return;
+        }
+
+        const data = (await response.json()) as { rows?: [string, number, number][] };
+        const rows = data.rows || [];
+
+        // Ordem das colunas é a mesma ordem de `dimensions` + `metrics` da
+        // request: day, estimatedRevenue, views.
+        for (const [date, estimatedRevenue, views] of rows) {
+          results.push({
+            date,
+            videoId,
+            estimatedRevenue: Number(estimatedRevenue) || 0,
+            views: Number(views) || 0,
+          });
+        }
+        return;
+      } catch (error) {
+        const canRetry = attempt < MAX_ATTEMPTS;
         console.error(
-          `❌ Erro ao buscar receita real do vídeo ${videoId} na YouTube Analytics API:`,
-          text
+          `❌ Erro ao buscar receita real do vídeo ${videoId} na YouTube Analytics API` +
+            (canRetry ? ` (tentativa ${attempt}/${MAX_ATTEMPTS}, vai tentar de novo):` : ":"),
+          error
         );
-        onError?.(videoId, response.status, text);
+        if (canRetry) {
+          await sleep(RETRY_BASE_DELAY_MS * attempt);
+          continue;
+        }
+        onError?.(videoId, null, String(error));
         return;
       }
-
-      const data = (await response.json()) as { rows?: [string, number, number][] };
-      const rows = data.rows || [];
-
-      // Ordem das colunas é a mesma ordem de `dimensions` + `metrics` da
-      // request: day, estimatedRevenue, views.
-      for (const [date, estimatedRevenue, views] of rows) {
-        results.push({
-          date,
-          videoId,
-          estimatedRevenue: Number(estimatedRevenue) || 0,
-          views: Number(views) || 0,
-        });
-      }
-    } catch (error) {
-      console.error(`❌ Erro ao buscar receita real do vídeo ${videoId} na YouTube Analytics API:`, error);
-      onError?.(videoId, null, String(error));
     }
   }
 

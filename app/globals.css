@@ -837,6 +837,11 @@ a {
   margin-bottom: 16px;
 }
 
+.chart-estimated-note {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .chart-container {
   padding: 8px 0;
 }

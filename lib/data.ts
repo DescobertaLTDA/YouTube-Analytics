@@ -1210,6 +1210,11 @@ export type EarningsHistoryPoint = {
   creator: CreatorKey;
   totalEarnings: number;
   totalViews: number;
+  // true quando pelo menos parte do valor desse dia ainda é estimativa por
+  // RPM (o YouTube ainda não liberou a receita oficial pra algum vídeo
+  // naquele dia — normalmente só os últimos 1-2 dias). Some sozinho assim
+  // que o dado real chega, ~2 dias depois. Ver getCreatorDailyEarnings.
+  isEstimated?: boolean;
 };
 
 // Histórico de receita por criador — um ponto por sincronização (clique em
@@ -1364,11 +1369,11 @@ export async function getCreatorDailyEarnings(days = 28): Promise<EarningsHistor
     byVideo.set(row.youtube_video_id, list);
   }
 
-  type Bucket = Record<CreatorKey, { views: number; earnings: number }>;
+  type Bucket = Record<CreatorKey, { views: number; earnings: number; isEstimated: boolean }>;
   const emptyBucket = (): Bucket => ({
-    lucas: { views: 0, earnings: 0 },
-    matheus: { views: 0, earnings: 0 },
-    rafael: { views: 0, earnings: 0 },
+    lucas: { views: 0, earnings: 0, isEstimated: false },
+    matheus: { views: 0, earnings: 0, isEstimated: false },
+    rafael: { views: 0, earnings: 0, isEstimated: false },
   });
 
   // data (YYYY-MM-DD) -> bucket por criador
@@ -1389,23 +1394,25 @@ export async function getCreatorDailyEarnings(days = 28): Promise<EarningsHistor
       const deltaViews = Math.max((curr.view_count || 0) - (prev.view_count || 0), 0);
       if (deltaViews === 0) continue;
 
-      // Receita real desse vídeo nesse dia, se o YouTube já liberou;
-      // senão cai pra estimativa por RPM em cima do delta de views.
-      // IMPORTANTE: usamos > 0 (não `??`) de propósito — um `estimatedRevenue`
-      // real igual a 0 (vídeo ainda não monetizado no período, dado
-      // incompleto da API pra dias antigos, etc.) não pode "vencer" a
-      // estimativa por RPM; só confiamos no valor real quando ele for
-      // genuinamente positivo.
+      // Receita real desse vídeo nesse dia, sempre que o YouTube já
+      // liberou o dado (mesmo que seja R$0 — um vídeo genuinamente sem
+      // receita naquele dia é uma resposta real, não "dado ausente").
+      // `realRevenue === undefined` é o único caso que cai pra estimativa
+      // por RPM: normalmente os últimos 1-2 dias, que o YouTube ainda não
+      // processou (~2 dias de atraso). Antes isso usava `> 0`, o que
+      // descartava um real R$0 legítimo e trocava pra estimativa por
+      // engano — uma das causas do valor do mês "pulando" entre cargas.
       const realRevenue = realRevenueByKey.get(`${curr.captured_date}|${videoId}`);
-      const dayEarnings =
-        realRevenue != null && realRevenue > 0
-          ? realRevenue
-          : estimateEarnings(deltaViews, curr.is_short, realRpmMap.get(videoId)?.rpm);
+      const isEstimatedDay = realRevenue == null;
+      const dayEarnings = isEstimatedDay
+        ? estimateEarnings(deltaViews, curr.is_short, realRpmMap.get(videoId)?.rpm)
+        : realRevenue;
 
       const bucket = byDate.get(curr.captured_date) || emptyBucket();
       for (const creator of creators) {
         bucket[creator].views += deltaViews;
         bucket[creator].earnings += dayEarnings;
+        if (isEstimatedDay) bucket[creator].isEstimated = true;
       }
       byDate.set(curr.captured_date, bucket);
     }
@@ -1424,6 +1431,7 @@ export async function getCreatorDailyEarnings(days = 28): Promise<EarningsHistor
         creator: key,
         totalEarnings: Math.round(bucket[key].earnings * 100) / 100,
         totalViews: bucket[key].views,
+        isEstimated: bucket[key].isEstimated,
       });
     }
   }
@@ -1588,12 +1596,16 @@ export async function getCreatorMonthlyEarningsHistory(): Promise<
       const deltaViews = Math.max((curr.view_count || 0) - (prev.view_count || 0), 0);
       if (deltaViews === 0) continue;
 
-      // Mesmo motivo do bloco de getCreatorEarnings acima: > 0 em vez de
-      // `??`, pra um `estimatedRevenue` real igual a 0 não apagar a
-      // estimativa por RPM.
+      // Mesmo critério do bloco de getCreatorDailyEarnings acima: usa a
+      // receita real sempre que o YouTube já a liberou (mesmo R$0 — é um
+      // valor real, não "sem dado"), só cai pra estimativa por RPM quando
+      // a API simplesmente não tem esse vídeo/dia ainda. Como essa função
+      // só olha meses JÁ FECHADOS (mês em andamento é excluído mais
+      // abaixo), isso na prática cobre quase 100% dos dias com dado real —
+      // exatamente o "mês fechado 100% real e estável" que se busca aqui.
       const realRevenue = realRevenueByKey.get(`${curr.captured_date}|${videoId}`);
       const dayEarnings =
-        realRevenue != null && realRevenue > 0
+        realRevenue != null
           ? realRevenue
           : estimateEarnings(deltaViews, curr.is_short, realRpmMap.get(videoId)?.rpm);
 
