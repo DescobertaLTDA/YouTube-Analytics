@@ -9,11 +9,13 @@ export const dynamic = "force-dynamic";
 // "Atualizar" do site (AtualizarButton.tsx) chamar direto do navegador —
 // um fetch no browser nunca pode carregar o CRON_SECRET (ficaria visível
 // pra qualquer um no DevTools), então esse clique manual usa essa rota
-// separada em vez da protegida. Mesma lógica das duas, só que essa aqui
-// segue o padrão "sem autenticação, de propósito" já usado no resto do
-// projeto (/api/sync, /api/ganhos/sync).
+// separada em vez da protegida. Mesma lógica das duas (runCanaisTerceirosSnapshot),
+// só que chama com truncateToHour=false — cada clique manual grava um
+// ponto NOVO no histórico (timestamp exato do clique, não arredondado
+// pra hora cheia), então o gráfico "Views por hora" pode ganhar uma
+// linha sem depender só do cron automático.
 export async function POST() {
-  const result = await runCanaisTerceirosSnapshot();
+  const result = await runCanaisTerceirosSnapshot({ truncateToHour: false });
   return NextResponse.json(result, { status: result.success ? 200 : 500 });
 }
 

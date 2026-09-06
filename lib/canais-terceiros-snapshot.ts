@@ -17,12 +17,23 @@ export type SnapshotResult = {
 
 // Lógica de captura em si, compartilhada por DUAS rotas:
 // - /api/canais-terceiros/snapshot: exige CRON_SECRET, chamada pelo
-//   GitHub Actions de hora em hora (ver .github/workflows/hourly-sync.yml).
+//   GitHub Actions de hora em hora (ver .github/workflows/main.yml).
+//   Usa truncateToHour=true (padrão): grava sempre na hora CHEIA, pra
+//   uma re-execução do cron na mesma hora fazer upsert em cima do mesmo
+//   registro em vez de duplicar linha.
 // - /api/canais-terceiros/refresh: sem secret, chamada pelo botão
-//   "Atualizar" do próprio site (AtualizarButton.tsx) — o navegador nunca
-//   pode saber o CRON_SECRET (ficaria visível no DevTools de qualquer
-//   pessoa), então esse gatilho manual precisa de uma porta separada.
-export async function runCanaisTerceirosSnapshot(): Promise<SnapshotResult> {
+//   "Atualizar" do site (AtualizarButton.tsx) — o navegador nunca pode
+//   saber o CRON_SECRET (ficaria visível no DevTools de qualquer
+//   pessoa), então esse gatilho manual usa essa rota separada. Chama
+//   com truncateToHour=false: grava no timestamp EXATO do clique, não
+//   arredondado — assim cada clique em "Atualizar" cria um ponto NOVO
+//   no histórico (em vez de só sobrescrever o registro da hora cheia
+//   em silêncio), permitindo ver o crescimento de views entre dois
+//   cliques manuais sem esperar a próxima hora do cron.
+export async function runCanaisTerceirosSnapshot(
+  opts: { truncateToHour?: boolean } = {}
+): Promise<SnapshotResult> {
+  const { truncateToHour = true } = opts;
   const db = getServiceSupabase();
   const { data, error } = await db.from("tracked_channels").select("*").eq("active", true);
 
@@ -37,11 +48,17 @@ export async function runCanaisTerceirosSnapshot(): Promise<SnapshotResult> {
 
   const now = new Date();
   const nowIso = now.toISOString();
-  // Hora cheia (minutos/segundos zerados) — é a chave de unicidade que
-  // permite 1 captura por vídeo por HORA em vez de por dia.
-  const capturedHour = new Date(now);
-  capturedHour.setUTCMinutes(0, 0, 0);
-  const capturedHourIso = capturedHour.toISOString();
+  // Chave de unicidade do histórico (`captured_hour`): hora cheia pro
+  // cron automático (dedup por hora), timestamp exato pro clique manual
+  // (cada clique é um ponto próprio). Ver comentário da função acima.
+  let capturedHourIso: string;
+  if (truncateToHour) {
+    const capturedHour = new Date(now);
+    capturedHour.setUTCMinutes(0, 0, 0);
+    capturedHourIso = capturedHour.toISOString();
+  } else {
+    capturedHourIso = nowIso;
+  }
 
   const errors: { channelTitle: string; message: string }[] = [];
 
