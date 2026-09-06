@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
-import { IconEye } from "@/app/components/Icons";
+import { IconEye, IconPin } from "@/app/components/Icons";
 import { totalViewsByChannelInWindow, type TrackedChannelsHistory } from "@/lib/tracked-channels-history";
 import { formatNumber, formatNumberCompact, formatDateHourShort, formatDateTime } from "@/lib/format-br";
 
@@ -19,6 +19,10 @@ const PAD_RIGHT = 12;
 const FALLBACK_WIDTH = 700;
 
 const TZ = "America/Sao_Paulo";
+
+// @oCanalLigado — fica sempre fixado em primeiro na tira de avatares,
+// não importa a colocação dele no ranking de views das últimas 48h.
+const PINNED_CHANNEL_ID = "UCJWArKWSlKLzTOekfIHxOHw";
 
 const shortDate = (iso: string) => formatDateHourShort(iso, { timeZone: TZ });
 const longDate = (iso: string) => formatDateTime(iso);
@@ -198,10 +202,19 @@ export function ChannelViewsHistoryChart({
   // primeiro), mas guarda o ÍNDICE ORIGINAL (ordem de `added_at`) pra
   // cor continuar estável — reordenar a lista de exibição não pode fazer
   // as cores do gráfico trocarem de canal a cada refresh.
+  //
+  // @oCanalLigado (UCJWArKWSlKLzTOekfIHxOHw) fica sempre fixado em
+  // primeiro, com um pin (ver render mais abaixo) — independe de views.
+  // O resto da lista segue normalmente por views desc.
   const viewsWindow = totalViewsByChannelInWindow(history, 48);
   const sortedChannels = channels
     .map((channel, colorIndex) => ({ channel, colorIndex, views: viewsWindow.get(channel.channelId) || 0 }))
-    .sort((a, b) => b.views - a.views);
+    .sort((a, b) => {
+      const aPinned = a.channel.channelId === PINNED_CHANNEL_ID;
+      const bPinned = b.channel.channelId === PINNED_CHANNEL_ID;
+      if (aPinned !== bPinned) return aPinned ? -1 : 1;
+      return b.views - a.views;
+    });
 
   const timestamps = useMemo(
     () =>
@@ -492,6 +505,7 @@ export function ChannelViewsHistoryChart({
           const color = colorForIndex(colorIndex);
           const isHighlighted = highlightedChannel === channel.channelId;
           const isSelected = selectedChannelId === channel.channelId;
+          const isPinned = channel.channelId === PINNED_CHANNEL_ID;
           return (
             <button
               type="button"
@@ -511,6 +525,11 @@ export function ChannelViewsHistoryChart({
                 ) : (
                   <span className="chart-channel-avatar-fallback" style={{ background: color }}>
                     {channel.title.slice(0, 1).toUpperCase()}
+                  </span>
+                )}
+                {isPinned && (
+                  <span className="chart-channel-avatar-pin" title="Fixado">
+                    <IconPin size={10} />
                   </span>
                 )}
               </span>

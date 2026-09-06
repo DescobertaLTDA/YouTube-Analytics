@@ -1025,6 +1025,7 @@ a {
 }
 
 .chart-channel-avatar-ring {
+  position: relative;
   width: 44px;
   height: 44px;
   border-radius: 50%;
@@ -1035,6 +1036,29 @@ a {
   align-items: center;
   justify-content: center;
   background: var(--surface);
+}
+
+/* Selo do canal fixado (@oCanalLigado) — sempre em primeiro na tira,
+   independente do ranking de views. Ver PINNED_CHANNEL_ID em
+   ChannelViewsHistoryChart.tsx. */
+.chart-channel-avatar-pin {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--amber, #f5a623);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--surface);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+}
+
+.chart-channel-avatar-pin svg {
+  display: block;
 }
 
 .chart-channel-avatar-item:hover .chart-channel-avatar-ring,
