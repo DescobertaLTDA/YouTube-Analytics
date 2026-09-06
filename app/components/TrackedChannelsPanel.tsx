@@ -146,24 +146,35 @@ export function TrackedChannelsPanel() {
       ) : channels.length === 0 ? (
         <p className="text-muted">Nenhum canal rastreado ainda — adicione um acima.</p>
       ) : (
-        <div className="tracked-channels-list">
-          {channels.map((c) => (
-            <div key={c.id} className="tracked-channel-chip">
-              {c.avatar_url && <img src={c.avatar_url} alt="" className="tracked-channel-avatar" />}
-              <span className="tracked-channel-name">{c.channel_title || c.youtube_channel_id}</span>
-              <span className="text-muted-small">desde {formatDateShort(c.added_at)}</span>
-              <button
-                type="button"
-                className="tracked-channel-remove"
-                onClick={() => handleRemove(c.id)}
-                disabled={removingId === c.id}
-                aria-label={`Remover ${c.channel_title || "canal"}`}
-                title="Remover canal"
+        <div className="tracked-channels-stories">
+          {channels.map((c) => {
+            const label = c.channel_title || c.youtube_channel_id;
+            return (
+              <div
+                key={c.id}
+                className="tracked-channel-story"
+                title={`${label} — desde ${formatDateShort(c.added_at)}`}
               >
-                <IconTrash size={13} />
-              </button>
-            </div>
-          ))}
+                <div className="tracked-channel-story-ring">
+                  {c.avatar_url ? (
+                    <img src={c.avatar_url} alt="" />
+                  ) : (
+                    <span className="tracked-channel-story-fallback">{label.slice(0, 1).toUpperCase()}</span>
+                  )}
+                  <button
+                    type="button"
+                    className="tracked-channel-story-remove"
+                    onClick={() => handleRemove(c.id)}
+                    disabled={removingId === c.id}
+                    aria-label={`Remover ${label}`}
+                  >
+                    <IconTrash size={11} />
+                  </button>
+                </div>
+                <span className="tracked-channel-story-name">{label}</span>
+              </div>
+            );
+          })}
         </div>
       )}
 
