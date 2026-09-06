@@ -1433,6 +1433,24 @@ export async function getCreatorDailyEarnings(days = 28): Promise<EarningsHistor
 
     const sorted = rows.slice().sort((a, b) => (a.captured_date < b.captured_date ? -1 : 1));
 
+    // O snapshot mais antigo desse vídeo (sorted[0]) nunca forma um par
+    // prev/curr no loop abaixo — não existe um "dia anterior" pra
+    // calcular o intervalo. Isso descartava a receita real desse
+    // primeiro dia sempre que a API já tinha liberado o valor (vídeo
+    // novo entrando no rastreamento no meio do período), mesmo sendo
+    // dado 100% real. Não dá pra saber as views desse dia sem um
+    // baseline anterior, mas a receita real já vem por dia da API
+    // independente de views — então atribui só ela.
+    const firstRow = sorted[0];
+    const firstRealValue = firstRow ? realRevenueByKey.get(`${firstRow.captured_date}|${videoId}`) : null;
+    if (firstRow && firstRealValue != null) {
+      const dayBucket = byDate.get(firstRow.captured_date) || emptyBucket();
+      for (const creator of creators) {
+        dayBucket[creator].earnings += firstRealValue;
+      }
+      byDate.set(firstRow.captured_date, dayBucket);
+    }
+
     for (let i = 1; i < sorted.length; i++) {
       const prev = sorted[i - 1];
       const curr = sorted[i];
@@ -1667,6 +1685,23 @@ export async function getCreatorMonthlyEarningsHistory(): Promise<
     if (!creators || creators.length === 0) continue; // vídeo sem hashtag não entra
 
     const sorted = rows.slice().sort((a, b) => (a.captured_date < b.captured_date ? -1 : 1));
+
+    // Mesmo problema do bloco de getCreatorDailyEarnings acima, e a causa
+    // raiz confirmada em /api/ganhos/dias-perdidos: o snapshot mais antigo
+    // do vídeo (sorted[0]) nunca forma par prev/curr, então a receita real
+    // do dia em que ele entrou pro rastreamento era descartada mesmo já
+    // disponível na API. Atribui só a receita (não dá pra saber views sem
+    // baseline anterior) ao mês do primeiro snapshot.
+    const firstRow = sorted[0];
+    const firstRealValue = firstRow ? realRevenueByKey.get(`${firstRow.captured_date}|${videoId}`) : null;
+    if (firstRow && firstRealValue != null) {
+      const firstMonthKey = firstRow.captured_date.slice(0, 7);
+      const dayBucket = byMonth.get(firstMonthKey) || emptyBucket();
+      for (const creator of creators) {
+        dayBucket[creator].earnings += firstRealValue;
+      }
+      byMonth.set(firstMonthKey, dayBucket);
+    }
 
     for (let i = 1; i < sorted.length; i++) {
       const prev = sorted[i - 1];
