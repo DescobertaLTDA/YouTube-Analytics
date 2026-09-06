@@ -4810,6 +4810,18 @@ footer.page-footer {
   align-items: start;
 }
 
+/* Sem isso, um item de grid não encolhe abaixo do tamanho do seu
+   conteúdo (aqui, a tira de avatares — que já passa de 30 canais e é
+   bem mais larga que a coluna). O resultado sem essa regra: a coluna do
+   gráfico "estoura" pra caber tudo, empurra o card de 300px pra fora da
+   tela e a página inteira fica enorme. min-width: 0 deixa o filho
+   encolher normalmente e o overflow-x: auto interno (.chart-line-wrapper,
+   .chart-channel-avatars) assume a rolagem, como já era antes de virar
+   grid. */
+.channels-hourly-grid > * {
+  min-width: 0;
+}
+
 @media (max-width: 900px) {
   .channels-hourly-grid {
     grid-template-columns: 1fr;
