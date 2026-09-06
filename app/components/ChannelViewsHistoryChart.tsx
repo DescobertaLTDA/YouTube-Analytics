@@ -40,6 +40,49 @@ function colorForIndex(i: number) {
   return PALETTE[i % PALETTE.length];
 }
 
+// Próxima hora CHEIA em UTC (minuto 0) — mesmo corte usado em
+// runCanaisTerceirosSnapshot (lib/canais-terceiros-snapshot.ts,
+// `capturedHour.setUTCMinutes(0, 0, 0)`), que é quando o cron do GitHub
+// Actions dispara a captura (.github/workflows/main.yml, "0 * * * *").
+// É só aritmética sobre o timestamp (instante absoluto), então funciona
+// igual em qualquer fuso do navegador — não precisa converter pra UTC
+// "na mão".
+function msUntilNextHour(now: number): number {
+  const HOUR_MS = 60 * 60 * 1000;
+  return Math.ceil(now / HOUR_MS) * HOUR_MS - now;
+}
+
+function formatCountdown(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+}
+
+// Contagem regressiva até a próxima captura horária (cron), pra mostrar
+// no lugar da mensagem "sem histórico ainda" — dá um horizonte de tempo
+// em vez de deixar a pessoa recarregando a página sem saber quanto falta.
+function NextCaptureCountdown() {
+  const [msLeft, setMsLeft] = useState(() => msUntilNextHour(Date.now()));
+
+  useEffect(() => {
+    const tick = () => setMsLeft(msUntilNextHour(Date.now()));
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="chart-countdown">
+      Próxima captura agendada em <strong>{formatCountdown(msLeft)}</strong>
+      <span className="chart-countdown-note">
+        {" "}
+        (o cron roda na hora cheia — pode levar alguns minutos a mais pra rodar de fato)
+      </span>
+    </div>
+  );
+}
+
 function smoothPath(points: { x: number; y: number }[]) {
   if (points.length === 0) return "";
   if (points.length === 1) return `M ${points[0].x},${points[0].y}`;
@@ -143,6 +186,7 @@ export function ChannelViewsHistoryChart({ history }: { history: TrackedChannels
           Ainda não tem histórico suficiente pra desenhar o gráfico. A captura roda 1x por hora —
           depois de ter pelo menos 2 horas diferentes registradas, a linha aparece aqui.
         </div>
+        <NextCaptureCountdown />
       </div>
     );
   }
