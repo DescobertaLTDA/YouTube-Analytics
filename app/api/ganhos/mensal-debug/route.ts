@@ -3,7 +3,7 @@ import { getServiceSupabase } from "@/lib/supabase";
 import { CREATORS, CreatorKey, estimateEarnings } from "@/lib/creator-earnings";
 import { getRealRpmMap } from "@/lib/rpm-real";
 import { getDailyVideoRevenue } from "@/lib/youtube-revenue";
-import { sumRealRevenueInRange } from "@/lib/data";
+import { datesBetweenExclusiveInclusive } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
@@ -142,29 +142,35 @@ export async function GET(req: NextRequest) {
       for (let i = 1; i < sorted.length; i++) {
         const prev = sorted[i - 1];
         const curr = sorted[i];
-        if (!curr.captured_date.startsWith(month)) continue; // só nos importa o mês pedido
 
-        videosSeenInMonth.add(videoId);
-
+        // Mesma lógica corrigida de getCreatorMonthlyEarningsHistory:
+        // cada dia do intervalo é atribuído ao MÊS DAQUELE DIA (não mais
+        // tudo pro mês de `curr`) — importante pra não perder o fim de um
+        // mês que "vazou" pro mês seguinte por causa de um gap de sync
+        // que atravessa a virada do mês.
         const deltaViews = Math.max((curr.view_count || 0) - (prev.view_count || 0), 0);
-        const { sum: realRevenueSum, hasReal } = sumRealRevenueInRange(
-          videoId,
-          prev.captured_date,
-          curr.captured_date,
-          realRevenueByKey
-        );
+        const datesInRange = datesBetweenExclusiveInclusive(prev.captured_date, curr.captured_date);
 
-        if (deltaViews === 0 && !hasReal) continue;
+        let anyReal = false;
+        for (const date of datesInRange) {
+          const value = realRevenueByKey.get(`${date}|${videoId}`);
+          if (value == null) continue;
+          anyReal = true;
+          if (date.startsWith(month)) {
+            videosSeenInMonth.add(videoId);
+            for (const creator of creators) {
+              statsByCreator[creator].realRevenue += value;
+              statsByCreator[creator].realDayVideoCount += 1;
+            }
+          }
+        }
 
-        const dayEarnings = hasReal
-          ? realRevenueSum
-          : estimateEarnings(deltaViews, curr.is_short, realRpmMap.get(videoId)?.rpm);
+        if (deltaViews === 0 && !anyReal) continue;
 
-        for (const creator of creators) {
-          if (hasReal) {
-            statsByCreator[creator].realRevenue += dayEarnings;
-            statsByCreator[creator].realDayVideoCount += 1;
-          } else {
+        if (!anyReal && curr.captured_date.startsWith(month)) {
+          videosSeenInMonth.add(videoId);
+          const dayEarnings = estimateEarnings(deltaViews, curr.is_short, realRpmMap.get(videoId)?.rpm);
+          for (const creator of creators) {
             statsByCreator[creator].estimatedRevenue += dayEarnings;
             statsByCreator[creator].estimatedDayVideoCount += 1;
           }

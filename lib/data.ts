@@ -1441,49 +1441,58 @@ export async function getCreatorDailyEarnings(days = 28): Promise<EarningsHistor
       // negativo no gráfico — só ficam de fora).
       const deltaViews = Math.max((curr.view_count || 0) - (prev.view_count || 0), 0);
 
-      // Receita real desse vídeo em TODOS os dias entre o snapshot
-      // anterior e este (não só no dia de `curr`), sempre que o YouTube
+      // Receita real desse vídeo, atribuída ao dia de CADA snapshot real
+      // (não empurrada inteira pro dia de `curr`), sempre que o YouTube
       // já liberou o dado (mesmo que seja R$0 — um vídeo genuinamente sem
       // receita naquele dia é uma resposta real, não "dado ausente").
-      // `hasReal === false` é o único caso que cai pra estimativa por
-      // RPM: normalmente os últimos 1-2 dias, que o YouTube ainda não
-      // processou (~2 dias de atraso). Antes isso olhava só
-      // `curr.captured_date`, o que perdia a receita real de qualquer dia
-      // no meio do intervalo em que o sync não gravou snapshot de views
-      // (lag de rede, cache, deploy fora do ar na hora do cron etc.) —
-      // essa receita real existia na API mas nunca era somada em lugar
-      // nenhum.
-      const { sum: realRevenueSum, hasReal } = sumRealRevenueInRange(
-        videoId,
-        prev.captured_date,
-        curr.captured_date,
-        realRevenueByKey
-      );
-
-      // IMPORTANTE: só pula o dia quando não há NADA pra somar (sem
-      // crescimento de views E sem receita real conhecida). Antes o
-      // `continue` de deltaViews rodava sozinho ANTES dessa checagem, e
-      // descartava a receita REAL de um vídeo/dia inteiro sempre que o
-      // snapshot diário de views não pegou crescimento (lag de medição,
-      // cache da API, sync sempre no mesmo horário etc.) — mesmo quando
-      // a Analytics API já tinha liberado receita real positiva pra
-      // aquele vídeo naquele dia. Confirmado como causa de boa parte da
-      // diferença entre a soma dos cards por criador e o total oficial do
-      // canal no Studio (ver /api/ganhos/canal-vs-rastreados).
-      if (deltaViews === 0 && !hasReal) continue;
-
-      const isEstimatedDay = !hasReal;
-      const dayEarnings = isEstimatedDay
-        ? estimateEarnings(deltaViews, curr.is_short, realRpmMap.get(videoId)?.rpm)
-        : realRevenueSum;
-
-      const bucket = byDate.get(curr.captured_date) || emptyBucket();
-      for (const creator of creators) {
-        bucket[creator].views += deltaViews;
-        bucket[creator].earnings += dayEarnings;
-        if (isEstimatedDay) bucket[creator].isEstimated = true;
+      // Antes isso olhava só `curr.captured_date`, e depois olhava a
+      // soma do intervalo mas ainda jogava tudo pro dia de `curr` — o que
+      // perdia (ou, pior, deslocava pro dia errado) a receita real de
+      // qualquer dia no meio do intervalo em que o sync não gravou
+      // snapshot de views (lag de rede, cache, deploy fora do ar na hora
+      // do cron etc.). Como a receita real já vem por dia da API, dá pra
+      // colocar cada dia no ponto certo do gráfico.
+      const datesInRange = datesBetweenExclusiveInclusive(prev.captured_date, curr.captured_date);
+      let anyReal = false;
+      for (const date of datesInRange) {
+        const value = realRevenueByKey.get(`${date}|${videoId}`);
+        if (value == null) continue;
+        anyReal = true;
+        const dayBucket = byDate.get(date) || emptyBucket();
+        for (const creator of creators) {
+          dayBucket[creator].earnings += value;
+        }
+        byDate.set(date, dayBucket);
       }
-      byDate.set(curr.captured_date, bucket);
+
+      // IMPORTANTE: só pula quando não há NADA pra somar (sem
+      // crescimento de views E sem receita real conhecida em nenhum dia
+      // do intervalo). Antes o `continue` de deltaViews rodava sozinho
+      // ANTES dessa checagem, e descartava a receita REAL de um
+      // vídeo/dia inteiro sempre que o snapshot diário de views não
+      // pegou crescimento (lag de medição, cache da API, sync sempre no
+      // mesmo horário etc.) — mesmo quando a Analytics API já tinha
+      // liberado receita real positiva pra aquele vídeo naquele dia.
+      // Confirmado como causa de boa parte da diferença entre a soma dos
+      // cards por criador e o total oficial do canal no Studio (ver
+      // /api/ganhos/canal-vs-rastreados).
+      if (deltaViews === 0 && !anyReal) continue;
+
+      // Views não têm quebra por dia vinda da API (só o total do
+      // intervalo) — continuam indo pro dia de `curr`, igual antes.
+      // Quando NENHUM dia do intervalo tem receita real, a estimativa por
+      // RPM também vai junto pro dia de `curr`, já que nesse caso não tem
+      // como saber a qual dia específico ela pertence.
+      const isEstimatedDay = !anyReal;
+      const viewsBucket = byDate.get(curr.captured_date) || emptyBucket();
+      for (const creator of creators) {
+        viewsBucket[creator].views += deltaViews;
+        if (isEstimatedDay) {
+          viewsBucket[creator].earnings += estimateEarnings(deltaViews, curr.is_short, realRpmMap.get(videoId)?.rpm);
+          viewsBucket[creator].isEstimated = true;
+        }
+      }
+      byDate.set(curr.captured_date, viewsBucket);
     }
   }
 
@@ -1672,38 +1681,60 @@ export async function getCreatorMonthlyEarningsHistory(): Promise<
       // abaixo), isso na prática cobre quase 100% dos dias com dado real —
       // exatamente o "mês fechado 100% real e estável" que se busca aqui.
       //
-      // Soma o intervalo INTEIRO entre os dois snapshots (não só
-      // `curr.captured_date`): se o sync pulou um dia no meio (sem
-      // gravação de views naquele dia), a receita real desse dia ainda
-      // existia na API e precisa entrar aqui — antes ela era descartada
-      // silenciosamente, mesmo com o fix do `deltaViews === 0`.
-      const { sum: realRevenueSum, hasReal } = sumRealRevenueInRange(
-        videoId,
-        prev.captured_date,
-        curr.captured_date,
-        realRevenueByKey
-      );
-
-      // IMPORTANTE: só pula o dia quando não há NADA pra somar (sem
-      // crescimento de views E sem receita real conhecida). Antes o
-      // `continue` rodava só olhando deltaViews, então um dia em que o
-      // snapshot diário não pegou crescimento de views (lag de medição,
-      // cache da API, sync sempre no mesmo horário etc.) descartava
-      // também a receita REAL desse vídeo nesse dia, mesmo quando positiva
-      // — dinheiro de verdade sumindo do card mensal por criador.
-      if (deltaViews === 0 && !hasReal) continue;
-
-      const dayEarnings = hasReal
-        ? realRevenueSum
-        : estimateEarnings(deltaViews, curr.is_short, realRpmMap.get(videoId)?.rpm);
-
-      const monthKey = curr.captured_date.slice(0, 7); // "YYYY-MM"
-      const bucket = byMonth.get(monthKey) || emptyBucket();
-      for (const creator of creators) {
-        bucket[creator].views += deltaViews;
-        bucket[creator].earnings += dayEarnings;
+      // IMPORTANTE (bug novo, achado depois do fix do gap): cada dia do
+      // intervalo entre `prev` e `curr` vai pro balde do MÊS DAQUELE DIA
+      // específico — não mais tudo pro mês de `curr`. Antes, quando o
+      // intervalo atravessava a virada do mês (ex: último snapshot de
+      // agosto é dia 25, o próximo só aparece dia 3 de setembro porque o
+      // sync perdeu a semana entre eles), a receita E as views do fim de
+      // agosto inteiro (26-31) eram jogadas pro balde de SETEMBRO, porque
+      // o código só olhava `curr.captured_date` pra decidir o mês. Isso
+      // fazia o fim de um mês "vazar" pro card do mês seguinte — dinheiro
+      // de agosto sumindo do card de agosto sem nunca ter sido perdido de
+      // verdade, só contado no lugar errado. Como a receita real já vem
+      // por dia da API, dá pra distribuir cada dia certinho no mês dele.
+      const datesInRange = datesBetweenExclusiveInclusive(prev.captured_date, curr.captured_date);
+      let anyReal = false;
+      for (const date of datesInRange) {
+        const value = realRevenueByKey.get(`${date}|${videoId}`);
+        if (value == null) continue;
+        anyReal = true;
+        const dayMonthKey = date.slice(0, 7);
+        const dayBucket = byMonth.get(dayMonthKey) || emptyBucket();
+        for (const creator of creators) {
+          dayBucket[creator].earnings += value;
+        }
+        byMonth.set(dayMonthKey, dayBucket);
       }
-      byMonth.set(monthKey, bucket);
+
+      // IMPORTANTE: só pula quando não há NADA pra somar (sem
+      // crescimento de views E sem receita real conhecida em nenhum dia
+      // do intervalo). Antes o `continue` rodava só olhando deltaViews,
+      // então um dia em que o snapshot diário não pegou crescimento de
+      // views (lag de medição, cache da API, sync sempre no mesmo
+      // horário etc.) descartava também a receita REAL desse vídeo nesse
+      // dia, mesmo quando positiva — dinheiro de verdade sumindo do card
+      // mensal por criador.
+      if (deltaViews === 0 && !anyReal) continue;
+
+      // Views não têm quebra por dia vinda da API (só o total do
+      // intervalo) — continuam indo pro balde de `curr`, igual antes.
+      // Quando NENHUM dia do intervalo tem receita real, a receita
+      // estimada por RPM também vai junto pro balde de `curr`, já que
+      // nesse caso não tem como saber a qual dia específico ela pertence.
+      const monthKeyForViews = curr.captured_date.slice(0, 7); // "YYYY-MM"
+      const bucketForViews = byMonth.get(monthKeyForViews) || emptyBucket();
+      for (const creator of creators) {
+        bucketForViews[creator].views += deltaViews;
+        if (!anyReal) {
+          bucketForViews[creator].earnings += estimateEarnings(
+            deltaViews,
+            curr.is_short,
+            realRpmMap.get(videoId)?.rpm
+          );
+        }
+      }
+      byMonth.set(monthKeyForViews, bucketForViews);
     }
   }
 
