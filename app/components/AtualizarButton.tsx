@@ -40,10 +40,29 @@ export function AtualizarButton() {
 
     let outcome: { type: "success" | "error"; text: string };
     try {
-      const response = await fetch("/api/ganhos/sync", { method: "POST" });
-      const data = await response.json();
+      // As duas chamadas rodam em paralelo. A captura dos canais
+      // rastreados (`/api/canais-terceiros/snapshot`) é "melhor esforço":
+      // se ela falhar, não derruba o botão inteiro — só o gráfico "Views
+      // por dia" fica sem o ponto de hoje até a próxima tentativa (cron
+      // diário ou próximo clique em Atualizar). O sync principal
+      // (`/api/ganhos/sync`) continua sendo o único que decide sucesso/
+      // erro do botão, igual antes.
+      const [ganhosResponse, snapshotResult] = await Promise.all([
+        fetch("/api/ganhos/sync", { method: "POST" }),
+        fetch("/api/canais-terceiros/snapshot", { method: "POST" }).catch((err) => {
+          console.error("⚠️ Falha ao capturar snapshot dos canais rastreados:", err);
+          return null;
+        }),
+      ]);
 
-      if (!response.ok || !data.success) {
+      if (snapshotResult && !snapshotResult.ok) {
+        const snapshotBody = await snapshotResult.json().catch(() => null);
+        console.error("⚠️ Snapshot dos canais rastreados retornou erro:", snapshotBody);
+      }
+
+      const data = await ganhosResponse.json();
+
+      if (!ganhosResponse.ok || !data.success) {
         throw new Error(data.error || data.message || "Erro ao atualizar");
       }
 

@@ -30,6 +30,35 @@ export type TrackedChannelsHistory = {
 export async function getTrackedChannelsViewsHistory(days = 28): Promise<TrackedChannelsHistory> {
   const db = getServiceSupabase();
 
+  // Busca os CANAIS primeiro, sempre — independente do histórico de
+  // views existir ou não. Antes essa ordem era invertida (histórico
+  // primeiro), e se a tabela `tracked_channel_video_history` não
+  // existisse ainda (migration 0006 não aplicada) ou desse qualquer
+  // outro erro, a função devolvia `channels: []` mesmo com canais já
+  // cadastrados — a tela então mostrava "adicione um canal", uma
+  // mensagem enganosa pra quem já tinha adicionado. Com os canais
+  // buscados à parte, a tela consegue distinguir "sem canal cadastrado"
+  // de "tem canal, mas ainda sem histórico suficiente".
+  const { data: channelRows, error: channelError } = await db
+    .from("tracked_channels")
+    .select("*")
+    .eq("active", true)
+    .order("added_at", { ascending: true });
+
+  if (channelError) {
+    console.error("❌ Erro ao ler tracked_channels:", channelError);
+  }
+
+  const channels: TrackedChannelMeta[] = ((channelRows as TrackedChannelRow[]) || []).map((c) => ({
+    channelId: c.youtube_channel_id,
+    title: c.channel_title || c.youtube_channel_id,
+    avatarUrl: c.avatar_url,
+  }));
+
+  if (channels.length === 0) {
+    return { channels: [], points: [] };
+  }
+
   // +1 dia de folga pra ter o "dia anterior" de referência do primeiro
   // ponto exibido (mesmo motivo do getCreatorDailyEarnings).
   const historyStartDate = new Date(Date.now() - (days + 1) * 24 * 60 * 60 * 1000)
@@ -64,25 +93,14 @@ export async function getTrackedChannelsViewsHistory(days = 28): Promise<Tracked
   }
 
   if (historyError) {
+    // Erro aqui geralmente significa que a migration 0006 ainda não foi
+    // aplicada no banco (tabela não existe) — devolve os CANAIS mesmo
+    // assim, sem pontos, pra tela mostrar "sem histórico ainda" em vez
+    // de "adicione um canal" (que seria falso: o canal já existe).
     console.error("❌ Erro ao ler tracked_channel_video_history:", historyError);
-    return { channels: [], points: [] };
+    return { channels, points: [] };
   }
 
-  const { data: channelRows, error: channelError } = await db
-    .from("tracked_channels")
-    .select("*")
-    .eq("active", true)
-    .order("added_at", { ascending: true });
-
-  if (channelError) {
-    console.error("❌ Erro ao ler tracked_channels:", channelError);
-  }
-
-  const channels: TrackedChannelMeta[] = ((channelRows as TrackedChannelRow[]) || []).map((c) => ({
-    channelId: c.youtube_channel_id,
-    title: c.channel_title || c.youtube_channel_id,
-    avatarUrl: c.avatar_url,
-  }));
   const activeChannelIds = new Set(channels.map((c) => c.channelId));
 
   const byVideo = new Map<string, HistoryRow[]>();
