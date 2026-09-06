@@ -41,15 +41,16 @@ export function AtualizarButton() {
     let outcome: { type: "success" | "error"; text: string };
     try {
       // As duas chamadas rodam em paralelo. A captura dos canais
-      // rastreados (`/api/canais-terceiros/snapshot`) é "melhor esforço":
-      // se ela falhar, não derruba o botão inteiro — só o gráfico "Views
-      // por dia" fica sem o ponto de hoje até a próxima tentativa (cron
-      // diário ou próximo clique em Atualizar). O sync principal
-      // (`/api/ganhos/sync`) continua sendo o único que decide sucesso/
-      // erro do botão, igual antes.
+      // rastreados (`/api/canais-terceiros/refresh` — versão sem secret
+      // de `/api/canais-terceiros/snapshot`, só pro clique manual daqui)
+      // é "melhor esforço": se ela falhar, não derruba o botão inteiro —
+      // só o gráfico "Views por hora" fica sem o ponto dessa hora até a
+      // próxima tentativa (o GitHub Actions roda de hora em hora de
+      // qualquer jeito). O sync principal (`/api/ganhos/sync`) continua
+      // sendo o único que decide sucesso/erro do botão, igual antes.
       const [ganhosResponse, snapshotResult] = await Promise.all([
         fetch("/api/ganhos/sync", { method: "POST" }),
-        fetch("/api/canais-terceiros/snapshot", { method: "POST" }).catch((err) => {
+        fetch("/api/canais-terceiros/refresh", { method: "POST" }).catch((err) => {
           console.error("⚠️ Falha ao capturar snapshot dos canais rastreados:", err);
           return null;
         }),
