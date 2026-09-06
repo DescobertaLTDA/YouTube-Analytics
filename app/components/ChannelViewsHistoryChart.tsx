@@ -316,6 +316,11 @@ export function ChannelViewsHistoryChart({
           viewBox={`0 0 ${width} ${height}`}
           width={width}
           height={height}
+          // Estilo inline em PIXELS (não %) — sobrepõe o `.chart-line {
+          // height: 240px }` fixo do CSS global (usado pelos outros
+          // gráficos do site) sem reintroduzir o problema de altura
+          // circular que a versão com `height: 100%` causava.
+          style={{ height }}
           preserveAspectRatio="none"
           onMouseMove={handlePointerMove}
           onMouseLeave={() => {
