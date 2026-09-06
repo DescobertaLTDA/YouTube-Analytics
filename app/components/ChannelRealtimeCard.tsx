@@ -35,14 +35,29 @@ export function ChannelRealtimeCard({
   // linha, só que filtrado pro canal selecionado e recortado nas últimas
   // 48 horas (cada barra = 1 captura do cron, que já roda de hora em
   // hora). Não busca nada novo no banco pra isso.
+  // Barras horárias — sempre exatamente WINDOW_HOURS posições, começando
+  // "agora" (hora cheia atual, mesmo corte usado no cron —
+  // setUTCMinutes(0,0,0), ver lib/canais-terceiros-snapshot.ts) e voltando
+  // hora a hora. Gerar os slots assim (em vez de só listar as horas que
+  // JÁ existem em `history.points`) é o que garante 48 barras finas desde
+  // o primeiro dia — se só existirem 6-7 horas de histórico ainda, as
+  // horas mais antigas simplesmente entram como barra zerada, em vez de
+  // esticar as poucas barras existentes pra ocupar a largura toda.
   const hourlyBars = useMemo(() => {
     if (!selectedChannelId) return [];
-    const allHours = Array.from(new Set(history.points.map((p) => p.capturedAt))).sort();
-    const windowHours = allHours.slice(-WINDOW_HOURS);
-    return windowHours.map((hour) => {
-      const point = history.points.find((p) => p.capturedAt === hour && p.channelId === selectedChannelId);
-      return { hour, views: point?.totalViews ?? 0 };
-    });
+    const nowHour = new Date();
+    nowHour.setUTCMinutes(0, 0, 0);
+
+    const pointsByHour = new Map(
+      history.points.filter((p) => p.channelId === selectedChannelId).map((p) => [p.capturedAt, p.totalViews])
+    );
+
+    const bars: { hour: string; views: number }[] = [];
+    for (let i = WINDOW_HOURS - 1; i >= 0; i--) {
+      const hourIso = new Date(nowHour.getTime() - i * 60 * 60 * 1000).toISOString();
+      bars.push({ hour: hourIso, views: pointsByHour.get(hourIso) ?? 0 });
+    }
+    return bars;
   }, [history.points, selectedChannelId]);
 
   const totalFromBars = useMemo(() => hourlyBars.reduce((sum, b) => sum + b.views, 0), [hourlyBars]);

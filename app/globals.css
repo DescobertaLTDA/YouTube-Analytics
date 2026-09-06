@@ -4656,14 +4656,14 @@ footer.page-footer {
 /* Card "Últimas 48 horas" (ChannelRealtimeCard) — mesmo estilo do card
    de tempo real do YouTube Studio, ao lado do gráfico "Views por hora". */
 .realtime-card {
-  gap: 8px;
+  gap: 10px;
 }
 
 .realtime-channel {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: -4px;
+  margin-top: -6px;
 }
 
 .realtime-channel-avatar {
@@ -4703,27 +4703,36 @@ footer.page-footer {
   font-weight: 700;
   color: var(--ink);
   line-height: 1.1;
+  margin-top: 2px;
 }
 
 .realtime-subtitle {
   font-size: 12px;
   color: var(--text-muted);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .realtime-bars {
   display: flex;
   align-items: flex-end;
-  gap: 2px;
+  gap: 1.5px;
   height: 56px;
+  margin-top: 6px;
+  padding: 0 1px;
 }
 
 .realtime-bar {
-  flex: 1 1 auto;
-  min-width: 2px;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 6px;
   background: var(--malachite, #00b341);
-  border-radius: 2px 2px 0 0;
-  opacity: 0.85;
+  border-radius: 1.5px 1.5px 0 0;
+  opacity: 0.9;
+  transition: opacity 0.15s ease;
+}
+
+.realtime-bar:hover {
+  opacity: 1;
 }
 
 .realtime-bars-labels {
@@ -4731,14 +4740,17 @@ footer.page-footer {
   justify-content: space-between;
   font-size: 11px;
   color: var(--text-muted);
-  margin-bottom: 8px;
+  margin-top: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
 }
 
 .realtime-videos-label {
   font-size: 12px;
   font-weight: 700;
   color: var(--text-secondary);
-  margin-top: 4px;
+  margin-top: 2px;
+  margin-bottom: 2px;
 }
 
 .realtime-videos-empty {
@@ -4749,6 +4761,7 @@ footer.page-footer {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 5px 0;
 }
 
 .realtime-video-info {
@@ -4773,9 +4786,10 @@ footer.page-footer {
 }
 
 .realtime-video-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
+  flex: 0 0 auto;
 }
 
 .realtime-video-dot-short {
