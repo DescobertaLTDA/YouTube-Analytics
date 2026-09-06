@@ -1390,7 +1390,6 @@ export async function getCreatorDailyEarnings(days = 28): Promise<EarningsHistor
       // (recontagem do YouTube, vídeo reprocessado etc. não geram ganho
       // negativo no gráfico — só ficam de fora).
       const deltaViews = Math.max((curr.view_count || 0) - (prev.view_count || 0), 0);
-      if (deltaViews === 0) continue;
 
       // Receita real desse vídeo nesse dia, sempre que o YouTube já
       // liberou o dado (mesmo que seja R$0 — um vídeo genuinamente sem
@@ -1401,6 +1400,19 @@ export async function getCreatorDailyEarnings(days = 28): Promise<EarningsHistor
       // descartava um real R$0 legítimo e trocava pra estimativa por
       // engano — uma das causas do valor do mês "pulando" entre cargas.
       const realRevenue = realRevenueByKey.get(`${curr.captured_date}|${videoId}`);
+
+      // IMPORTANTE: só pula o dia quando não há NADA pra somar (sem
+      // crescimento de views E sem receita real conhecida). Antes o
+      // `continue` de deltaViews rodava sozinho ANTES dessa checagem, e
+      // descartava a receita REAL de um vídeo/dia inteiro sempre que o
+      // snapshot diário de views não pegou crescimento (lag de medição,
+      // cache da API, sync sempre no mesmo horário etc.) — mesmo quando
+      // a Analytics API já tinha liberado receita real positiva pra
+      // aquele vídeo naquele dia. Confirmado como causa de boa parte da
+      // diferença entre a soma dos cards por criador e o total oficial do
+      // canal no Studio (ver /api/ganhos/canal-vs-rastreados).
+      if (deltaViews === 0 && realRevenue == null) continue;
+
       const isEstimatedDay = realRevenue == null;
       const dayEarnings = isEstimatedDay
         ? estimateEarnings(deltaViews, curr.is_short, realRpmMap.get(videoId)?.rpm)
@@ -1592,7 +1604,6 @@ export async function getCreatorMonthlyEarningsHistory(): Promise<
       const prev = sorted[i - 1];
       const curr = sorted[i];
       const deltaViews = Math.max((curr.view_count || 0) - (prev.view_count || 0), 0);
-      if (deltaViews === 0) continue;
 
       // Mesmo critério do bloco de getCreatorDailyEarnings acima: usa a
       // receita real sempre que o YouTube já a liberou (mesmo R$0 — é um
@@ -1602,6 +1613,16 @@ export async function getCreatorMonthlyEarningsHistory(): Promise<
       // abaixo), isso na prática cobre quase 100% dos dias com dado real —
       // exatamente o "mês fechado 100% real e estável" que se busca aqui.
       const realRevenue = realRevenueByKey.get(`${curr.captured_date}|${videoId}`);
+
+      // IMPORTANTE: só pula o dia quando não há NADA pra somar (sem
+      // crescimento de views E sem receita real conhecida). Antes o
+      // `continue` rodava só olhando deltaViews, então um dia em que o
+      // snapshot diário não pegou crescimento de views (lag de medição,
+      // cache da API, sync sempre no mesmo horário etc.) descartava
+      // também a receita REAL desse vídeo nesse dia, mesmo quando positiva
+      // — dinheiro de verdade sumindo do card mensal por criador.
+      if (deltaViews === 0 && realRevenue == null) continue;
+
       const dayEarnings =
         realRevenue != null
           ? realRevenue
