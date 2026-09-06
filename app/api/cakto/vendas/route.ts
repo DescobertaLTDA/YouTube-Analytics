@@ -1,32 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllOrders, sumPaidAmount } from "@/lib/cakto";
+import { getAllOrders, sumPaidAmount, filterOrdersByCreator } from "@/lib/cakto";
 import { CREATORS, CreatorKey } from "@/lib/creator-earnings";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/cakto/vendas
-//   → soma as vendas de TODOS os 3 criadores, usando utm_campaign=<key> como
-//     convenção (lucas / matheus / rafael)
+//   → soma as vendas de TODOS os 3 criadores (lucas / matheus / rafael)
 //
 // GET /api/cakto/vendas?creator=lucas
 //   → só as vendas do Lucas
 //
 // GET /api/cakto/vendas?utm_campaign=algumacoisa&from=2026-08-01&to=2026-08-27
-//   → filtro livre, caso a UTM usada não seja um dos 3 criadores
+//   → filtro livre por utm_campaign exato, pra investigar uma campanha
+//     específica (não usa a lógica de "casar criador" abaixo)
 //
 // GET /api/cakto/vendas?debug=1
-//   → modo debug: ignora o filtro de status="paid" e de data, busca os 20
+//   → modo debug: ignora o filtro de status="paid" e de data, busca os ~100
 //     pedidos mais recentes de TODA a conta Cakto (sem filtro de utm) e
-//     devolve os campos crus (status, utm_campaign, paidAt, amount) —
-//     usa isso pra descobrir por que uma venda real não está caindo no
-//     card, ex: valor do utm_campaign diferente de lucas/matheus/rafael,
-//     status diferente de "paid", ou o pedido ainda não foi marcado como
-//     pago na Cakto.
+//     devolve os campos crus (status, todos os campos utm, sck, paidAt,
+//     amount) — usa isso pra descobrir por que uma venda real não está
+//     caindo no card.
 //
-// Convenção: o parâmetro UTM usado pra identificar o criador é utm_campaign
-// (ex: link de venda do Lucas termina em ...?utm_campaign=lucas). Se você
-// preferir usar outro campo (utm_content, utm_source, sck), é só trocar aqui
-// embaixo — a Cakto aceita filtrar por qualquer um deles.
+// Convenção: o nome do criador (ex: "lucas") pode vir em QUALQUER um dos
+// campos de rastreio do link de checkout — na prática já vimos aparecer em
+// utm_medium (não em utm_campaign), e não tem garantia de que sempre vai
+// ser o mesmo campo, já que os links são montados manualmente. Por isso
+// `creator=<key>` não filtra a API por um campo fixo: busca todos os
+// pedidos pagos do período e casa o nome do criador contra
+// utm_source/utm_medium/utm_campaign/utm_content/utm_term/sck (ver
+// filterOrdersByCreator em lib/cakto.ts).
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -49,7 +51,9 @@ export async function GET(req: NextRequest) {
           paidAt: o.paidAt,
           utm_campaign: o.utm_campaign,
           utm_source: o.utm_source,
+          utm_medium: o.utm_medium,
           utm_content: o.utm_content,
+          utm_term: o.utm_term,
           sck: o.sck,
           product: o.product,
         })),
@@ -58,13 +62,31 @@ export async function GET(req: NextRequest) {
 
     const baseDateFilter = { paidAt__gte: from, paidAt__lt: to };
 
-    // Um criador específico (ou UTM livre) foi pedido.
-    if (creatorParam || customUtmCampaign) {
-      const utm_campaign = customUtmCampaign || creatorParam || undefined;
-      const orders = await getAllOrders({ utm_campaign, status: "paid", ...baseDateFilter });
+    // Filtro livre por utm_campaign exato — escape hatch pra investigar uma
+    // campanha específica, não relacionado à convenção de criador.
+    if (customUtmCampaign) {
+      const orders = await getAllOrders({
+        utm_campaign: customUtmCampaign,
+        status: "paid",
+        ...baseDateFilter,
+      });
 
       return NextResponse.json({
-        utm_campaign,
+        utm_campaign: customUtmCampaign,
+        totalOrders: orders.length,
+        totalAmount: sumPaidAmount(orders),
+        orders,
+      });
+    }
+
+    // Um criador específico foi pedido — busca todos os pedidos pagos do
+    // período e casa o nome dele contra qualquer campo utm/sck.
+    if (creatorParam) {
+      const allPaidOrders = await getAllOrders({ status: "paid", ...baseDateFilter });
+      const orders = filterOrdersByCreator(allPaidOrders, creatorParam);
+
+      return NextResponse.json({
+        creator: creatorParam,
         totalOrders: orders.length,
         totalAmount: sumPaidAmount(orders),
         orders,
@@ -72,18 +94,18 @@ export async function GET(req: NextRequest) {
     }
 
     // Nenhum filtro — retorna o total por criador de uma vez, igual o
-    // formato usado no resto da aba Ganhos.
-    const results = await Promise.all(
-      CREATORS.map(async ({ key, label }) => {
-        const orders = await getAllOrders({ utm_campaign: key, status: "paid", ...baseDateFilter });
-        return {
-          key,
-          label,
-          totalOrders: orders.length,
-          totalAmount: sumPaidAmount(orders),
-        };
-      })
-    );
+    // formato usado no resto da aba Ganhos. Uma única busca de todos os
+    // pedidos pagos do período, casada localmente pra cada criador.
+    const allPaidOrders = await getAllOrders({ status: "paid", ...baseDateFilter });
+    const results = CREATORS.map(({ key, label }) => {
+      const orders = filterOrdersByCreator(allPaidOrders, key);
+      return {
+        key,
+        label,
+        totalOrders: orders.length,
+        totalAmount: sumPaidAmount(orders),
+      };
+    });
 
     return NextResponse.json({ from: from || null, to: to || null, creators: results });
   } catch (error) {

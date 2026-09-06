@@ -16,7 +16,7 @@ import { CREATORS, CreatorKey, SHORTS_RPM, estimateEarnings } from "./creator-ea
 import { getRealRpmMap, sumEstimatedEarnings, effectiveViews } from "./rpm-real";
 import { getDailyVideoRevenue } from "./youtube-revenue";
 import { nowInSaoPaulo } from "./date-br";
-import { getAllOrders, sumPaidAmount } from "./cakto";
+import { getAllOrders, sumPaidAmount, filterOrdersByCreator } from "./cakto";
 import { averageVphByFormat, VphFormat } from "./vph";
 import {
   getAllConversions,
@@ -442,20 +442,21 @@ export type GanhosData = {
 // digitado manualmente quando existir; senão cai na estimativa por RPM.
 // Cada criador recebe a fatia da receita total proporcional à sua % de
 // views no período (não mais um cálculo independente por criador).
-// Busca as vendas pagas na Cakto de cada criador (filtrando por
-// utm_campaign=<key>) dentro do período informado, e soma pedidos + valor.
-// Falha de forma isolada: se a API da Cakto não estiver configurada ou der
-// erro, retorna null pra todos os criadores em vez de derrubar a página
-// inteira de Ganhos (que também depende do Supabase).
+// Busca as vendas pagas na Cakto de cada criador dentro do período
+// informado, e soma pedidos + valor. Falha de forma isolada: se a API da
+// Cakto não estiver configurada ou der erro, retorna null pra todos os
+// criadores em vez de derrubar a página inteira de Ganhos (que também
+// depende do Supabase).
 //
-// ATENÇÃO: na prática, os links de checkout usados não seguem a convenção
-// utm_campaign=lucas/matheus/rafael (o utm_campaign real é o nome da
-// campanha/vídeo, tipo "vsl_tesouro_esquecido"; o nome do criador às vezes
-// aparece em utm_content, não utm_campaign — e boa parte das vendas não tem
-// UTM nenhum). Então essa função por criador tende a retornar 0 pra todo
-// mundo mesmo havendo vendas reais. O card agregado da Home usa
-// `getCaktoTotalSales` (abaixo), que soma TODOS os pedidos pagos sem
-// depender de UTM, exatamente por causa disso.
+// IMPORTANTE: o nome do criador (ex: "lucas") pode vir em qualquer um dos
+// campos de rastreio do link de checkout — já vimos aparecer em utm_medium
+// (não em utm_campaign, que na prática carrega o nome da campanha/origem,
+// tipo "vsl_tesouro_esquecido" ou "automacao"), e nada garante que sempre
+// será o mesmo campo, já que os links são montados manualmente. Por isso,
+// em vez de filtrar a busca na API por um campo fixo, a gente traz TODOS os
+// pedidos pagos do período de uma vez (sem filtro de UTM) e casa o nome do
+// criador contra utm_source/utm_medium/utm_campaign/utm_content/utm_term/sck
+// via `filterOrdersByCreator` (ver lib/cakto.ts).
 async function getCaktoSalesByCreator(
   periodStart: Date,
   periodEnd: Date
@@ -463,19 +464,16 @@ async function getCaktoSalesByCreator(
   const result = {} as Record<CreatorKey, { orders: number; amount: number } | null>;
 
   try {
-    const perCreator = await Promise.all(
-      CREATORS.map(async ({ key }) => {
-        const orders = await getAllOrders({
-          utm_campaign: key,
-          status: "paid",
-          paidAt__gte: periodStart.toISOString(),
-          paidAt__lt: periodEnd.toISOString(),
-        });
-        return { key, orders: orders.length, amount: sumPaidAmount(orders) };
-      })
-    );
+    const allPaidOrders = await getAllOrders({
+      status: "paid",
+      paidAt__gte: periodStart.toISOString(),
+      paidAt__lt: periodEnd.toISOString(),
+    });
 
-    for (const c of perCreator) result[c.key] = { orders: c.orders, amount: c.amount };
+    for (const { key } of CREATORS) {
+      const orders = filterOrdersByCreator(allPaidOrders, key);
+      result[key] = { orders: orders.length, amount: sumPaidAmount(orders) };
+    }
   } catch (error) {
     console.error("❌ Erro ao buscar vendas na Cakto:", error);
     for (const { key } of CREATORS) result[key] = null;

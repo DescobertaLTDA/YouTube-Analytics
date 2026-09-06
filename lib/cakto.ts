@@ -163,3 +163,34 @@ export function sumPaidAmount(orders: CaktoOrder[]): number {
     .filter((o) => o.status === "paid")
     .reduce((sum, o) => sum + (o.amount != null ? Number(o.amount) : 0), 0);
 }
+
+// O nome do criador (ex: "lucas") pode vir em QUALQUER um dos campos de
+// rastreio do link de checkout — na prática já vimos ele aparecer em
+// utm_medium, mas nada garante que sempre será esse campo (depende de como
+// cada link foi montado). Por isso, em vez de filtrar a busca na API da
+// Cakto por um campo fixo, a gente traz os pedidos do período sem filtro de
+// UTM e casa o nome do criador contra todos os campos aqui.
+const CREATOR_UTM_FIELDS = [
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_content",
+  "utm_term",
+  "sck",
+] as const satisfies readonly (keyof CaktoOrder)[];
+
+// true se o `creatorKey` (ex: "lucas") aparecer, como valor exato
+// (case-insensitive), em qualquer um dos campos de rastreio do pedido.
+export function orderMatchesCreator(order: CaktoOrder, creatorKey: string): boolean {
+  const needle = creatorKey.trim().toLowerCase();
+  if (!needle) return false;
+
+  return CREATOR_UTM_FIELDS.some((field) => {
+    const value = order[field];
+    return typeof value === "string" && value.trim().toLowerCase() === needle;
+  });
+}
+
+export function filterOrdersByCreator(orders: CaktoOrder[], creatorKey: string): CaktoOrder[] {
+  return orders.filter((o) => orderMatchesCreator(o, creatorKey));
+}
