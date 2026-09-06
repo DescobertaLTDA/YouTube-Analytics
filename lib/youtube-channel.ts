@@ -239,10 +239,21 @@ export type ResolvedChannel = {
 };
 
 function snippetToResolved(item: {
-  id?: string;
+  id?: string | { channelId?: string };
   snippet?: { title?: string; channelId?: string; thumbnails?: { high?: { url?: string }; default?: { url?: string } } };
 }): ResolvedChannel | null {
-  const channelId = item.id || item.snippet?.channelId;
+  // `item.id` muda de formato dependendo do endpoint que respondeu: em
+  // channels.list (usado pra ID direto/@handle/username legado) é uma
+  // STRING com o channelId. Em search.list (fallback de busca por nome)
+  // é um OBJETO `{ kind: "youtube#channel", channelId: "UC..." }`. Sem
+  // esse `typeof` check, o objeto inteiro (sempre truthy) vencia o `||`
+  // e era gravado como se fosse o channelId — foi o que aconteceu com
+  // canais adicionados só pelo nome (sem URL/@handle), gravando algo
+  // como `{"kind":"youtube#channel","channelId":"UC..."}` no lugar do
+  // ID de verdade, e quebrando toda busca de vídeos desse canal depois.
+  const rawId = item.id;
+  const channelId =
+    (typeof rawId === "string" ? rawId : rawId?.channelId) || item.snippet?.channelId;
   if (!channelId) return null;
   return {
     channelId,
