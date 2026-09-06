@@ -174,11 +174,19 @@ export async function getTrackedChannelsViewsHistory(hours = 7 * 24): Promise<Tr
     return { channels, points: [] };
   }
 
+  // `minBucket`/`maxBucket` são reatribuídos dentro da closure
+  // `addToBucket` acima, então o TypeScript não consegue manter o
+  // narrowing de "não é null" feito na checagem logo acima — copiando
+  // pra constantes novas aqui, que nunca mais são reatribuídas, o
+  // compilador aceita que são sempre `number` dali pra frente.
+  const firstBucketMs: number = minBucket;
+  const lastBucketMs: number = maxBucket;
+
   // Preenche TODOS os buckets de hora no intervalo, mesmo os sem
   // crescimento registrado (0 views) — sem isso, horas "silenciosas"
   // somem do eixo X, o que por si só já dá impressão de buraco no gráfico.
   const allBuckets: number[] = [];
-  for (let b = minBucket; b <= maxBucket; b += HOUR_MS) allBuckets.push(b);
+  for (let b = firstBucketMs; b <= lastBucketMs; b += HOUR_MS) allBuckets.push(b);
   const lastN = allBuckets.slice(-hours);
 
   const points: ChannelViewsHistoryPoint[] = [];
