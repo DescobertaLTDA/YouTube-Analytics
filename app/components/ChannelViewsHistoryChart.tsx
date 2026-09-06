@@ -215,6 +215,7 @@ export function ChannelViewsHistoryChart({ history }: { history: TrackedChannels
     (e: MouseEvent<SVGSVGElement>) => {
       const rect = e.currentTarget.getBoundingClientRect();
       const relX = ((e.clientX - rect.left) / rect.width) * width;
+      const relY = ((e.clientY - rect.top) / rect.height) * HEIGHT;
       let closest = 0;
       let closestDist = Infinity;
       timestamps.forEach((_, i) => {
@@ -225,8 +226,23 @@ export function ChannelViewsHistoryChart({ history }: { history: TrackedChannels
         }
       });
       setHoverIndex(closest);
+
+      // Acha a linha mais próxima do cursor NAQUELE instante (eixo Y) —
+      // é o que faz o tooltip mostrar só o canal daquela linha em vez
+      // de todos de uma vez. Reaproveita o mesmo highlightedChannel que
+      // já é usado pelo hover na tira de avatares abaixo do gráfico.
+      let nearestChannel: string | null = null;
+      let nearestYDist = Infinity;
+      seriesPoints.forEach(({ channelId, points: pts }) => {
+        const yDist = Math.abs(pts[closest].y - relY);
+        if (yDist < nearestYDist) {
+          nearestYDist = yDist;
+          nearestChannel = channelId;
+        }
+      });
+      setHighlightedChannel(nearestChannel);
     },
-    [timestamps, width] // eslint-disable-line react-hooks/exhaustive-deps
+    [timestamps, width, seriesPoints] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const hoverX = hoverIndex !== null ? xFor(hoverIndex) : null;
@@ -257,7 +273,10 @@ export function ChannelViewsHistoryChart({ history }: { history: TrackedChannels
           height={HEIGHT}
           preserveAspectRatio="none"
           onMouseMove={handlePointerMove}
-          onMouseLeave={() => setHoverIndex(null)}
+          onMouseLeave={() => {
+            setHoverIndex(null);
+            setHighlightedChannel(null);
+          }}
         >
           {yTicks.map((tick, i) => (
             <line
@@ -396,7 +415,9 @@ export function ChannelViewsHistoryChart({ history }: { history: TrackedChannels
             }}
           >
             <div className="chart-tooltip-date">{longDate(timestamps[hoverIndex])}</div>
-            {seriesPoints.map(({ channelId, points: pts, color }) => {
+            {seriesPoints
+              .filter(({ channelId }) => !highlightedChannel || channelId === highlightedChannel)
+              .map(({ channelId, points: pts, color }) => {
               const channel = channels.find((c) => c.channelId === channelId);
               return (
                 <div className="chart-tooltip-row" key={channelId}>
