@@ -139,6 +139,20 @@ export async function GET(req: NextRequest) {
 
       const sorted = rows.slice().sort((a, b) => (a.captured_date < b.captured_date ? -1 : 1));
 
+      // Mesmo fix aplicado em getCreatorMonthlyEarningsHistory: o
+      // primeiro snapshot do vídeo (sorted[0]) nunca forma par prev/curr,
+      // então sua receita real (quando já disponível na API) era
+      // descartada. Atribui direto ao mês do primeiro snapshot.
+      const firstRow = sorted[0];
+      const firstRealValue = firstRow ? realRevenueByKey.get(`${firstRow.captured_date}|${videoId}`) : null;
+      if (firstRow && firstRealValue != null && firstRow.captured_date.startsWith(month)) {
+        videosSeenInMonth.add(videoId);
+        for (const creator of creators) {
+          statsByCreator[creator].realRevenue += firstRealValue;
+          statsByCreator[creator].realDayVideoCount += 1;
+        }
+      }
+
       for (let i = 1; i < sorted.length; i++) {
         const prev = sorted[i - 1];
         const curr = sorted[i];

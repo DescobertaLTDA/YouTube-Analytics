@@ -4,17 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   IconDollar,
-  IconFilm,
-  IconZap,
+  IconTrophy,
   IconVerifiedBadge,
 } from "@/app/components/Icons";
 
 // Transcript do roteiro e histórico de mudanças saíram do menu — agora
-// vivem dentro do card de cada vídeo (app/video/[id]/page.tsx).
+// vivem dentro do card de cada vídeo (app/video/[id]/page.tsx). "Vídeos"
+// e "Shorts" saíram do menu a pedido (as páginas continuam existindo em
+// /videos e /shorts, só não aparecem mais na navegação lateral).
 const NAV_ITEMS = [
   { href: "/", label: "Ganhos", icon: <IconDollar size={16} /> },
-  { href: "/videos", label: "Vídeos", icon: <IconFilm size={16} /> },
-  { href: "/shorts", label: "Shorts", icon: <IconZap size={16} /> },
+  { href: "/canais-terceiros", label: "Canais", icon: <IconTrophy size={16} /> },
 ];
 
 // "/" só fica ativo na home exata; as outras rotas usam prefixo pra cobrir

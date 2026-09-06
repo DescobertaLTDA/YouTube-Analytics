@@ -125,3 +125,17 @@ export type CreatorEarningsSnapshotRow = {
   long_views: number;
   long_earnings: number;
 };
+
+/**
+ * Canal de terceiro (concorrente/referência) rastreado via API pública do
+ * YouTube — sem OAuth, só precisa que o canal seja público. Lista
+ * dinâmica: `active = false` é soft-delete (ver 0005_tracked_channels.sql).
+ */
+export type TrackedChannelRow = {
+  id: string;
+  youtube_channel_id: string;
+  channel_title: string | null;
+  avatar_url: string | null;
+  added_at: string;
+  active: boolean;
+};

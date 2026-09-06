@@ -183,3 +183,136 @@ export async function fetchAllChannelVideos(
 
   return fetchChannelVideosDetails(videoIds);
 }
+
+/**
+ * Busca só os N vídeos MAIS RECENTES de um canal (uma única página da
+ * playlist de uploads, que a API já devolve do mais novo pro mais
+ * antigo) — usado no rastreamento de VPH de canais de terceiros, onde
+ * não faz sentido (nem cabe na cota) varrer o histórico inteiro toda
+ * vez que a lista é recarregada.
+ */
+export async function fetchRecentChannelVideos(
+  channelId: string,
+  limit = 10
+): Promise<ChannelVideoRaw[]> {
+  const uploadsPlaylistId = await getUploadsPlaylistId(channelId);
+  if (!uploadsPlaylistId) return [];
+
+  const url = `${YOUTUBE_API_URL}/playlistItems?part=contentDetails&maxResults=${Math.min(
+    Math.max(limit, 1),
+    50
+  )}&playlistId=${uploadsPlaylistId}&key=${YOUTUBE_API_KEY}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    console.error(`❌ Erro ao listar uploads recentes de ${channelId}: ${response.status}`);
+    return [];
+  }
+  const data = await response.json();
+  const videoIds: string[] = (data.items || [])
+    .map((item: { contentDetails?: { videoId?: string } }) => item?.contentDetails?.videoId)
+    .filter((id: string | undefined): id is string => Boolean(id));
+
+  if (videoIds.length === 0) return [];
+  return fetchChannelVideosDetails(videoIds);
+}
+
+export type ResolvedChannel = {
+  channelId: string;
+  title: string;
+  avatarUrl: string | null;
+};
+
+function snippetToResolved(item: {
+  id?: string;
+  snippet?: { title?: string; channelId?: string; thumbnails?: { high?: { url?: string }; default?: { url?: string } } };
+}): ResolvedChannel | null {
+  const channelId = item.id || item.snippet?.channelId;
+  if (!channelId) return null;
+  return {
+    channelId,
+    title: item.snippet?.title || "",
+    avatarUrl: item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.default?.url || null,
+  };
+}
+
+/**
+ * Resolve um canal de terceiro a partir do que a pessoa colar no campo
+ * de "adicionar canal": URL completa (/channel/UC..., /@handle,
+ * /c/Nome, /user/Nome), um @handle solto, um ID de canal (UC...) direto,
+ * ou (último recurso) só o nome do canal digitado à mão.
+ *
+ * Sempre tenta os caminhos baratos em cota da API primeiro (1 unidade):
+ * ID direto -> channels?id=..., handle -> channels?forHandle=..., nome
+ * de usuário legado -> channels?forUsername=... . Só cai pra
+ * search.list (100 unidades) quando nada acima resolveu, porque é o
+ * único jeito de achar um canal só pelo nome digitado.
+ */
+export async function resolveChannelId(input: string): Promise<ResolvedChannel | null> {
+  const raw = input.trim();
+  if (!raw) return null;
+
+  let channelId: string | null = null;
+  let handle: string | null = null;
+  let legacyUsername: string | null = null;
+
+  if (/^UC[\w-]{22}$/.test(raw)) {
+    channelId = raw;
+  } else {
+    try {
+      const url = new URL(raw.startsWith("http") ? raw : `https://youtube.com/${raw.replace(/^\/+/, "")}`);
+      const path = url.pathname;
+      const channelMatch = path.match(/\/channel\/(UC[\w-]{22})/);
+      const handleMatch = path.match(/\/@([\w.-]+)/);
+      const legacyMatch = path.match(/\/(?:c|user)\/([\w.-]+)/);
+      if (channelMatch) channelId = channelMatch[1];
+      else if (handleMatch) handle = `@${handleMatch[1]}`;
+      else if (legacyMatch) legacyUsername = legacyMatch[1];
+    } catch {
+      if (raw.startsWith("@")) handle = raw;
+    }
+  }
+
+  if (channelId) {
+    const url = `${YOUTUBE_API_URL}/channels?part=snippet&id=${channelId}&key=${YOUTUBE_API_KEY}`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      const resolved = snippetToResolved(data?.items?.[0] || {});
+      if (resolved) return resolved;
+    }
+  }
+
+  if (handle) {
+    const url = `${YOUTUBE_API_URL}/channels?part=snippet&forHandle=${encodeURIComponent(
+      handle
+    )}&key=${YOUTUBE_API_KEY}`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      const resolved = snippetToResolved(data?.items?.[0] || {});
+      if (resolved) return resolved;
+    }
+  }
+
+  if (legacyUsername) {
+    const url = `${YOUTUBE_API_URL}/channels?part=snippet&forUsername=${encodeURIComponent(
+      legacyUsername
+    )}&key=${YOUTUBE_API_KEY}`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      const resolved = snippetToResolved(data?.items?.[0] || {});
+      if (resolved) return resolved;
+    }
+  }
+
+  // Fallback caro: busca por texto (nome do canal digitado sem @ nem
+  // URL). Só chega aqui se nenhum dos caminhos baratos acima resolveu.
+  const searchUrl = `${YOUTUBE_API_URL}/search?part=snippet&type=channel&maxResults=1&q=${encodeURIComponent(
+    raw
+  )}&key=${YOUTUBE_API_KEY}`;
+  const searchRes = await fetch(searchUrl);
+  if (!searchRes.ok) return null;
+  const searchData = await searchRes.json();
+  return snippetToResolved(searchData?.items?.[0] || {});
+}

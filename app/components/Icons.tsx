@@ -263,6 +263,15 @@ export function IconMic({ size = 14, className }: IconProps) {
 
 // Selo de "verificado" (canal/conta) — círculo preenchido com check branco,
 // estilo YouTube. Diferente dos outros ícones (outline), esse é sólido.
+export function IconTrash({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} className={className} {...base}>
+      <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
+  );
+}
+
 export function IconVerifiedBadge({ size = 14, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className}>

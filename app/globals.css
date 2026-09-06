@@ -4288,3 +4288,129 @@ footer.page-footer {
   }
 }
 
+
+/* ===== CANAIS DE TERCEIROS (aba /canais-terceiros) ===== */
+
+.tracked-channels-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tracked-channels-add-form {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tracked-channels-add-form .rpm-input {
+  flex: 1;
+  min-width: 240px;
+}
+
+.tracked-channels-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tracked-channel-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+
+.tracked-channel-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.tracked-channel-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.tracked-channel-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 6px;
+}
+
+.tracked-channel-remove:hover {
+  color: var(--rose);
+  background: var(--rose-dim, #fbe4ea);
+}
+
+.tracked-channels-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 4px 0 0;
+}
+
+.tracked-channels-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tracked-channel-video-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease;
+}
+
+.tracked-channel-video-row:hover {
+  border-color: var(--malachite);
+}
+
+.tracked-channel-video-thumb {
+  width: 72px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--surface-raised);
+}
+
+.tracked-channel-video-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.tracked-channel-video-title {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tracked-channel-video-vph {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--malachite);
+  white-space: nowrap;
+}
