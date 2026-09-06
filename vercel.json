@@ -7,10 +7,6 @@
     {
       "path": "/api/ganhos/sync",
       "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api/canais-terceiros/snapshot",
-      "schedule": "0 8 * * *"
     }
   ],
   "functions": {

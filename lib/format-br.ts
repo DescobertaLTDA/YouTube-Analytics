@@ -98,6 +98,27 @@ export function formatDateTime(iso: string | null | undefined): string {
   );
 }
 
+// "28/08 14h" — dia curto + hora, pro eixo X de gráficos por hora (sem
+// isso, "28 de ago" repetido 24x no mesmo dia não dá pra distinguir).
+export function formatDateHourShort(
+  iso: string | null | undefined,
+  opts?: { timeZone?: string }
+): string {
+  if (!iso) return "—";
+  const d = toLocalDate(iso);
+  const datePart = new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: opts?.timeZone,
+  }).format(d);
+  const hourPart = new Intl.DateTimeFormat("pt-BR", {
+    hour: "2-digit",
+    hour12: false,
+    timeZone: opts?.timeZone,
+  }).format(d);
+  return normalizeSpaces(`${datePart} ${hourPart}h`);
+}
+
 // "Dom., 23 de ago. de 2026" — mesmo formato do tooltip do YouTube Studio.
 export function formatDateLong(iso: string, opts?: { timeZone?: string }): string {
   const d = toLocalDate(iso);

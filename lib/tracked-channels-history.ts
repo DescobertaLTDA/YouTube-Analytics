@@ -7,9 +7,9 @@ export type TrackedChannelMeta = {
 };
 
 export type ChannelViewsHistoryPoint = {
-  capturedAt: string; // YYYY-MM-DD
+  capturedAt: string; // timestamp ISO truncado na hora
   channelId: string;
-  totalViews: number; // views ganhas NESSE dia (delta, não acumulado)
+  totalViews: number; // views ganhas NESSA hora (delta, não acumulado)
 };
 
 export type TrackedChannelsHistory = {
@@ -17,17 +17,17 @@ export type TrackedChannelsHistory = {
   points: ChannelViewsHistoryPoint[];
 };
 
-// Views ganhas POR DIA (não acumulado) de cada canal rastreado — mesma
+// Views ganhas POR HORA (não acumulado) de cada canal rastreado — mesma
 // técnica de delta usada em getCreatorDailyEarnings (lib/data.ts): pra
-// cada vídeo, compara o view_count de um dia fechado com o do dia
-// anterior gravado em `tracked_channel_video_history` (ver migration
-// 0006), e soma as diferenças por canal/dia. Alimenta o gráfico "Views
-// por dia" da aba Canais.
+// cada vídeo, compara o view_count de uma hora fechada com o da hora
+// anterior gravada em `tracked_channel_video_history` (ver migration
+// tracked_channel_history_hourly), e soma as diferenças por canal/hora.
+// Alimenta o gráfico "Views por hora" da aba Canais.
 //
 // Diferente da aba Ganhos, aqui não tem receita nem RPM — canal de
 // terceiro não é nosso, só serve pra comparar RITMO de crescimento de
 // views entre canais.
-export async function getTrackedChannelsViewsHistory(days = 28): Promise<TrackedChannelsHistory> {
+export async function getTrackedChannelsViewsHistory(hours = 7 * 24): Promise<TrackedChannelsHistory> {
   const db = getServiceSupabase();
 
   // Busca os CANAIS primeiro, sempre — independente do histórico de
@@ -59,13 +59,11 @@ export async function getTrackedChannelsViewsHistory(days = 28): Promise<Tracked
     return { channels: [], points: [] };
   }
 
-  // +1 dia de folga pra ter o "dia anterior" de referência do primeiro
-  // ponto exibido (mesmo motivo do getCreatorDailyEarnings).
-  const historyStartDate = new Date(Date.now() - (days + 1) * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  // +1 hora de folga pra ter a "hora anterior" de referência do primeiro
+  // ponto exibido (mesmo motivo do getCreatorDailyEarnings, só que em hora).
+  const historyStartHour = new Date(Date.now() - (hours + 1) * 60 * 60 * 1000).toISOString();
 
-  type HistoryRow = { youtube_video_id: string; youtube_channel_id: string; view_count: number; captured_date: string };
+  type HistoryRow = { youtube_video_id: string; youtube_channel_id: string; view_count: number; captured_hour: string };
   const PAGE_SIZE = 1000;
   const historyRows: HistoryRow[] = [];
   let historyError: unknown = null;
@@ -78,9 +76,9 @@ export async function getTrackedChannelsViewsHistory(days = 28): Promise<Tracked
     const to = from + PAGE_SIZE - 1;
     const { data: pageData, error: pageError } = await db
       .from("tracked_channel_video_history")
-      .select("youtube_video_id, youtube_channel_id, view_count, captured_date")
-      .gte("captured_date", historyStartDate)
-      .order("captured_date", { ascending: true })
+      .select("youtube_video_id, youtube_channel_id, view_count, captured_hour")
+      .gte("captured_hour", historyStartHour)
+      .order("captured_hour", { ascending: true })
       .range(from, to);
 
     if (pageError) {
@@ -114,11 +112,11 @@ export async function getTrackedChannelsViewsHistory(days = 28): Promise<Tracked
     byVideo.set(row.youtube_video_id, list);
   }
 
-  // data (YYYY-MM-DD) -> channelId -> views ganhas naquele dia
-  const byDate = new Map<string, Map<string, number>>();
+  // hora (ISO truncada) -> channelId -> views ganhas naquela hora
+  const byHour = new Map<string, Map<string, number>>();
 
   for (const [, rows] of byVideo) {
-    const sorted = rows.slice().sort((a, b) => (a.captured_date < b.captured_date ? -1 : 1));
+    const sorted = rows.slice().sort((a, b) => (a.captured_hour < b.captured_hour ? -1 : 1));
     const channelId = sorted[0]?.youtube_channel_id;
     if (!channelId) continue;
 
@@ -130,22 +128,22 @@ export async function getTrackedChannelsViewsHistory(days = 28): Promise<Tracked
       const deltaViews = Math.max((curr.view_count || 0) - (prev.view_count || 0), 0);
       if (deltaViews === 0) continue;
 
-      const dayBucket = byDate.get(curr.captured_date) || new Map<string, number>();
-      dayBucket.set(channelId, (dayBucket.get(channelId) || 0) + deltaViews);
-      byDate.set(curr.captured_date, dayBucket);
+      const hourBucket = byHour.get(curr.captured_hour) || new Map<string, number>();
+      hourBucket.set(channelId, (hourBucket.get(channelId) || 0) + deltaViews);
+      byHour.set(curr.captured_hour, hourBucket);
     }
   }
 
-  const dates = Array.from(byDate.keys()).sort().slice(-days);
+  const hourKeys = Array.from(byHour.keys()).sort().slice(-hours);
 
   const points: ChannelViewsHistoryPoint[] = [];
-  for (const date of dates) {
-    const dayBucket = byDate.get(date)!;
+  for (const hourKey of hourKeys) {
+    const hourBucket = byHour.get(hourKey)!;
     for (const channel of channels) {
       points.push({
-        capturedAt: date,
+        capturedAt: hourKey,
         channelId: channel.channelId,
-        totalViews: dayBucket.get(channel.channelId) || 0,
+        totalViews: hourBucket.get(channel.channelId) || 0,
       });
     }
   }

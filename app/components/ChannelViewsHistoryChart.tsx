@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { IconEye } from "@/app/components/Icons";
 import type { TrackedChannelsHistory } from "@/lib/tracked-channels-history";
-import { formatNumber, formatNumberCompact, formatDateShort, formatDateLong } from "@/lib/format-br";
+import { formatNumber, formatNumberCompact, formatDateHourShort, formatDateTime } from "@/lib/format-br";
 
 const HEIGHT = 260;
 const PAD_TOP = 16;
@@ -14,8 +14,8 @@ const FALLBACK_WIDTH = 700;
 
 const TZ = "America/Sao_Paulo";
 
-const shortDate = (iso: string) => formatDateShort(iso, { timeZone: TZ });
-const longDate = (iso: string) => formatDateLong(iso, { timeZone: TZ });
+const shortDate = (iso: string) => formatDateHourShort(iso, { timeZone: TZ });
+const longDate = (iso: string) => formatDateTime(iso);
 
 // Paleta de cores por canal — diferente da aba Ganhos (Lucas/Matheus/
 // Rafael têm cor fixa de propósito), aqui a lista de canais é dinâmica
@@ -126,10 +126,10 @@ export function ChannelViewsHistoryChart({ history }: { history: TrackedChannels
   if (channels.length === 0) {
     return (
       <div className="chart-section">
-        <h2 className="icon-label"><IconEye /> Views por dia</h2>
+        <h2 className="icon-label"><IconEye /> Views por hora</h2>
         <div className="chart-empty">
           Adicione pelo menos um canal na aba Canais pra começar a acompanhar o crescimento de
-          views dia a dia.
+          views hora a hora.
         </div>
       </div>
     );
@@ -138,10 +138,10 @@ export function ChannelViewsHistoryChart({ history }: { history: TrackedChannels
   if (timestamps.length < 2) {
     return (
       <div className="chart-section">
-        <h2 className="icon-label"><IconEye /> Views por dia</h2>
+        <h2 className="icon-label"><IconEye /> Views por hora</h2>
         <div className="chart-empty">
-          Ainda não tem histórico suficiente pra desenhar o gráfico. A captura roda 1x por dia —
-          depois de ter pelo menos 2 dias diferentes registrados, a linha aparece aqui.
+          Ainda não tem histórico suficiente pra desenhar o gráfico. A captura roda 1x por hora —
+          depois de ter pelo menos 2 horas diferentes registradas, a linha aparece aqui.
         </div>
       </div>
     );
@@ -199,9 +199,9 @@ export function ChannelViewsHistoryChart({ history }: { history: TrackedChannels
 
   return (
     <div className="chart-section">
-      <h2 className="icon-label"><IconEye /> Views por dia</h2>
+      <h2 className="icon-label"><IconEye /> Views por hora</h2>
       <p className="chart-subtitle">
-        Views ganhas no dia por canal rastreado (captura 1x por dia) — dá pra comparar o ritmo de
+        Views ganhas na hora por canal rastreado (captura 1x por hora) — dá pra comparar o ritmo de
         crescimento entre eles, não é o VPH instantâneo de um vídeo específico.
       </p>
 

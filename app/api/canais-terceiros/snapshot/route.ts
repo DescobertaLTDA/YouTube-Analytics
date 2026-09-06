@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServiceSupabase, type TrackedChannelRow } from "@/lib/supabase";
 import { fetchRecentChannelVideos } from "@/lib/youtube-channel";
 
@@ -12,18 +12,25 @@ const RECENT_VIDEOS_PER_CHANNEL = 10;
 
 // POST/GET /api/canais-terceiros/snapshot
 //
-// Chamado 1x/dia pelo cron nativo da Vercel (ver vercel.json). Pra cada
+// Chamado 1x/HORA por um GitHub Actions externo (Vercel Hobby só permite
+// cron nativo 1x/dia, ver .github/workflows/hourly-sync.yml). Pra cada
 // canal ativo em `tracked_channels`, busca os vídeos recentes e grava o
 // view_count atual em `tracked_channel_video_history` (upsert por
-// vídeo/dia — ver migration 0006). É esse histórico que alimenta o
-// gráfico "Views por dia" da aba Canais: sem ele, a aba só mostra o VPH
-// instantâneo (desde a publicação), sem tendência ao longo do tempo.
+// vídeo/HORA — ver migration tracked_channel_history_hourly). É esse
+// histórico que alimenta o gráfico "Views por hora" da aba Canais: sem
+// ele, a aba só mostra o VPH instantâneo (desde a publicação), sem
+// tendência ao longo do tempo.
 //
-// Sem autenticação por secret, de propósito — segue o MESMO padrão já
-// usado em /api/sync e /api/ganhos/sync (rota "escondida" só pelo path,
-// sem checar header). Se algum dia quiser travar isso, dá pra adicionar
-// um CRON_SECRET e checar o header Authorization aqui.
-export async function POST() {
+// Agora exige CRON_SECRET no header Authorization: quem chama deixou de
+// ser só o cron "escondido" da Vercel e passou a ser um scheduler externo
+// batendo numa URL pública, então precisa de autenticação de verdade.
+export async function POST(request: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET;
+  const authHeader = request.headers.get("authorization");
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 401 });
+  }
+
   try {
     const db = getServiceSupabase();
     const { data, error } = await db
@@ -40,7 +47,14 @@ export async function POST() {
       return NextResponse.json({ success: true, channels_scanned: 0, videos_saved: 0 });
     }
 
-    const now = new Date().toISOString();
+    const now = new Date();
+    const nowIso = now.toISOString();
+    // Hora cheia (minutos/segundos zerados) — é a chave de unicidade que
+    // permite 1 captura por vídeo por HORA em vez de por dia.
+    const capturedHour = new Date(now);
+    capturedHour.setUTCMinutes(0, 0, 0);
+    const capturedHourIso = capturedHour.toISOString();
+
     const errors: { channelTitle: string; message: string }[] = [];
 
     const perChannelRows = await Promise.all(
@@ -54,7 +68,8 @@ export async function POST() {
             youtube_video_id: v.id,
             view_count: v.viewCount,
             published_at: v.publishedAt,
-            captured_at: now,
+            captured_at: nowIso,
+            captured_hour: capturedHourIso,
           }));
         } catch (err) {
           errors.push({
@@ -71,7 +86,7 @@ export async function POST() {
     if (rows.length > 0) {
       const { error: upsertError } = await db
         .from("tracked_channel_video_history")
-        .upsert(rows, { onConflict: "youtube_video_id,captured_date" });
+        .upsert(rows, { onConflict: "youtube_video_id,captured_hour" });
 
       if (upsertError) {
         return NextResponse.json({ success: false, error: upsertError.message }, { status: 500 });
@@ -92,6 +107,6 @@ export async function POST() {
 
 // Também aceita GET, pra facilitar testar na mão pelo navegador — mesmo
 // padrão de /api/sync e /api/ganhos/sync.
-export async function GET() {
-  return POST();
+export async function GET(request: NextRequest) {
+  return POST(request);
 }

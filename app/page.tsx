@@ -37,7 +37,7 @@ export default async function GanhosPage({
   const [data, earningsHistory, channelsViewsHistory] = await Promise.all([
     getCreatorEarnings(),
     getCreatorDailyEarnings(28),
-    getTrackedChannelsViewsHistory(28),
+    getTrackedChannelsViewsHistory(7 * 24),
   ]);
 
   // Calculado uma única vez aqui (server component) e passado como prop
