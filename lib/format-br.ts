@@ -25,6 +25,19 @@ export function formatCurrency(n: number | null | undefined): string {
   );
 }
 
+// Versão sem centavos — usada em eixos de gráfico e outros lugares onde
+// espaço é curto e precisão de centavo não importa (ex: "R$ 150").
+export function formatCurrencyCompact(n: number | null | undefined): string {
+  if (n == null) return "—";
+  return normalizeSpaces(
+    new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      maximumFractionDigits: 0,
+    }).format(n)
+  );
+}
+
 // `new Date("2026-08-28")` sozinho é interpretado como UTC e pode "voltar"
 // um dia em fusos negativos (ex: Brasil) — completar com T00:00:00 força a
 // leitura como horário local, igual server e client, evitando mismatch de
