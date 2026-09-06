@@ -196,7 +196,14 @@ export async function fetchRecentChannelVideos(
   limit = 10
 ): Promise<ChannelVideoRaw[]> {
   const uploadsPlaylistId = await getUploadsPlaylistId(channelId);
-  if (!uploadsPlaylistId) return [];
+  if (!uploadsPlaylistId) {
+    // Antes isso caía silenciosamente em `return []`, indistinguível de
+    // "canal sem vídeos" na tela. Lançar aqui deixa o motivo real (canal
+    // não encontrado / API falhou) visível pra quem chama, em vez de
+    // sempre mostrar "nenhum vídeo encontrado" mesmo quando a causa é
+    // outra (cota da API excedida, channel_id inválido etc.).
+    throw new Error(`Não consegui achar a playlist de uploads do canal ${channelId}.`);
+  }
 
   const url = `${YOUTUBE_API_URL}/playlistItems?part=contentDetails&maxResults=${Math.min(
     Math.max(limit, 1),
@@ -204,8 +211,17 @@ export async function fetchRecentChannelVideos(
   )}&playlistId=${uploadsPlaylistId}&key=${YOUTUBE_API_KEY}`;
   const response = await fetch(url);
   if (!response.ok) {
-    console.error(`❌ Erro ao listar uploads recentes de ${channelId}: ${response.status}`);
-    return [];
+    const body = await response.text().catch(() => "");
+    console.error(`❌ Erro ao listar uploads recentes de ${channelId}: ${response.status} ${body}`);
+    // 403 aqui costuma ser cota diária da YouTube Data API esgotada (o
+    // site inteiro compartilha a mesma API key/cota, incluindo a aba
+    // Ganhos, que já faz bastante chamada) — vale checar o Google Cloud
+    // Console (APIs & Services > Quotas) quando isso aparecer.
+    throw new Error(
+      `YouTube API retornou ${response.status} ao listar uploads de ${channelId}${
+        response.status === 403 ? " (provável cota diária da API esgotada)" : ""
+      }.`
+    );
   }
   const data = await response.json();
   const videoIds: string[] = (data.items || [])

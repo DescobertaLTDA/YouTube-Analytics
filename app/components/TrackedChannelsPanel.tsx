@@ -35,6 +35,7 @@ export function TrackedChannelsPanel() {
   const [channels, setChannels] = useState<TrackedChannel[] | null>(null);
   const [videos, setVideos] = useState<TrackedChannelVideo[] | null>(null);
   const [loadingVideos, setLoadingVideos] = useState(false);
+  const [videoErrors, setVideoErrors] = useState<{ channelTitle: string; message: string }[]>([]);
   const [input, setInput] = useState("");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,10 +55,12 @@ export function TrackedChannelsPanel() {
       const result = await res.json().catch(() => null);
       if (!res.ok) throw new Error(result?.error || "Erro ao carregar VPH");
       setVideos(result?.videos || []);
+      setVideoErrors(result?.errors || []);
     } catch (err) {
       // Erro de VPH não impede a gestão da lista de canais — só deixa a
       // tabela de baixo vazia, com o card de canais continuando normal.
       setVideos([]);
+      setVideoErrors([]);
       console.error("❌ Erro ao carregar VPH dos canais rastreados:", err);
     } finally {
       setLoadingVideos(false);
@@ -167,6 +170,16 @@ export function TrackedChannelsPanel() {
       <h3 className="tracked-channels-subtitle">
         <IconZap size={15} /> vídeos recentes por VPH (views/hora)
       </h3>
+
+      {videoErrors.length > 0 && (
+        <div className="text-muted-small" style={{ color: "var(--rose)", marginBottom: 8 }}>
+          {videoErrors.map((e, i) => (
+            <p key={i} style={{ margin: "2px 0" }}>
+              ⚠️ {e.channelTitle}: {e.message}
+            </p>
+          ))}
+        </div>
+      )}
 
       {loadingVideos ? (
         <p className="text-muted">Calculando VPH...</p>

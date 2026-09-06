@@ -53,21 +53,36 @@ export async function GET() {
       return NextResponse.json({ videos: [] });
     }
 
+    const errors: { channelTitle: string; message: string }[] = [];
+
     const perChannel = await Promise.all(
       channels.map(async (channel) => {
-        const videos = await fetchRecentChannelVideos(channel.youtube_channel_id, RECENT_VIDEOS_PER_CHANNEL);
-        return videos.map((v): TrackedChannelVideo => ({
-          videoId: v.id,
-          title: v.title,
-          thumbnailUrl: v.thumbnailUrl,
-          viewCount: v.viewCount,
-          publishedAt: v.publishedAt,
-          isShort: isShortVideo(v.durationSeconds),
-          vph: computeVph(v.viewCount, v.publishedAt),
-          channelId: channel.youtube_channel_id,
-          channelTitle: channel.channel_title || "",
-          channelAvatarUrl: channel.avatar_url,
-        }));
+        // Cada canal é isolado: se buscar os vídeos de UM canal falhar
+        // (cota da API, canal removido, etc.), os outros continuam
+        // aparecendo normalmente — só esse entra em `errors` pra UI
+        // avisar qual canal e por quê, em vez de mostrar sempre a mesma
+        // mensagem genérica de "nenhum vídeo encontrado".
+        try {
+          const videos = await fetchRecentChannelVideos(channel.youtube_channel_id, RECENT_VIDEOS_PER_CHANNEL);
+          return videos.map((v): TrackedChannelVideo => ({
+            videoId: v.id,
+            title: v.title,
+            thumbnailUrl: v.thumbnailUrl,
+            viewCount: v.viewCount,
+            publishedAt: v.publishedAt,
+            isShort: isShortVideo(v.durationSeconds),
+            vph: computeVph(v.viewCount, v.publishedAt),
+            channelId: channel.youtube_channel_id,
+            channelTitle: channel.channel_title || "",
+            channelAvatarUrl: channel.avatar_url,
+          }));
+        } catch (err) {
+          errors.push({
+            channelTitle: channel.channel_title || channel.youtube_channel_id,
+            message: err instanceof Error ? err.message : "erro desconhecido",
+          });
+          return [];
+        }
       })
     );
 
@@ -75,7 +90,7 @@ export async function GET() {
       .flat()
       .sort((a, b) => (b.vph ?? 0) - (a.vph ?? 0));
 
-    return NextResponse.json({ videos });
+    return NextResponse.json({ videos, errors });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "erro desconhecido";
     return NextResponse.json({ error: message }, { status: 500 });
