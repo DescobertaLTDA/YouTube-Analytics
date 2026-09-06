@@ -3,7 +3,25 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// supabase-js faz suas chamadas via fetch() por baixo dos panos. No Next.js
+// (App Router), TODO fetch() feito durante uma request passa pelo Data Cache
+// por padrão — e isso vale mesmo dentro de bibliotecas de terceiros, mesmo em
+// rotas com `export const dynamic = "force-dynamic"` (que só afeta a
+// renderização da rota em si, não cada fetch individual chamado por baixo).
+// Sem isso, a Vercel serve uma resposta cacheada do REST do Supabase mesmo
+// depois de o dado já ter mudado no banco (foi exatamente a causa do bug do
+// "Rochudoz fantasma": UPDATE/DELETE feito no banco, mas o servidor seguia
+// lendo uma versão cacheada de antes, às vezes por bastante tempo). Passar
+// esse fetch customizado com cache:"no-store" garante que toda chamada do
+// supabase-js sempre bata direto no banco.
+function noStoreFetch(...args: Parameters<typeof fetch>) {
+  const [input, init] = args;
+  return fetch(input, { ...init, cache: "no-store" });
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  global: { fetch: noStoreFetch },
+});
 
 /**
  * Cliente com service_role — ignora RLS. Só pode ser usado em código que roda
@@ -12,7 +30,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
  */
 export function getServiceSupabase() {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  return createClient(supabaseUrl, serviceKey);
+  return createClient(supabaseUrl, serviceKey, {
+    global: { fetch: noStoreFetch },
+  });
 }
 
 export type VideoRow = {
