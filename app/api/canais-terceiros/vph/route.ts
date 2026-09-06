@@ -35,6 +35,20 @@ export type TrackedChannelVideo = {
 // videos.list de sobra).
 const RECENT_VIDEOS_PER_CHANNEL = 10;
 
+// Helper: sempre a mesma resposta "não guarde isso em cache em lugar
+// nenhum" — força-dynamic evita que o Next.js sirva uma versão estática,
+// mas sozinho não garante um header Cache-Control explícito, e sem ele o
+// NAVEGADOR do usuário pode reaproveitar uma resposta anterior (foi
+// exatamente o que causava um canal já removido continuar aparecendo
+// como erro na tela, mesmo depois de já estar `active = false` no
+// banco). Esse header cobre isso de forma explícita.
+function noStoreJson(body: unknown, init?: { status?: number }) {
+  return NextResponse.json(body, {
+    ...init,
+    headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+  });
+}
+
 export async function GET() {
   try {
     const db = getServiceSupabase();
@@ -45,12 +59,12 @@ export async function GET() {
       .order("added_at", { ascending: false });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return noStoreJson({ error: error.message }, { status: 500 });
     }
 
     const channels = (data as TrackedChannelRow[]) || [];
     if (channels.length === 0) {
-      return NextResponse.json({ videos: [] });
+      return noStoreJson({ videos: [] });
     }
 
     const errors: { channelTitle: string; message: string }[] = [];
@@ -90,9 +104,9 @@ export async function GET() {
       .flat()
       .sort((a, b) => (b.vph ?? 0) - (a.vph ?? 0));
 
-    return NextResponse.json({ videos, errors });
+    return noStoreJson({ videos, errors });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "erro desconhecido";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return noStoreJson({ error: message }, { status: 500 });
   }
 }

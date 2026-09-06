@@ -21,7 +21,10 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ channels: (data as TrackedChannelRow[]) || [] });
+    return NextResponse.json(
+      { channels: (data as TrackedChannelRow[]) || [] },
+      { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } }
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "erro desconhecido";
     return NextResponse.json({ error: message }, { status: 500 });

@@ -42,7 +42,7 @@ export function TrackedChannelsPanel() {
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   async function loadChannels() {
-    const res = await fetch("/api/canais-terceiros");
+    const res = await fetch("/api/canais-terceiros", { cache: "no-store" });
     const result = await res.json().catch(() => null);
     if (!res.ok) throw new Error(result?.error || "Erro ao carregar canais");
     setChannels(result?.channels || []);
@@ -51,7 +51,7 @@ export function TrackedChannelsPanel() {
   async function loadVideos() {
     setLoadingVideos(true);
     try {
-      const res = await fetch("/api/canais-terceiros/vph");
+      const res = await fetch("/api/canais-terceiros/vph", { cache: "no-store" });
       const result = await res.json().catch(() => null);
       if (!res.ok) throw new Error(result?.error || "Erro ao carregar VPH");
       setVideos(result?.videos || []);
