@@ -4884,6 +4884,20 @@ footer.page-footer {
   min-width: 0;
 }
 
+/* `.chart-section` carrega seu próprio `margin-bottom: 32px` (necessário
+   quando usado sozinho, full-width — ver EarningsHistoryChart/
+   VphHistoryChart). Dentro deste grid isso é redundante (o espaçamento
+   já vem do `margin-bottom` do `.channels-hourly-grid` acima) E quebra o
+   `align-items: stretch`: a margem do item "consome" parte da altura
+   esticada dele, deixando o card do gráfico ~32px mais baixo que o
+   `.realtime-card` ao lado (que não tem margem nenhuma) — os dois
+   "esticam" pra mesma altura de linha, mas um sobra 32px de margem
+   vazia embaixo enquanto o outro vai até o fim. Zerando aqui, os dois
+   terminam exatamente na mesma altura. */
+.channels-hourly-grid > .chart-section {
+  margin-bottom: 0;
+}
+
 @media (max-width: 900px) {
   .channels-hourly-grid {
     grid-template-columns: 1fr;
