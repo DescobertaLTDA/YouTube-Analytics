@@ -1,7 +1,39 @@
-<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
-  <rect width="256" height="256" rx="52" fill="#0f0f0f"/>
-  <rect x="60" y="150" width="26" height="50" rx="4" fill="#065fd4"/>
-  <rect x="102" y="120" width="26" height="80" rx="4" fill="#4a90e2"/>
-  <rect x="144" y="90" width="26" height="110" rx="4" fill="#065fd4"/>
-  <path d="M118 62 L178 96 L118 130 Z" fill="#ffffff"/>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#6d28d9"/>
+    </linearGradient>
+  </defs>
+
+  <!-- fundo circular roxo -->
+  <circle cx="256" cy="256" r="256" fill="url(#bg)"/>
+
+  <!-- antena -->
+  <line x1="256" y1="118" x2="256" y2="90" stroke="#ffffff" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="256" cy="78" r="14" fill="#ffffff"/>
+
+  <!-- cabeça do robô -->
+  <rect x="146" y="128" width="220" height="180" rx="42" fill="#ffffff"/>
+
+  <!-- olhos -->
+  <circle cx="212" cy="210" r="20" fill="#6d28d9"/>
+  <circle cx="300" cy="210" r="20" fill="#6d28d9"/>
+
+  <!-- boca -->
+  <rect x="196" y="252" width="120" height="18" rx="9" fill="#6d28d9"/>
+
+  <!-- orelhas / laterais -->
+  <rect x="118" y="188" width="26" height="60" rx="13" fill="#ffffff"/>
+  <rect x="368" y="188" width="26" height="60" rx="13" fill="#ffffff"/>
+
+  <!-- pescoço -->
+  <rect x="234" y="308" width="44" height="26" fill="#ffffff"/>
+
+  <!-- corpo -->
+  <rect x="176" y="334" width="160" height="120" rx="28" fill="#ffffff"/>
+
+  <!-- detalhe no peito -->
+  <circle cx="256" cy="392" r="24" fill="#6d28d9"/>
+  <circle cx="256" cy="392" r="10" fill="#ffffff"/>
 </svg>
