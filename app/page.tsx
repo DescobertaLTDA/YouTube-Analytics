@@ -7,6 +7,7 @@ import { GanhosVideoHistory } from "@/app/components/GanhosVideoHistory";
 import { TopVideosMonth } from "@/app/components/TopVideosMonth";
 import { NoCreatorDrawer } from "@/app/components/NoCreatorDrawer";
 import { EarningsHistoryChart } from "@/app/components/EarningsHistoryChart";
+import { VphHistoryChart } from "@/app/components/VphHistoryChart";
 import { PaymentCountdownCard } from "@/app/components/PaymentCountdownCard";
 import { PreviousMonthEarningsProvider } from "@/app/components/PreviousMonthEarningsContext";
 import {
@@ -119,6 +120,8 @@ export default async function GanhosPage({
       </div>
 
       <EarningsHistoryChart history={earningsHistory} />
+
+      <VphHistoryChart history={earningsHistory} />
 
       <PaymentCountdownCard
         variant="banner"

@@ -38,6 +38,19 @@ export function formatCurrencyCompact(n: number | null | undefined): string {
   );
 }
 
+// Versão compacta pra eixos de gráfico com números grandes de views/VPH
+// (ex: "1,2 mil" em vez de "1.234") — mesma ideia de formatCurrencyCompact,
+// mas pra contagem simples, sem símbolo de moeda.
+export function formatNumberCompact(n: number | null | undefined): string {
+  if (n == null) return "—";
+  return normalizeSpaces(
+    new Intl.NumberFormat("pt-BR", {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(n)
+  );
+}
+
 // `new Date("2026-08-28")` sozinho é interpretado como UTC e pode "voltar"
 // um dia em fusos negativos (ex: Brasil) — completar com T00:00:00 força a
 // leitura como horário local, igual server e client, evitando mismatch de
