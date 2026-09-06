@@ -58,6 +58,78 @@ function sleep(ms: number) {
 // disponível agora, cai pra RPM", pra nunca travar a página de Ganhos por
 // causa da integração. Falhas em vídeos individuais são só logadas e
 // puladas (não derrubam o restante do resultado).
+// Busca a receita OFICIAL do CANAL INTEIRO (sem filtro de vídeo) num
+// intervalo — o mesmo número que aparece em "Seus ganhos" no YouTube
+// Studio. Serve pra comparar contra a soma da receita só dos vídeos que o
+// painel rastreia (creator_videos) e descobrir se a diferença é "cauda"
+// (vídeos publicados no canal que nunca entraram na varredura por
+// hashtag/cadastro manual, então nunca aparecem em nenhum dos 3 cards de
+// criador nem no card "sem criador" — esse card só cobre vídeos já
+// rastreados sem hashtag reconhecida).
+//
+// Mesmas ressalvas de atraso/ajuste retroativo do getDailyVideoRevenue.
+// Retorna `null` quando o OAuth não está configurado.
+export async function getChannelRevenueTotal(
+  startDate: string,
+  endDate: string
+): Promise<{ estimatedRevenue: number; views: number } | null> {
+  const accessToken = await getYoutubeAccessToken();
+  if (!accessToken) return null;
+
+  const params = new URLSearchParams({
+    ids: "channel==MINE",
+    startDate,
+    endDate,
+    metrics: "estimatedRevenue,views",
+    currency: "BRL",
+  });
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await fetch(`https://youtubeanalytics.googleapis.com/v2/reports?${params}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        const canRetry = isRetryableStatus(response.status) && attempt < MAX_ATTEMPTS;
+        console.error(
+          `❌ Erro ao buscar receita total do canal na YouTube Analytics API` +
+            (canRetry ? ` (tentativa ${attempt}/${MAX_ATTEMPTS}, vai tentar de novo):` : ":"),
+          text
+        );
+        if (canRetry) {
+          await sleep(RETRY_BASE_DELAY_MS * attempt);
+          continue;
+        }
+        return null;
+      }
+
+      const data = (await response.json()) as { rows?: [number, number][] };
+      const [row] = data.rows || [];
+      if (!row) return { estimatedRevenue: 0, views: 0 };
+
+      const [estimatedRevenue, views] = row;
+      return { estimatedRevenue: Number(estimatedRevenue) || 0, views: Number(views) || 0 };
+    } catch (error) {
+      const canRetry = attempt < MAX_ATTEMPTS;
+      console.error(
+        `❌ Erro ao buscar receita total do canal na YouTube Analytics API` +
+          (canRetry ? ` (tentativa ${attempt}/${MAX_ATTEMPTS}, vai tentar de novo):` : ":"),
+        error
+      );
+      if (canRetry) {
+        await sleep(RETRY_BASE_DELAY_MS * attempt);
+        continue;
+      }
+      return null;
+    }
+  }
+
+  return null;
+}
+
 export async function getDailyVideoRevenue(
   startDate: string,
   endDate: string,
