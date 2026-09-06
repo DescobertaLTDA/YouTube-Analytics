@@ -4896,6 +4896,26 @@ footer.page-footer {
    terminam exatamente na mesma altura. */
 .channels-hourly-grid > .chart-section {
   margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Sem isso, `.chart-line-wrapper` fica travado na altura fixa do SVG
+   (260px) e sobra espaço vazio embaixo da tira de avatares sempre que o
+   `.realtime-card` ao lado for mais alto — o grid estica o
+   `.chart-section` inteiro (align-items: stretch acima), mas nada dizia
+   pro GRÁFICO em si crescer junto, só a caixa por fora dele. `flex: 1`
+   faz o wrapper ocupar toda a altura sobrando dentro do card, e
+   `.chart-line { height: 100% }` faz o SVG (que agora mede a própria
+   altura via ResizeObserver, ver ChannelViewsHistoryChart.tsx) preencher
+   esse espaço em vez de ficar com uma faixa vazia embaixo. */
+.channels-hourly-grid > .chart-section .chart-line-wrapper {
+  flex: 1;
+  min-height: 260px;
+}
+
+.channels-hourly-grid > .chart-section .chart-line {
+  height: 100%;
 }
 
 @media (max-width: 900px) {

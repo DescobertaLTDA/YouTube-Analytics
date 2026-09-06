@@ -5,7 +5,13 @@ import { IconEye } from "@/app/components/Icons";
 import { totalViewsByChannelInWindow, type TrackedChannelsHistory } from "@/lib/tracked-channels-history";
 import { formatNumber, formatNumberCompact, formatDateHourShort, formatDateTime } from "@/lib/format-br";
 
-const HEIGHT = 260;
+// Antes era um valor fixo (o gráfico sempre tinha 260px de altura,
+// não importa o card). Agora é só o PISO/fallback: a altura real vem do
+// wrapper via ResizeObserver (mesma técnica já usada pra largura), pra
+// o gráfico crescer e preencher o card quando ele fica mais alto que o
+// SVG (dentro do grid .channels-hourly-grid, que estica os dois cards
+// pra mesma altura — ver globals.css).
+const MIN_HEIGHT = 260;
 const PAD_TOP = 16;
 const PAD_BOTTOM = 32;
 const PAD_LEFT = 56;
@@ -160,6 +166,7 @@ export function ChannelViewsHistoryChart({
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(FALLBACK_WIDTH);
+  const [height, setHeight] = useState(MIN_HEIGHT);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   // Canal em destaque — controlado pelo hover na LOGO abaixo do gráfico
   // (não pela linha em si). Enquanto um canal está em destaque, a linha
@@ -170,7 +177,14 @@ export function ChannelViewsHistoryChart({
     const el = wrapperRef.current;
     if (!el) return;
 
-    const update = () => setWidth(el.clientWidth || FALLBACK_WIDTH);
+    const update = () => {
+      setWidth(el.clientWidth || FALLBACK_WIDTH);
+      // `.chart-line-wrapper` agora tem `flex: 1` (globals.css), então
+      // sua altura real acompanha o quanto o card foi esticado pelo grid
+      // — nunca menos que MIN_HEIGHT, pra não espremer o gráfico num
+      // card muito baixo.
+      setHeight(Math.max(el.clientHeight || 0, MIN_HEIGHT));
+    };
     update();
 
     const observer = new ResizeObserver(update);
@@ -223,7 +237,7 @@ export function ChannelViewsHistoryChart({
   }
 
   const chartWidth = width - PAD_LEFT - PAD_RIGHT;
-  const chartHeight = HEIGHT - PAD_TOP - PAD_BOTTOM;
+  const chartHeight = height - PAD_TOP - PAD_BOTTOM;
 
   const xFor = (i: number) =>
     PAD_LEFT + (timestamps.length > 1 ? (i / (timestamps.length - 1)) * chartWidth : 0);
@@ -246,7 +260,7 @@ export function ChannelViewsHistoryChart({
     (e: MouseEvent<SVGSVGElement>) => {
       const rect = e.currentTarget.getBoundingClientRect();
       const relX = ((e.clientX - rect.left) / rect.width) * width;
-      const relY = ((e.clientY - rect.top) / rect.height) * HEIGHT;
+      const relY = ((e.clientY - rect.top) / rect.height) * height;
       let closest = 0;
       let closestDist = Infinity;
       timestamps.forEach((_, i) => {
@@ -299,9 +313,9 @@ export function ChannelViewsHistoryChart({
       <div className="chart-line-wrapper" ref={wrapperRef}>
         <svg
           className="chart-line"
-          viewBox={`0 0 ${width} ${HEIGHT}`}
+          viewBox={`0 0 ${width} ${height}`}
           width={width}
-          height={HEIGHT}
+          height={height}
           preserveAspectRatio="none"
           onMouseMove={handlePointerMove}
           onMouseLeave={() => {
@@ -427,7 +441,7 @@ export function ChannelViewsHistoryChart({
             <text
               key={i}
               x={xFor(i)}
-              y={HEIGHT - 10}
+              y={height - 10}
               fontSize="11"
               fill="#9aa1ab"
               textAnchor={i === 0 ? "start" : i === timestamps.length - 1 ? "end" : "middle"}
