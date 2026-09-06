@@ -48,14 +48,22 @@ export function ChannelRealtimeCard({
     const nowHour = new Date();
     nowHour.setUTCMinutes(0, 0, 0);
 
+    // Chave por TIMESTAMP (epoch ms), não pela string crua — o Postgres
+    // devolve `capturedAt` como "...T17:00:00+00:00" (sem milissegundos),
+    // enquanto aqui geramos "...T17:00:00.000Z" via toISOString(). As
+    // strings nunca batem, então antes essa comparação direta zerava o
+    // total sempre, mesmo com histórico real (o gráfico ao lado não sofre
+    // disso porque compara strings vindas todas da mesma fonte).
     const pointsByHour = new Map(
-      history.points.filter((p) => p.channelId === selectedChannelId).map((p) => [p.capturedAt, p.totalViews])
+      history.points
+        .filter((p) => p.channelId === selectedChannelId)
+        .map((p) => [new Date(p.capturedAt).getTime(), p.totalViews])
     );
 
     const bars: { hour: string; views: number }[] = [];
     for (let i = WINDOW_HOURS - 1; i >= 0; i--) {
-      const hourIso = new Date(nowHour.getTime() - i * 60 * 60 * 1000).toISOString();
-      bars.push({ hour: hourIso, views: pointsByHour.get(hourIso) ?? 0 });
+      const hourDate = new Date(nowHour.getTime() - i * 60 * 60 * 1000);
+      bars.push({ hour: hourDate.toISOString(), views: pointsByHour.get(hourDate.getTime()) ?? 0 });
     }
     return bars;
   }, [history.points, selectedChannelId]);

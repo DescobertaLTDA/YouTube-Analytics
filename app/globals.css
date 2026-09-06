@@ -4822,6 +4822,7 @@ footer.page-footer {
   grid-template-columns: 1fr 300px;
   gap: 16px;
   align-items: start;
+  margin-bottom: 32px;
 }
 
 /* Sem isso, um item de grid não encolhe abaixo do tamanho do seu
