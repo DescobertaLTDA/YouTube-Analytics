@@ -7,7 +7,7 @@ export type TrackedChannelMeta = {
 };
 
 export type ChannelViewsHistoryPoint = {
-  capturedAt: string; // timestamp ISO truncado na hora
+  capturedAt: string; // timestamp ISO da hora cheia
   channelId: string;
   totalViews: number; // views ganhas NESSA hora (delta, não acumulado)
 };
@@ -17,28 +17,34 @@ export type TrackedChannelsHistory = {
   points: ChannelViewsHistoryPoint[];
 };
 
-// Views ganhas POR HORA (não acumulado) de cada canal rastreado — mesma
-// técnica de delta usada em getCreatorDailyEarnings (lib/data.ts): pra
-// cada vídeo, compara o view_count de uma hora fechada com o da hora
-// anterior gravada em `tracked_channel_video_history` (ver migration
-// tracked_channel_history_hourly), e soma as diferenças por canal/hora.
-// Alimenta o gráfico "Views por hora" da aba Canais.
+const HOUR_MS = 60 * 60 * 1000;
+
+function hourBucketStart(ms: number): number {
+  return Math.floor(ms / HOUR_MS) * HOUR_MS;
+}
+
+// Views ganhas POR HORA (não acumulado) de cada canal rastreado.
 //
-// Diferente da aba Ganhos, aqui não tem receita nem RPM — canal de
-// terceiro não é nosso, só serve pra comparar RITMO de crescimento de
-// views entre canais.
+// Antes, o delta entre dois snapshots consecutivos era jogado inteiro no
+// bucket da hora do snapshot MAIS RECENTE. Isso quebrava a curva toda vez
+// que dois snapshots não caíam em horas cheias consecutivas — o que
+// acontece sempre que: alguém clica em "Atualizar" fora da hora cheia
+// (esse clique grava timestamp exato, não arredondado — ver
+// canais-terceiros-snapshot.ts), o cron atrasa, ou pula uma execução.
+// Resultado: um pico seguido de um vale artificial, sem relação com o
+// ritmo real de crescimento do canal.
+//
+// Agora o delta é distribuído PROPORCIONALMENTE ao tempo real decorrido
+// entre os dois snapshots, espalhando por todos os buckets de hora cheia
+// que o intervalo (prev, curr] atravessa. Mesma lógica que serviços como
+// o YouTube Studio usam pra manter a curva suave mesmo com amostragem
+// irregular.
 export async function getTrackedChannelsViewsHistory(hours = 7 * 24): Promise<TrackedChannelsHistory> {
   const db = getServiceSupabase();
 
   // Busca os CANAIS primeiro, sempre — independente do histórico de
-  // views existir ou não. Antes essa ordem era invertida (histórico
-  // primeiro), e se a tabela `tracked_channel_video_history` não
-  // existisse ainda (migration 0006 não aplicada) ou desse qualquer
-  // outro erro, a função devolvia `channels: []` mesmo com canais já
-  // cadastrados — a tela então mostrava "adicione um canal", uma
-  // mensagem enganosa pra quem já tinha adicionado. Com os canais
-  // buscados à parte, a tela consegue distinguir "sem canal cadastrado"
-  // de "tem canal, mas ainda sem histórico suficiente".
+  // views existir ou não (ver comentário original: distingue "sem canal
+  // cadastrado" de "tem canal, mas ainda sem histórico").
   const { data: channelRows, error: channelError } = await db
     .from("tracked_channels")
     .select("*")
@@ -60,7 +66,7 @@ export async function getTrackedChannelsViewsHistory(hours = 7 * 24): Promise<Tr
   }
 
   // +1 hora de folga pra ter a "hora anterior" de referência do primeiro
-  // ponto exibido (mesmo motivo do getCreatorDailyEarnings, só que em hora).
+  // ponto exibido.
   const historyStartHour = new Date(Date.now() - (hours + 1) * 60 * 60 * 1000).toISOString();
 
   type HistoryRow = { youtube_video_id: string; youtube_channel_id: string; view_count: number; captured_hour: string };
@@ -68,9 +74,8 @@ export async function getTrackedChannelsViewsHistory(hours = 7 * 24): Promise<Tr
   const historyRows: HistoryRow[] = [];
   let historyError: unknown = null;
 
-  // Paginado em loop, mesmo motivo do getCreatorDailyEarnings: sem isso,
-  // o corte padrão de 1000 linhas do Supabase/PostgREST trunca o
-  // histórico bem antes do fim da janela pedida.
+  // Paginado em loop — sem isso, o corte padrão de 1000 linhas do
+  // Supabase/PostgREST trunca o histórico bem antes do fim da janela pedida.
   for (let page = 0; ; page++) {
     const from = page * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
@@ -91,10 +96,6 @@ export async function getTrackedChannelsViewsHistory(hours = 7 * 24): Promise<Tr
   }
 
   if (historyError) {
-    // Erro aqui geralmente significa que a migration 0006 ainda não foi
-    // aplicada no banco (tabela não existe) — devolve os CANAIS mesmo
-    // assim, sem pontos, pra tela mostrar "sem histórico ainda" em vez
-    // de "adicione um canal" (que seria falso: o canal já existe).
     console.error("❌ Erro ao ler tracked_channel_video_history:", historyError);
     return { channels, points: [] };
   }
@@ -103,17 +104,25 @@ export async function getTrackedChannelsViewsHistory(hours = 7 * 24): Promise<Tr
 
   const byVideo = new Map<string, HistoryRow[]>();
   for (const row of historyRows) {
-    // Ignora histórico de canais já removidos (soft-delete) — não tem
-    // como mostrar uma linha/avatar de um canal que não está mais na
-    // lista ativa.
     if (!activeChannelIds.has(row.youtube_channel_id)) continue;
     const list = byVideo.get(row.youtube_video_id) || [];
     list.push(row);
     byVideo.set(row.youtube_video_id, list);
   }
 
-  // hora (ISO truncada) -> channelId -> views ganhas naquela hora
-  const byHour = new Map<string, Map<string, number>>();
+  // bucket (ms da hora cheia) -> channelId -> views ganhas naquele bucket
+  const byBucket = new Map<number, Map<string, number>>();
+  let minBucket: number | null = null;
+  let maxBucket: number | null = null;
+
+  const addToBucket = (bucketMs: number, channelId: string, views: number) => {
+    if (views <= 0) return;
+    const bucket = byBucket.get(bucketMs) || new Map<string, number>();
+    bucket.set(channelId, (bucket.get(channelId) || 0) + views);
+    byBucket.set(bucketMs, bucket);
+    minBucket = minBucket === null ? bucketMs : Math.min(minBucket, bucketMs);
+    maxBucket = maxBucket === null ? bucketMs : Math.max(maxBucket, bucketMs);
+  };
 
   for (const [, rows] of byVideo) {
     const sorted = rows.slice().sort((a, b) => (a.captured_hour < b.captured_hour ? -1 : 1));
@@ -128,22 +137,59 @@ export async function getTrackedChannelsViewsHistory(hours = 7 * 24): Promise<Tr
       const deltaViews = Math.max((curr.view_count || 0) - (prev.view_count || 0), 0);
       if (deltaViews === 0) continue;
 
-      const hourBucket = byHour.get(curr.captured_hour) || new Map<string, number>();
-      hourBucket.set(channelId, (hourBucket.get(channelId) || 0) + deltaViews);
-      byHour.set(curr.captured_hour, hourBucket);
+      const prevMs = new Date(prev.captured_hour).getTime();
+      const currMs = new Date(curr.captured_hour).getTime();
+      const elapsedMs = currMs - prevMs;
+
+      if (elapsedMs <= 0) {
+        // Timestamps iguais/invertidos (não deveria acontecer) — sem
+        // intervalo pra dividir, joga tudo no bucket do mais recente.
+        addToBucket(hourBucketStart(currMs), channelId, deltaViews);
+        continue;
+      }
+
+      const firstBucket = hourBucketStart(prevMs);
+      const lastBucket = hourBucketStart(currMs);
+
+      if (firstBucket === lastBucket) {
+        // Os dois snapshots caem na mesma hora cheia — nada a dividir.
+        addToBucket(lastBucket, channelId, deltaViews);
+        continue;
+      }
+
+      // Espalha o delta pelos buckets de hora cheia que o intervalo
+      // (prevMs, currMs] atravessa, proporcional à fração do intervalo
+      // que cai em cada um.
+      for (let b = firstBucket; b <= lastBucket; b += HOUR_MS) {
+        const overlapStart = Math.max(b, prevMs);
+        const overlapEnd = Math.min(b + HOUR_MS, currMs);
+        const overlapMs = Math.max(overlapEnd - overlapStart, 0);
+        if (overlapMs === 0) continue;
+        addToBucket(b, channelId, deltaViews * (overlapMs / elapsedMs));
+      }
     }
   }
 
-  const hourKeys = Array.from(byHour.keys()).sort().slice(-hours);
+  if (minBucket === null || maxBucket === null) {
+    return { channels, points: [] };
+  }
+
+  // Preenche TODOS os buckets de hora no intervalo, mesmo os sem
+  // crescimento registrado (0 views) — sem isso, horas "silenciosas"
+  // somem do eixo X, o que por si só já dá impressão de buraco no gráfico.
+  const allBuckets: number[] = [];
+  for (let b = minBucket; b <= maxBucket; b += HOUR_MS) allBuckets.push(b);
+  const lastN = allBuckets.slice(-hours);
 
   const points: ChannelViewsHistoryPoint[] = [];
-  for (const hourKey of hourKeys) {
-    const hourBucket = byHour.get(hourKey)!;
+  for (const bucketMs of lastN) {
+    const bucket = byBucket.get(bucketMs);
     for (const channel of channels) {
+      const raw = bucket?.get(channel.channelId) || 0;
       points.push({
-        capturedAt: hourKey,
+        capturedAt: new Date(bucketMs).toISOString(),
         channelId: channel.channelId,
-        totalViews: hourBucket.get(channel.channelId) || 0,
+        totalViews: Math.round(raw),
       });
     }
   }
@@ -152,11 +198,9 @@ export async function getTrackedChannelsViewsHistory(hours = 7 * 24): Promise<Tr
 }
 
 // Soma o total de views ganhas por canal dentro das ÚLTIMAS `hours` horas
-// já presentes em `history.points` (não busca nada novo no banco — reusa
-// o mesmo histórico que já alimenta o gráfico de linha). Usado tanto pra
-// ordenar a tira de avatares (mais views primeiro) quanto pra decidir
-// qual canal fica pré-selecionado no card "Últimas 48 horas" quando a
-// pessoa ainda não clicou em nenhum.
+// já presentes em `history.points`. Usado tanto pra ordenar a tira de
+// avatares (mais views primeiro) quanto pra decidir qual canal fica
+// pré-selecionado no card "Últimas 48 horas".
 export function totalViewsByChannelInWindow(
   history: TrackedChannelsHistory,
   hours = 48
