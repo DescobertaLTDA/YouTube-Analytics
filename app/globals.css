@@ -844,6 +844,13 @@ a {
 .chart-line-wrapper {
   width: 100%;
   overflow-x: auto;
+  /* Precisa ser explícito: ao definir overflow-x, o navegador trata o
+     overflow-y "visible" (valor padrão) como "auto" automaticamente,
+     e isso fazia aparecer uma barra de rolagem vertical fantasma
+     sempre que o tooltip (.chart-tooltip, position: absolute) ficava
+     mais alto que o wrapper. Fixando como "hidden" aqui, sem afetar a
+     rolagem horizontal em telas estreitas. */
+  overflow-y: hidden;
   padding: 8px 0;
   position: relative;
 }
@@ -4659,11 +4666,24 @@ footer.page-footer {
   gap: 10px;
 }
 
+/* O <h2> desse card não estava dentro de `.chart-section`/`.changes-section`
+   (que são os containers que definem font-size do h2 no resto do site),
+   então ficava no tamanho padrão do navegador (~32px) — bem maior e com
+   margem própria, o que empurrava tudo pra baixo e deixava o card
+   desproporcional perto do número grande logo abaixo. */
+.realtime-card h2 {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--ink);
+}
+
 .realtime-channel {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: -6px;
+  margin-top: 0;
 }
 
 .realtime-channel-avatar {
