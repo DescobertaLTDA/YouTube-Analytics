@@ -46,15 +46,18 @@ function maxVphForChannel(channelId: string, videos: TrackedChannelVideo[] | nul
   return max;
 }
 
+const VIDEOS_PER_PAGE = 10;
+
 export function TrackedChannelsPanel() {
   const [channels, setChannels] = useState<TrackedChannel[] | null>(null);
   const [videos, setVideos] = useState<TrackedChannelVideo[] | null>(null);
   const [loadingVideos, setLoadingVideos] = useState(false);
-  const [videoErrors, setVideoErrors] = useState<{ channelTitle: string; message: string }[]>([]);
+  const [videoErrors, setVideoErrors] = useState<{ channelTitle: string; channelId: string; message: string }[]>([]);
   const [input, setInput] = useState("");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   async function loadChannels() {
     const res = await fetch("/api/canais-terceiros", { cache: "no-store" });
@@ -96,6 +99,13 @@ export function TrackedChannelsPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channels]);
 
+  // Sempre que a lista de vídeos mudar (recarregou, canal removido etc.),
+  // volta pra primeira página — evita ficar numa página vazia depois que
+  // a lista encolhe.
+  useEffect(() => {
+    setPage(1);
+  }, [videos]);
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim() || adding) return;
@@ -132,6 +142,12 @@ export function TrackedChannelsPanel() {
     } finally {
       setRemovingId(null);
     }
+  }
+
+  async function handleRemoveByYoutubeChannelId(youtubeChannelId: string) {
+    const match = channels?.find((c) => c.youtube_channel_id === youtubeChannelId);
+    if (!match) return;
+    await handleRemove(match.id);
   }
 
   return (
@@ -202,8 +218,18 @@ export function TrackedChannelsPanel() {
       {videoErrors.length > 0 && (
         <div className="text-muted-small" style={{ color: "var(--rose)", marginBottom: 8 }}>
           {videoErrors.map((e, i) => (
-            <p key={i} style={{ margin: "2px 0" }}>
-              ⚠️ {e.channelTitle}: {e.message}
+            <p key={i} style={{ margin: "2px 0", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span>
+                ⚠️ {e.channelTitle}: {e.message}
+              </span>
+              <button
+                type="button"
+                className="tracked-channel-error-remove"
+                onClick={() => handleRemoveByYoutubeChannelId(e.channelId)}
+                disabled={removingId !== null}
+              >
+                remover canal
+              </button>
             </p>
           ))}
         </div>
@@ -218,27 +244,53 @@ export function TrackedChannelsPanel() {
             : "Adicione um canal acima pra ver o ranking de VPH."}
         </p>
       ) : (
-        <div className="tracked-channels-table">
-          {videos.map((v) => (
-            <a
-              key={v.videoId}
-              href={`https://youtube.com/watch?v=${v.videoId}`}
-              target="_blank"
-              rel="noreferrer"
-              className="tracked-channel-video-row"
-            >
-              <img src={v.thumbnailUrl} alt="" className="tracked-channel-video-thumb" />
-              <div className="tracked-channel-video-info">
-                <div className="tracked-channel-video-title">{v.title}</div>
-                <div className="text-muted-small">
-                  {v.channelTitle} · {formatNumber(v.viewCount)} views · {formatDateShort(v.publishedAt)} ·{" "}
-                  {v.isShort ? "short" : "vídeo"}
+        <>
+          <div className="tracked-channels-table">
+            {videos.slice((page - 1) * VIDEOS_PER_PAGE, page * VIDEOS_PER_PAGE).map((v) => (
+              <a
+                key={v.videoId}
+                href={`https://youtube.com/watch?v=${v.videoId}`}
+                target="_blank"
+                rel="noreferrer"
+                className="tracked-channel-video-row"
+              >
+                <img src={v.thumbnailUrl} alt="" className="tracked-channel-video-thumb" />
+                <div className="tracked-channel-video-info">
+                  <div className="tracked-channel-video-title">{v.title}</div>
+                  <div className="text-muted-small">
+                    {v.channelTitle} · {formatNumber(v.viewCount)} views · {formatDateShort(v.publishedAt)} ·{" "}
+                    {v.isShort ? "short" : "vídeo"}
+                  </div>
                 </div>
-              </div>
-              <div className="tracked-channel-video-vph">{formatVph(v.vph)}/h</div>
-            </a>
-          ))}
-        </div>
+                <div className="tracked-channel-video-vph">{formatVph(v.vph)}/h</div>
+              </a>
+            ))}
+          </div>
+
+          {videos.length > VIDEOS_PER_PAGE && (
+            <div className="tracked-channels-pagination">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                ← anterior
+              </button>
+              <span className="text-muted-small">
+                página {page} de {Math.ceil(videos.length / VIDEOS_PER_PAGE)}
+              </span>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setPage((p) => Math.min(Math.ceil(videos.length / VIDEOS_PER_PAGE), p + 1))}
+                disabled={page >= Math.ceil(videos.length / VIDEOS_PER_PAGE)}
+              >
+                próxima →
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -4815,3 +4815,35 @@ footer.page-footer {
     grid-template-columns: 1fr;
   }
 }
+
+/* Botão "remover canal" embutido na mensagem de erro em vermelho da aba
+   Canais — remove direto o canal que falhou, sem precisar achar o avatar
+   certo na tira (que às vezes nem carregou por causa do mesmo erro). */
+.tracked-channel-error-remove {
+  background: none;
+  border: 1px solid var(--rose);
+  color: var(--rose);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tracked-channel-error-remove:hover:not(:disabled) {
+  background: var(--rose);
+  color: #fff;
+}
+
+.tracked-channel-error-remove:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.tracked-channels-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+}

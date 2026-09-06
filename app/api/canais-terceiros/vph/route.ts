@@ -67,7 +67,7 @@ export async function GET() {
       return noStoreJson({ videos: [] });
     }
 
-    const errors: { channelTitle: string; message: string }[] = [];
+    const errors: { channelTitle: string; channelId: string; message: string }[] = [];
 
     const perChannel = await Promise.all(
       channels.map(async (channel) => {
@@ -93,6 +93,7 @@ export async function GET() {
         } catch (err) {
           errors.push({
             channelTitle: channel.channel_title || channel.youtube_channel_id,
+            channelId: channel.youtube_channel_id,
             message: err instanceof Error ? err.message : "erro desconhecido",
           });
           return [];
