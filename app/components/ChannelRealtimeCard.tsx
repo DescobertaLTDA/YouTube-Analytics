@@ -33,38 +33,37 @@ export function ChannelRealtimeCard({
 
   // Barras horárias — reusa o mesmo `points` que já alimenta o gráfico de
   // linha, só que filtrado pro canal selecionado e recortado nas últimas
-  // 48 horas (cada barra = 1 captura do cron, que já roda de hora em
-  // hora). Não busca nada novo no banco pra isso.
-  // Barras horárias — sempre exatamente WINDOW_HOURS posições, começando
-  // "agora" (hora cheia atual, mesmo corte usado no cron —
-  // setUTCMinutes(0,0,0), ver lib/canais-terceiros-snapshot.ts) e voltando
-  // hora a hora. Gerar os slots assim (em vez de só listar as horas que
-  // JÁ existem em `history.points`) é o que garante 48 barras finas desde
-  // o primeiro dia — se só existirem 6-7 horas de histórico ainda, as
-  // horas mais antigas simplesmente entram como barra zerada, em vez de
-  // esticar as poucas barras existentes pra ocupar a largura toda.
+  // 48 horas. Não busca nada novo no banco pra isso.
+  //
+  // IMPORTANTE: aqui NÃO usamos `new Date(...).getTime()` pra casar as
+  // horas — já tentei isso e ainda dava 0, porque não tem garantia de que
+  // o texto de `captured_hour` devolvido pelo Postgres seja interpretado
+  // pelo Date() do jeito esperado (pode faltar o "Z"/offset, e aí o
+  // JavaScript lê como horário LOCAL do navegador em vez de UTC,
+  // desalinhando tudo de novo). Em vez de confiar em parsing de data,
+  // usamos as strings de `capturedAt` EXATAMENTE como vêm do banco —
+  // mesma técnica de `totalViewsByChannelInWindow` (lib/tracked-channels-
+  // history.ts) e do gráfico de linha ao lado (ChannelViewsHistoryChart),
+  // que já funcionam certinho (é literalmente essa comparação que escolhe
+  // o canal líder que aparece pré-selecionado aqui).
   const hourlyBars = useMemo(() => {
     if (!selectedChannelId) return [];
-    const nowHour = new Date();
-    nowHour.setUTCMinutes(0, 0, 0);
 
-    // Chave por TIMESTAMP (epoch ms), não pela string crua — o Postgres
-    // devolve `capturedAt` como "...T17:00:00+00:00" (sem milissegundos),
-    // enquanto aqui geramos "...T17:00:00.000Z" via toISOString(). As
-    // strings nunca batem, então antes essa comparação direta zerava o
-    // total sempre, mesmo com histórico real (o gráfico ao lado não sofre
-    // disso porque compara strings vindas todas da mesma fonte).
-    const pointsByHour = new Map(
-      history.points
-        .filter((p) => p.channelId === selectedChannelId)
-        .map((p) => [new Date(p.capturedAt).getTime(), p.totalViews])
+    const allHours = Array.from(new Set(history.points.map((p) => p.capturedAt))).sort();
+    const lastHours = allHours.slice(-WINDOW_HOURS);
+
+    const viewsByHour = new Map(
+      history.points.filter((p) => p.channelId === selectedChannelId).map((p) => [p.capturedAt, p.totalViews])
     );
 
-    const bars: { hour: string; views: number }[] = [];
-    for (let i = WINDOW_HOURS - 1; i >= 0; i--) {
-      const hourDate = new Date(nowHour.getTime() - i * 60 * 60 * 1000);
-      bars.push({ hour: hourDate.toISOString(), views: pointsByHour.get(hourDate.getTime()) ?? 0 });
-    }
+    // Se ainda não tem WINDOW_HOURS horas de histórico (projeto novo),
+    // preenche a esquerda com barras zeradas SEM hora associada (`hour:
+    // null`) — mantém sempre WINDOW_HOURS barras na tela sem inventar um
+    // timestamp que não existe de verdade nos dados.
+    const missing = WINDOW_HOURS - lastHours.length;
+    const bars: { hour: string | null; views: number }[] = [];
+    for (let i = 0; i < missing; i++) bars.push({ hour: null, views: 0 });
+    for (const hour of lastHours) bars.push({ hour, views: viewsByHour.get(hour) ?? 0 });
     return bars;
   }, [history.points, selectedChannelId]);
 
@@ -168,21 +167,21 @@ export function ChannelRealtimeCard({
         <div className="realtime-bars" onMouseLeave={() => setHoverBarIndex(null)}>
           {hourlyBars.map((b, i) => (
             <div
-              key={b.hour}
+              key={b.hour ?? `pad-${i}`}
               className="realtime-bar"
               style={{ height: `${Math.max(4, (b.views / maxBar) * 100)}%` }}
-              onMouseEnter={() => setHoverBarIndex(i)}
+              onMouseEnter={() => b.hour !== null && setHoverBarIndex(i)}
             />
           ))}
         </div>
 
-        {hoverBarIndex !== null && (
+        {hoverBarIndex !== null && hourlyBars[hoverBarIndex].hour !== null && (
           <div
             className="realtime-bar-tooltip"
             style={{ left: clampedTooltipLeftPx, width: TOOLTIP_WIDTH }}
           >
             <div className="realtime-bar-tooltip-date">
-              {formatDateHourRangeLabel(hourlyBars[hoverBarIndex].hour, { timeZone: TZ })}
+              {formatDateHourRangeLabel(hourlyBars[hoverBarIndex].hour as string, { timeZone: TZ })}
             </div>
             <div className="realtime-bar-tooltip-value">{formatNumber(hourlyBars[hoverBarIndex].views)}</div>
           </div>
