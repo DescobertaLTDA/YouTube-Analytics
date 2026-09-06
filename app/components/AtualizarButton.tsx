@@ -1,41 +1,74 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IconRefresh } from "@/app/components/Icons";
+
+// Curva assintótica: sobe rápido no começo e vai desacelerando, sem nunca
+// "mentir" que terminou — nunca passa de 94% sozinha. Só vai a 100% quando
+// a API responde de verdade (ver handleClick). Assim a barra sempre parece
+// viva, mesmo que a sincronização demore mais que o normal.
+function progressFromElapsed(elapsedMs: number): number {
+  return 94 * (1 - Math.exp(-elapsedMs / 4000));
+}
 
 export function AtualizarButton() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(
-    null
-  );
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [completing, setCompleting] = useState(false);
+  const [result, setResult] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startRef = useRef<number>(0);
+
+  useEffect(() => {
+    return () => {
+      if (tickRef.current) clearInterval(tickRef.current);
+    };
+  }, []);
 
   async function handleClick() {
+    setResult(null);
+    setCompleting(false);
+    setElapsedMs(0);
     setLoading(true);
-    setMessage(null);
+    startRef.current = Date.now();
 
+    tickRef.current = setInterval(() => {
+      setElapsedMs(Date.now() - startRef.current);
+    }, 100);
+
+    let outcome: { type: "success" | "error"; text: string };
     try {
       const response = await fetch("/api/ganhos/sync", { method: "POST" });
-      const result = await response.json();
+      const data = await response.json();
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || result.message || "Erro ao atualizar");
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || data.message || "Erro ao atualizar");
       }
 
-      setMessage({
+      outcome = {
         type: "success",
-        text: `${result.matched_videos} vídeos encontrados (de ${result.channel_videos_scanned} no canal).`,
-      });
-
+        text: `${data.matched_videos} vídeos encontrados (de ${data.channel_videos_scanned} no canal).`,
+      };
       router.refresh();
     } catch (error: any) {
-      setMessage({ type: "error", text: error.message || "Tente novamente." });
-    } finally {
-      setLoading(false);
-      setTimeout(() => setMessage(null), 6000);
+      outcome = { type: "error", text: error.message || "Tente novamente." };
     }
+
+    if (tickRef.current) clearInterval(tickRef.current);
+    // Faz a barra "fechar" até 100% em vez de sumir de repente no meio do
+    // preenchimento — dá um respiro de ~350ms pra transição ficar suave.
+    setCompleting(true);
+    setTimeout(() => {
+      setLoading(false);
+      setResult(outcome);
+    }, 350);
   }
+
+  const seconds = Math.floor(elapsedMs / 1000);
+  const pct = completing ? 100 : progressFromElapsed(elapsedMs);
+  const sprockets = Array.from({ length: 14 });
 
   return (
     <div className="atualizar-wrap">
@@ -43,18 +76,48 @@ export function AtualizarButton() {
         <IconRefresh className={loading ? "spin" : undefined} /> {loading ? "Atualizando..." : "Atualizar"}
       </button>
 
-      {message && (
-        <div className="toast-container">
-          <div className={`toast toast-${message.type}`}>
-            <span className="toast-icon">{message.type === "success" ? "✓" : "✕"}</span>
-            <span className="toast-text">{message.text}</span>
+      {loading && (
+        <div className="modal-overlay atualizar-overlay">
+          <div className="atualizar-progress-modal">
+            <div className="atualizar-filmbar">
+              <div className="atualizar-filmbar-sprockets atualizar-filmbar-sprockets-top">
+                {sprockets.map((_, i) => (
+                  <span key={i} />
+                ))}
+              </div>
+              <div className="atualizar-filmbar-track">
+                <div
+                  className={`atualizar-filmbar-fill${completing ? " is-completing" : ""}`}
+                  style={{ width: `${pct}%` }}
+                />
+                <div className="atualizar-filmbar-thumb" style={{ left: `${pct}%` }}>
+                  {seconds}s
+                </div>
+              </div>
+              <div className="atualizar-filmbar-sprockets atualizar-filmbar-sprockets-bottom">
+                {sprockets.map((_, i) => (
+                  <span key={i} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {result && (
+        <div className="modal-overlay atualizar-overlay">
+          <div className={`atualizar-result-modal atualizar-result-${result.type}`}>
+            <span className="atualizar-result-icon">{result.type === "success" ? "✓" : "✕"}</span>
+            <p className="atualizar-result-text">
+              {result.type === "success" ? "Atualizado!" : "Erro ao atualizar"}
+            </p>
+            <p className="atualizar-result-sub">{result.text}</p>
             <button
               type="button"
-              className="toast-close"
-              onClick={() => setMessage(null)}
-              aria-label="Fechar"
+              className="btn-atualizar-fechar"
+              onClick={() => setResult(null)}
             >
-              ×
+              OK
             </button>
           </div>
         </div>
