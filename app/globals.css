@@ -837,6 +837,16 @@ a {
   margin-bottom: 16px;
 }
 
+/* Aviso abaixo do gráfico "Views por hora" quando o último ponto é a hora
+   atual (ainda em captura, não fechada) — ver isLastBucketPartial em
+   ChannelViewsHistoryChart.tsx. */
+.chart-partial-note {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  font-style: italic;
+}
+
 .chart-container {
   padding: 8px 0;
 }

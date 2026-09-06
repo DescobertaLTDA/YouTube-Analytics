@@ -103,11 +103,13 @@ function NextCaptureCountdown() {
   );
 }
 
-function smoothPath(points: { x: number; y: number }[]) {
-  if (points.length === 0) return "";
-  if (points.length === 1) return `M ${points[0].x},${points[0].y}`;
-
-  let d = `M ${points[0].x},${points[0].y}`;
+// Gera a curva em segmentos individuais (um comando `C` por par de pontos
+// consecutivos), usando os MESMOS vizinhos de contexto (p0/p3) que a curva
+// única usava — isso permite depois separar só o ÚLTIMO segmento (hora
+// atual, ainda em captura) pra desenhar tracejado, sem mudar o traçado da
+// curva em si.
+function smoothSegments(points: { x: number; y: number }[]): string[] {
+  const segments: string[] = [];
   for (let i = 0; i < points.length - 1; i++) {
     const p0 = points[i - 1] ?? points[i];
     const p1 = points[i];
@@ -119,9 +121,35 @@ function smoothPath(points: { x: number; y: number }[]) {
     const cp2x = p2.x - (p3.x - p1.x) / 6;
     const cp2y = p2.y - (p3.y - p1.y) / 6;
 
-    d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
+    segments.push(`C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`);
   }
-  return d;
+  return segments;
+}
+
+function smoothPath(points: { x: number; y: number }[]) {
+  if (points.length === 0) return "";
+  if (points.length === 1) return `M ${points[0].x},${points[0].y}`;
+  return `M ${points[0].x},${points[0].y} ${smoothSegments(points).join(" ")}`;
+}
+
+// Curva completa dividida em duas partes: tudo até o penúltimo ponto
+// (sólido) e só o último trecho (tracejado, quando `splitLast` é true —
+// isto é, quando o último ponto é a hora atual, ainda em captura, não uma
+// hora fechada de verdade). Com `splitLast` false, `rest` fica vazio e
+// `main` é a curva inteira — mesmo resultado de `smoothPath` de antes.
+function smoothPathSplit(points: { x: number; y: number }[], splitLast: boolean) {
+  if (points.length < 2) return { main: smoothPath(points), rest: "" };
+  const segments = smoothSegments(points);
+  if (!splitLast || segments.length === 0) {
+    return { main: `M ${points[0].x},${points[0].y} ${segments.join(" ")}`, rest: "" };
+  }
+  const mainSegments = segments.slice(0, -1);
+  const lastSegment = segments[segments.length - 1];
+  const secondToLast = points[points.length - 2];
+  return {
+    main: `M ${points[0].x},${points[0].y} ${mainSegments.join(" ")}`,
+    rest: `M ${secondToLast.x},${secondToLast.y} ${lastSegment}`,
+  };
 }
 
 function niceNumber(value: number, round: boolean): number {
@@ -223,6 +251,17 @@ export function ChannelViewsHistoryChart({
       ),
     [points]
   );
+
+  // O último ponto do gráfico é a HORA ATUAL — ainda em captura, não uma
+  // hora fechada. Comparado só pelo instante (ms), então funciona igual
+  // em qualquer fuso do navegador (mesma técnica de `msUntilNextHour`
+  // acima). Usado pra desenhar esse último trecho tracejado em vez de
+  // sólido, e avisar que o valor ainda vai subir.
+  const HOUR_MS = 60 * 60 * 1000;
+  const lastTimestamp = timestamps[timestamps.length - 1];
+  const isLastBucketPartial =
+    !!lastTimestamp &&
+    new Date(lastTimestamp).getTime() === Math.floor(Date.now() / HOUR_MS) * HOUR_MS;
 
   if (channels.length === 0) {
     return (
@@ -411,35 +450,54 @@ export function ChannelViewsHistoryChart({
           {/* Linhas desenhadas em duas passadas: primeiro todas as
               "não destacadas" (esmaecidas quando tem hover ativo),
               depois a destacada por cima — assim ela nunca fica coberta
-              por outra linha cruzando em cima. */}
+              por outra linha cruzando em cima. Cada linha, por sua vez,
+              é desenhada em duas partes quando o último bucket é a hora
+              atual (`isLastBucketPartial`): o trecho sólido até a
+              penúltima hora (fechada) e o último trecho tracejado (hora
+              em andamento, valor ainda vai subir). */}
           {seriesPoints
             .filter((s) => s.channelId !== highlightedChannel)
-            .map(({ channelId, points: pts, color }) => (
-              <path
-                key={channelId}
-                d={smoothPath(pts)}
-                fill="none"
-                stroke={color}
-                strokeWidth={2.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity={highlightedChannel ? 0.15 : 1}
-                style={{ transition: "opacity 0.15s ease" }}
-              />
-            ))}
+            .map(({ channelId, points: pts, color }) => {
+              const { main, rest } = smoothPathSplit(pts, isLastBucketPartial);
+              const opacity = highlightedChannel ? 0.15 : 1;
+              return (
+                <g key={channelId} style={{ transition: "opacity 0.15s ease" }} opacity={opacity}>
+                  <path d={main} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                  {rest && (
+                    <path
+                      d={rest}
+                      fill="none"
+                      stroke={color}
+                      strokeWidth={2.5}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeDasharray="5 4"
+                    />
+                  )}
+                </g>
+              );
+            })}
           {seriesPoints
             .filter((s) => s.channelId === highlightedChannel)
-            .map(({ channelId, points: pts, color }) => (
-              <path
-                key={channelId}
-                d={smoothPath(pts)}
-                fill="none"
-                stroke={color}
-                strokeWidth={3.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            ))}
+            .map(({ channelId, points: pts, color }) => {
+              const { main, rest } = smoothPathSplit(pts, isLastBucketPartial);
+              return (
+                <g key={channelId}>
+                  <path d={main} fill="none" stroke={color} strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" />
+                  {rest && (
+                    <path
+                      d={rest}
+                      fill="none"
+                      stroke={color}
+                      strokeWidth={3.5}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeDasharray="6 5"
+                    />
+                  )}
+                </g>
+              );
+            })}
 
           {hoverIndex !== null &&
             seriesPoints.map(({ channelId, points: pts, color }) => (
@@ -461,10 +519,11 @@ export function ChannelViewsHistoryChart({
               x={xFor(i)}
               y={height - 10}
               fontSize="11"
-              fill="#9aa1ab"
+              fill={i === timestamps.length - 1 && isLastBucketPartial ? "#f5a623" : "#9aa1ab"}
+              fontWeight={i === timestamps.length - 1 && isLastBucketPartial ? 700 : 400}
               textAnchor={i === 0 ? "start" : i === timestamps.length - 1 ? "end" : "middle"}
             >
-              {shortDate(timestamps[i])}
+              {i === timestamps.length - 1 && isLastBucketPartial ? "Agora*" : shortDate(timestamps[i])}
             </text>
           ))}
         </svg>
@@ -477,7 +536,14 @@ export function ChannelViewsHistoryChart({
               width: TOOLTIP_WIDTH,
             }}
           >
-            <div className="chart-tooltip-date">{longDate(timestamps[hoverIndex])}</div>
+            <div className="chart-tooltip-date">
+              {longDate(timestamps[hoverIndex])}
+              {hoverIndex === timestamps.length - 1 && isLastBucketPartial && (
+                <span className="chart-tooltip-tag" style={{ marginLeft: 6 }}>
+                  parcial
+                </span>
+              )}
+            </div>
             {seriesPoints
               .filter(({ channelId }) => !highlightedChannel || channelId === highlightedChannel)
               .map(({ channelId, points: pts, color }) => {
@@ -495,6 +561,18 @@ export function ChannelViewsHistoryChart({
           </div>
         )}
       </div>
+
+      {isLastBucketPartial && (
+        <p className="chart-partial-note">
+          * hora atual ainda em captura — o trecho tracejado vai continuar subindo até fechar às{" "}
+          {new Date(Math.floor(Date.now() / HOUR_MS) * HOUR_MS + HOUR_MS).toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: TZ,
+          })}
+          .
+        </p>
+      )}
 
       {/* Avatares de cada canal, borda na mesma cor da linha — passar o
           mouse destaca só aquela linha no gráfico acima. As logos em si
