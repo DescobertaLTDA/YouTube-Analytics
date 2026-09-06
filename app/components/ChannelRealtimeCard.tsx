@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { IconEye } from "@/app/components/Icons";
 import type { TrackedChannelsHistory } from "@/lib/tracked-channels-history";
-import { formatNumber, formatDateHourShort } from "@/lib/format-br";
+import { formatNumber, formatDateHourRangeLabel } from "@/lib/format-br";
 
 const TZ = "America/Sao_Paulo";
 const WINDOW_HOURS = 48;
@@ -71,6 +71,35 @@ export function ChannelRealtimeCard({
   const totalFromBars = useMemo(() => hourlyBars.reduce((sum, b) => sum + b.views, 0), [hourlyBars]);
   const maxBar = Math.max(1, ...hourlyBars.map((b) => b.views));
 
+  // Índice da barra em hover — controla o tooltip flutuante (mesmo padrão
+  // visual do tooltip do gráfico "Views por hora" ao lado, só que com
+  // faixa de hora "Ontem, 14:00 – 15:00" em vez de data completa). Posição
+  // calculada em PIXELS (não %) a partir da largura real do container, pra
+  // dar pra colar o tooltip nas bordas sem ele vazar pra fora do card.
+  const barsWrapperRef = useRef<HTMLDivElement>(null);
+  const [barsWrapperWidth, setBarsWrapperWidth] = useState(0);
+  const [hoverBarIndex, setHoverBarIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    const el = barsWrapperRef.current;
+    if (!el) return;
+    const update = () => setBarsWrapperWidth(el.clientWidth);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const TOOLTIP_WIDTH = 190;
+  const hoverBarCenterPx =
+    hoverBarIndex !== null && hourlyBars.length > 0
+      ? ((hoverBarIndex + 0.5) / hourlyBars.length) * barsWrapperWidth
+      : 0;
+  const clampedTooltipLeftPx = Math.max(
+    TOOLTIP_WIDTH / 2,
+    Math.min(barsWrapperWidth - TOOLTIP_WIDTH / 2, hoverBarCenterPx)
+  );
+
   // Top vídeos: esse dado (título/thumbnail) não vem do histórico salvo
   // (só tem view_count por hora), então busca ao vivo na API só quando o
   // canal selecionado muda.
@@ -135,15 +164,29 @@ export function ChannelRealtimeCard({
       <div className="realtime-total">{formatNumber(totalFromBars)}</div>
       <div className="realtime-subtitle">Visualizações · Últimas {WINDOW_HOURS} horas</div>
 
-      <div className="realtime-bars" title="Cada barra é 1 hora fechada (mesma captura do gráfico ao lado)">
-        {hourlyBars.map((b, i) => (
+      <div className="realtime-bars-wrapper" ref={barsWrapperRef}>
+        <div className="realtime-bars" onMouseLeave={() => setHoverBarIndex(null)}>
+          {hourlyBars.map((b, i) => (
+            <div
+              key={b.hour}
+              className="realtime-bar"
+              style={{ height: `${Math.max(4, (b.views / maxBar) * 100)}%` }}
+              onMouseEnter={() => setHoverBarIndex(i)}
+            />
+          ))}
+        </div>
+
+        {hoverBarIndex !== null && (
           <div
-            key={b.hour}
-            className="realtime-bar"
-            style={{ height: `${Math.max(4, (b.views / maxBar) * 100)}%` }}
-            title={`${formatDateHourShort(b.hour, { timeZone: TZ })} · ${formatNumber(b.views)} views`}
-          />
-        ))}
+            className="realtime-bar-tooltip"
+            style={{ left: clampedTooltipLeftPx, width: TOOLTIP_WIDTH }}
+          >
+            <div className="realtime-bar-tooltip-date">
+              {formatDateHourRangeLabel(hourlyBars[hoverBarIndex].hour, { timeZone: TZ })}
+            </div>
+            <div className="realtime-bar-tooltip-value">{formatNumber(hourlyBars[hoverBarIndex].views)}</div>
+          </div>
+        )}
       </div>
       <div className="realtime-bars-labels">
         <span>{WINDOW_HOURS}h atrás</span>
@@ -157,7 +200,17 @@ export function ChannelRealtimeCard({
       )}
       {!loadingVideos &&
         topVideos?.map((video) => (
-          <div className="realtime-video-row" key={video.videoId}>
+          <a
+            className="realtime-video-row"
+            key={video.videoId}
+            href={
+              video.isShort
+                ? `https://www.youtube.com/shorts/${video.videoId}`
+                : `https://www.youtube.com/watch?v=${video.videoId}`
+            }
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             {video.thumbnailUrl ? (
               <img className="realtime-video-thumb" src={video.thumbnailUrl} alt="" />
             ) : (
@@ -172,7 +225,7 @@ export function ChannelRealtimeCard({
               </span>
             </span>
             <span className="realtime-video-views">{formatNumber(video.views)}</span>
-          </div>
+          </a>
         ))}
     </div>
   );

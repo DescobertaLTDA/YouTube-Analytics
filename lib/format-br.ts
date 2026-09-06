@@ -119,6 +119,43 @@ export function formatDateHourShort(
   return normalizeSpaces(`${datePart} ${hourPart}h`);
 }
 
+// "Ontem, 14:00 – 15:00" — dia relativo (Hoje/Ontem/data curta) + faixa de
+// hora cheia, pro tooltip das barrinhas do card "Últimas 48 horas"
+// (ChannelRealtimeCard). `iso` é o INÍCIO da hora; a barra representa a
+// janela [iso, iso + 1h).
+export function formatDateHourRangeLabel(iso: string, opts?: { timeZone?: string }): string {
+  const tz = opts?.timeZone;
+  const start = new Date(iso);
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+
+  const dayFmt = new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: tz,
+  });
+  const now = new Date();
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+  let dayLabel: string;
+  if (dayFmt.format(start) === dayFmt.format(now)) {
+    dayLabel = "Hoje";
+  } else if (dayFmt.format(start) === dayFmt.format(yesterday)) {
+    dayLabel = "Ontem";
+  } else {
+    dayLabel = formatDateShort(iso, { timeZone: tz });
+  }
+
+  const hourFmt = new Intl.DateTimeFormat("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: tz,
+  });
+
+  return normalizeSpaces(`${dayLabel}, ${hourFmt.format(start)} – ${hourFmt.format(end)}`);
+}
+
 // "Dom., 23 de ago. de 2026" — mesmo formato do tooltip do YouTube Studio.
 export function formatDateLong(iso: string, opts?: { timeZone?: string }): string {
   const d = toLocalDate(iso);

@@ -34,6 +34,16 @@ const PALETTE = [
   "#795548",
   "#607d8b",
   "#c2185b",
+  "#8bc34a",
+  "#3f51b5",
+  "#ff9800",
+  "#009688",
+  "#d500f9",
+  "#455a64",
+  "#cddc39",
+  "#00acc1",
+  "#e91e63",
+  "#33691e",
 ];
 
 function colorForIndex(i: number) {

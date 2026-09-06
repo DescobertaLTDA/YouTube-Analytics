@@ -4712,12 +4712,16 @@ footer.page-footer {
   margin-bottom: 2px;
 }
 
+.realtime-bars-wrapper {
+  position: relative;
+  margin-top: 6px;
+}
+
 .realtime-bars {
   display: flex;
   align-items: flex-end;
   gap: 1.5px;
   height: 56px;
-  margin-top: 6px;
   padding: 0 1px;
 }
 
@@ -4729,10 +4733,41 @@ footer.page-footer {
   border-radius: 1.5px 1.5px 0 0;
   opacity: 0.9;
   transition: opacity 0.15s ease;
+  cursor: pointer;
 }
 
 .realtime-bar:hover {
   opacity: 1;
+}
+
+/* Tooltip ao passar o mouse numa barra — mesmo visual do tooltip do
+   gráfico "Views por hora" (.chart-tooltip), mas com o valor grande em
+   azul (estilo YouTube Studio) em vez de uma lista por canal. */
+.realtime-bar-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  padding: 10px 14px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.realtime-bar-tooltip-date {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  margin-bottom: 4px;
+}
+
+.realtime-bar-tooltip-value {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: #0057ff;
 }
 
 .realtime-bars-labels {
@@ -4762,6 +4797,18 @@ footer.page-footer {
   align-items: center;
   gap: 8px;
   padding: 5px 0;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.realtime-video-row:hover {
+  background: var(--surface-hover, #f4f5f7);
+}
+
+.realtime-video-row:hover .realtime-video-title {
+  color: var(--malachite, #00b341);
 }
 
 .realtime-video-info {
@@ -4821,7 +4868,7 @@ footer.page-footer {
   display: grid;
   grid-template-columns: 1fr 300px;
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
   margin-bottom: 32px;
 }
 
