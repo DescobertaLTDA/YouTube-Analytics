@@ -4412,6 +4412,7 @@ footer.page-footer {
    compacta como o Instagram faz. */
 .tracked-channels-stories {
   display: flex;
+  flex-wrap: nowrap;
   gap: 16px;
   overflow-x: auto;
   overflow-y: hidden;

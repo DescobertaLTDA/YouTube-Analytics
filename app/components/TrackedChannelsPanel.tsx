@@ -31,6 +31,21 @@ type TrackedChannelVideo = {
 // terceiros rastreados (adicionar por URL/@handle/nome, remover) e
 // mostra o ranking de VPH (views/hora) dos vídeos recentes deles, pra
 // comparação rápida de quem está "bombando" agora.
+
+// Maior VPH entre os vídeos recentes de um canal — usado só pra
+// ordenar a tira de avatares (do mais viral pro menos viral agora).
+// Não é uma métrica nova: é o mesmo `vph` que já vem em cada vídeo da
+// tabela de baixo (lib/vph.ts, views totais ÷ horas desde a
+// publicação), só que aqui pegamos o valor máximo por canal.
+function maxVphForChannel(channelId: string, videos: TrackedChannelVideo[] | null): number {
+  if (!videos) return -1;
+  let max = -1;
+  for (const v of videos) {
+    if (v.channelId === channelId && v.vph != null && v.vph > max) max = v.vph;
+  }
+  return max;
+}
+
 export function TrackedChannelsPanel() {
   const [channels, setChannels] = useState<TrackedChannel[] | null>(null);
   const [videos, setVideos] = useState<TrackedChannelVideo[] | null>(null);
@@ -147,7 +162,9 @@ export function TrackedChannelsPanel() {
         <p className="text-muted">Nenhum canal rastreado ainda — adicione um acima.</p>
       ) : (
         <div className="tracked-channels-stories">
-          {channels.map((c) => {
+          {[...channels]
+            .sort((a, b) => maxVphForChannel(b.youtube_channel_id, videos) - maxVphForChannel(a.youtube_channel_id, videos))
+            .map((c) => {
             const label = c.channel_title || c.youtube_channel_id;
             return (
               <div
