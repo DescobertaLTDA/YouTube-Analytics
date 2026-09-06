@@ -962,6 +962,86 @@ a {
   flex-shrink: 0;
 }
 
+/* ===== AVATARES DE CANAL (legenda interativa do gráfico de Canais) ===== */
+/* Fileira de logos circulares abaixo do gráfico "Views por dia" da aba
+   Canais — a borda de cada logo usa a MESMA cor da linha dele no
+   gráfico, e passar o mouse por cima destaca só aquela linha (as outras
+   ficam esmaecidas). Ver ChannelViewsHistoryChart.tsx. */
+.chart-channel-avatars {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.chart-channel-avatar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  transition: opacity 0.15s ease;
+}
+
+.chart-channel-avatar-item--dimmed {
+  opacity: 0.35;
+}
+
+.chart-channel-avatar-ring {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  padding: 2px;
+  border: 2.5px solid transparent;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+}
+
+.chart-channel-avatar-item:hover .chart-channel-avatar-ring,
+.chart-channel-avatar-item--active .chart-channel-avatar-ring {
+  transform: scale(1.08);
+}
+
+.chart-channel-avatar-ring img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.chart-channel-avatar-fallback {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.chart-channel-avatar-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  max-width: 64px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ===== ROTEIRO SECTION ===== */
 .roteiro-section {
   background: var(--surface);

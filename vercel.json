@@ -7,6 +7,10 @@
     {
       "path": "/api/ganhos/sync",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/canais-terceiros/snapshot",
+      "schedule": "0 8 * * *"
     }
   ],
   "functions": {
@@ -23,6 +27,9 @@
       "maxDuration": 60
     },
     "app/api/ganhos/canal-vs-rastreados/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/canais-terceiros/snapshot/route.ts": {
       "maxDuration": 60
     },
     "app/api/chat/route.ts": {
