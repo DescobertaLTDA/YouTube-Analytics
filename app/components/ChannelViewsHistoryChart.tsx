@@ -434,19 +434,18 @@ export function ChannelViewsHistoryChart({ history }: { history: TrackedChannels
       </div>
 
       {/* Avatares de cada canal, borda na mesma cor da linha — passar o
-          mouse destaca só aquela linha no gráfico acima. */}
+          mouse destaca só aquela linha no gráfico acima. As logos em si
+          NÃO esmaecem (só a linha do gráfico faz isso) — aqui é só um
+          hover leve pra indicar qual está ativo. */}
       <div className="chart-channel-avatars">
         {channels.map((channel, i) => {
           const color = colorForIndex(i);
-          const isDimmed = highlightedChannel !== null && highlightedChannel !== channel.channelId;
           const isActive = highlightedChannel === channel.channelId;
           return (
             <button
               type="button"
               key={channel.channelId}
-              className={`chart-channel-avatar-item${isDimmed ? " chart-channel-avatar-item--dimmed" : ""}${
-                isActive ? " chart-channel-avatar-item--active" : ""
-              }`}
+              className={`chart-channel-avatar-item${isActive ? " chart-channel-avatar-item--active" : ""}`}
               onMouseEnter={() => setHighlightedChannel(channel.channelId)}
               onMouseLeave={() => setHighlightedChannel(null)}
               onFocus={() => setHighlightedChannel(channel.channelId)}

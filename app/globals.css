@@ -1017,17 +1017,13 @@ a {
   transition: opacity 0.15s ease;
 }
 
-.chart-channel-avatar-item--dimmed {
-  opacity: 0.35;
-}
-
 .chart-channel-avatar-ring {
   width: 44px;
   height: 44px;
   border-radius: 50%;
   padding: 2px;
   border: 2.5px solid transparent;
-  transition: transform 0.15s ease, border-color 0.15s ease;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1037,6 +1033,7 @@ a {
 .chart-channel-avatar-item:hover .chart-channel-avatar-ring,
 .chart-channel-avatar-item--active .chart-channel-avatar-ring {
   transform: scale(1.08);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
 }
 
 .chart-channel-avatar-ring img {
