@@ -63,6 +63,26 @@ export async function GET() {
     }
 
     const channels = (data as TrackedChannelRow[]) || [];
+
+    // DIAGNÓSTICO TEMPORÁRIO #2 — dessa vez loga a tabela INTEIRA (sem
+    // filtro de active), não só o que essa query filtrada trouxe. O
+    // objetivo é comparar, no mesmo instante, o que o servidor de
+    // produção vê contra o que o SQL Editor mostra — se divergirem, é
+    // sinal de cache de conexão (PgBouncer) ou lag de replicação, não
+    // bug de código.
+    const { data: allRows, error: allErr } = await db
+      .from("tracked_channels")
+      .select("id, youtube_channel_id, channel_title, active, added_at")
+      .order("added_at", { ascending: false });
+    console.log(
+      `[vph-debug2 ${new Date().toISOString()}] TABELA INTEIRA (sem filtro):`,
+      allErr ? `ERRO: ${allErr.message}` : JSON.stringify(allRows)
+    );
+    console.log(
+      `[vph-debug2 ${new Date().toISOString()}] filtrado active=true:`,
+      JSON.stringify(channels.map((c) => ({ id: c.id, youtube_channel_id: c.youtube_channel_id, title: c.channel_title })))
+    );
+
     if (channels.length === 0) {
       return noStoreJson({ videos: [] });
     }
