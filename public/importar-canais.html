@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>Importar canais rastreados</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; background: #0f1115; color: #e6e6e6; }
+  h1 { font-size: 20px; }
+  p.desc { color: #999; font-size: 14px; }
+  button { background: #4f8cff; color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-size: 15px; cursor: pointer; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  #resumo { margin: 16px 0; font-size: 14px; color: #ccc; }
+  #log { margin-top: 16px; border: 1px solid #2a2d35; border-radius: 8px; padding: 12px; max-height: 480px; overflow-y: auto; font-family: ui-monospace, monospace; font-size: 13px; background: #14161c; }
+  .ok { color: #6bdc8c; }
+  .fail { color: #ff8080; }
+  .row { padding: 2px 0; }
+</style>
+</head>
+<body>
+  <h1>Importar canais rastreados</h1>
+  <p class="desc">
+    Essa página chama <code>/api/canais-terceiros</code> do próprio site (mesma origem, sem
+    precisar de chave nenhuma aqui) pra cada link da lista abaixo. Precisa estar hospedada no
+    mesmo domínio do site (ex: <code>seusite.vercel.app/importar-canais.html</code>) — se abrir
+    o arquivo direto do computador (<code>file://</code>), o navegador vai bloquear por CORS.
+  </p>
+  <div id="resumo">89 canais na lista.</div>
+  <button id="btnImportar">Importar todos</button>
+  <div id="log"></div>
+
+<script>
+  const CANAIS = [
+  "https://www.youtube.com/@StoriesofAnimals-b2y/shorts",
+  "https://www.youtube.com/@LumiFarm28/shorts",
+  "https://www.youtube.com/@Quirksea/shorts",
+  "https://www.youtube.com/@GlobalHands56",
+  "https://www.youtube.com/@mranarrate/shorts",
+  "https://www.youtube.com/@FunFacts-b9b/shorts",
+  "https://www.youtube.com/@TheWild_Verse/shorts",
+  "https://www.youtube.com/@ThTom.7/shorts",
+  "https://www.youtube.com/@ResilientGlamour",
+  "https://www.youtube.com/@baydarfilms0/shorts",
+  "https://www.youtube.com/@CourtsAndCrimes",
+  "https://www.youtube.com/@ColdFootage1/shorts",
+  "https://www.youtube.com/@reversaltech/shorts",
+  "https://www.youtube.com/@DanDivii/shorts",
+  "https://www.youtube.com/@ClipRotter/shorts",
+  "https://www.youtube.com/@ARS_21/shorts",
+  "https://www.youtube.com/@TitanFlex1",
+  "https://www.youtube.com/@KyroCourt/shorts",
+  "https://www.youtube.com/@saltdarkfiles/shorts",
+  "https://www.youtube.com/@BrainCandy-6/shorts",
+  "https://www.youtube.com/@vt.physics/shorts",
+  "https://www.youtube.com/@Snipetron1.0/shorts",
+  "https://www.youtube.com/@RoyelBuzz8S",
+  "https://www.youtube.com/@VID_OTHERS/shorts",
+  "https://www.youtube.com/@GJShortz/shorts",
+  "https://www.youtube.com/@TechNostalgia-Shorts/shorts",
+  "https://www.youtube.com/@NextLevelGyan/shorts",
+  "https://www.youtube.com/@SamScott.7/shorts",
+  "https://www.youtube.com/@Factlyes/shorts",
+  "https://www.youtube.com/@JordanGoldman-ttv/shorts",
+  "https://www.youtube.com/@Factsgallery66/shorts",
+  "https://www.youtube.com/@StarlinteCuenta/shorts",
+  "https://www.youtube.com/@chinaocultax/shorts",
+  "https://www.youtube.com/@ButchElSabio",
+  "https://www.youtube.com/@Conocimientocadad%C3%ADa/shorts",
+  "https://www.youtube.com/@MRCUENTOSOK/shorts",
+  "https://www.youtube.com/@fuerzaroja24/shorts",
+  "https://www.youtube.com/@Avidamaravilha",
+  "https://www.youtube.com/@Utopimente/shorts",
+  "https://www.youtube.com/@Dr.Juvenal/shorts",
+  "https://www.youtube.com/@mundomisteri.o/shorts",
+  "https://www.youtube.com/@NomadeOtaku/shorts",
+  "https://www.youtube.com/@Rikendes/shorts",
+  "https://www.youtube.com/@CanalSpacenationTV/shorts",
+  "https://www.youtube.com/@ChillPenguX/shorts",
+  "https://www.youtube.com/@Dosecuriosa021/shorts",
+  "https://www.youtube.com/@AndreShortsBr/shorts",
+  "https://www.youtube.com/@Matthewzada",
+  "https://www.youtube.com/@ReidosClipes019/shorts",
+  "https://www.youtube.com/@360ShortsBr/shorts",
+  "https://www.youtube.com/@owagnerverly/shorts",
+  "https://www.youtube.com/@euBeatrizAffonso/shorts",
+  "https://www.youtube.com/@DassuShorts/shorts",
+  "https://www.youtube.com/@M%C3%A1fiaDosShorts/shorts",
+  "https://www.youtube.com/@SURTADOshorts/shorts",
+  "https://www.youtube.com/@SamuelShortsBR/shorts",
+  "https://www.youtube.com/@Lumphix/shorts",
+  "https://www.youtube.com/@capivara_comenta/shorts",
+  "https://www.youtube.com/@AlphaShorts0112/shorts",
+  "https://www.youtube.com/channel/UCP3Z1j7pFBJgsUUHcz7-WSw",
+  "https://www.youtube.com/@leaoshortsOFC/shorts",
+  "https://www.youtube.com/channel/UCU4TI0GLvzZ49Vr82YDAKIg",
+  "https://www.youtube.com/@AnimalzeraYT/shorts",
+  "https://www.youtube.com/@Dosecuriosa021",
+  "https://www.youtube.com/@zhaocaishizhimao/shorts",
+  "https://www.youtube.com/@%E6%88%91%E7%9A%84%E4%B8%96%E7%95%8C-g6u/shorts",
+  "https://www.youtube.com/@GoldDiscoveryArmin/shorts",
+  "https://www.youtube.com/@RezkyMZHunter/shorts",
+  "https://www.youtube.com/@LuckyStoneFinder/shorts",
+  "https://www.youtube.com/@naturalgems777/shorts",
+  "https://www.youtube.com/@BilimNoktasii/shorts",
+  "https://www.youtube.com/shorts/2sKzWWhIpUw",
+  "https://www.youtube.com/@byllimitless",
+  "https://www.youtube.com/@AyushTruth",
+  "https://www.youtube.com/@MakeFactsOf/shorts",
+  "https://www.youtube.com/@MrLaden.1/shorts",
+  "https://www.youtube.com/@v1tin/shorts",
+  "https://www.youtube.com/@AuraShorts67/shorts",
+  "https://www.youtube.com/@DaylonRanks/shorts",
+  "https://www.youtube.com/@Ryth/videos",
+  "https://www.youtube.com/@PolarRanks",
+  "https://www.youtube.com/@Frzyy01",
+  "https://www.youtube.com/@AuraShorts67",
+  "https://www.youtube.com/@TioBaldoo",
+  "https://www.youtube.com/@Atipico3/shorts",
+  "https://www.youtube.com/@mrsdrikk/shorts",
+  "https://www.youtube.com/@XiroRanks/shorts"
+  ];
+
+  const btn = document.getElementById("btnImportar");
+  const log = document.getElementById("log");
+  const resumo = document.getElementById("resumo");
+
+  function addRow(texto, classe) {
+    const div = document.createElement("div");
+    div.className = "row " + (classe || "");
+    div.textContent = texto;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function sleep(ms) {
+    return new Promise((r) => setTimeout(r, ms));
+  }
+
+  async function importarTudo() {
+    btn.disabled = true;
+    log.innerHTML = "";
+    let ok = 0, falhas = 0;
+
+    for (let i = 0; i < CANAIS.length; i++) {
+      const url = CANAIS[i];
+      try {
+        const res = await fetch("/api/canais-terceiros", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ input: url }),
+        });
+        const data = await res.json().catch(() => null);
+        if (res.ok && data?.channel) {
+          ok++;
+          addRow(`✅ [${i + 1}/${CANAIS.length}] ${data.channel.channel_title || url}`, "ok");
+        } else {
+          falhas++;
+          addRow(`❌ [${i + 1}/${CANAIS.length}] ${url} — ${data?.error || res.status}`, "fail");
+        }
+      } catch (err) {
+        falhas++;
+        addRow(`❌ [${i + 1}/${CANAIS.length}] ${url} — ${err.message}`, "fail");
+      }
+      resumo.textContent = `${ok} importados, ${falhas} com erro, ${CANAIS.length} no total.`;
+      await sleep(800); // evita estourar cota da YouTube API
+    }
+
+    btn.disabled = false;
+    addRow("— concluído —");
+  }
+
+  btn.addEventListener("click", importarTudo);
+</script>
+</body>
+</html>
