@@ -4414,3 +4414,61 @@ footer.page-footer {
   color: var(--malachite);
   white-space: nowrap;
 }
+
+/* ---------------------------------------------------------------------
+   Skeleton de carregamento (app/loading.tsx e app/canais-terceiros/loading.tsx)
+   Mostrado instantaneamente pelo Next.js (Suspense) enquanto a página de
+   destino ainda está buscando dados no servidor — troca a tela travada/
+   branca de antes por feedback visual imediato ao clicar em Ganhos/Canais.
+   ------------------------------------------------------------------- */
+.skeleton-block {
+  background: linear-gradient(
+    90deg,
+    var(--surface-raised) 25%,
+    var(--border) 37%,
+    var(--surface-raised) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeletonShine 1.4s ease infinite;
+  border-radius: var(--radius-md);
+}
+
+@keyframes skeletonShine {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.skeleton-header {
+  height: 28px;
+  width: 220px;
+  margin-bottom: 10px;
+}
+
+.skeleton-subtitle {
+  height: 16px;
+  width: 70%;
+  max-width: 520px;
+  margin-bottom: 32px;
+}
+
+.skeleton-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.skeleton-stat-card {
+  height: 96px;
+  border-radius: var(--radius-lg);
+}
+
+.skeleton-panel {
+  height: 220px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 24px;
+}

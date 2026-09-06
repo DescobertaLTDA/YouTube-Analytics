@@ -25,7 +25,17 @@ export default async function GanhosPage({
 }: {
   searchParams: { page?: string };
 }) {
-  const data = await getCreatorEarnings();
+  // As duas buscas não dependem uma da outra (getCreatorEarnings lê
+  // creator_videos/manual_revenue/APIs externas; getCreatorDailyEarnings lê
+  // o histórico diário pro gráfico), mas antes eram aguardadas em
+  // sequência — cada uma já pesada sozinha (varredura paginada de tabela +
+  // chamadas a APIs externas), então rodavam uma depois da outra e SOMAVAM
+  // os tempos. Com Promise.all elas rodam em paralelo, cortando o tempo
+  // total de carregamento da página pela metade.
+  const [data, earningsHistory] = await Promise.all([
+    getCreatorEarnings(),
+    getCreatorDailyEarnings(28),
+  ]);
 
   // Calculado uma única vez aqui (server component) e passado como prop
   // adiante — evita que os client components recalculem "agora" de novo
@@ -35,7 +45,6 @@ export default async function GanhosPage({
   const daysLeft = daysLeftInMonth();
   const daysElapsed = nowInSaoPaulo().getDate();
   const paymentCountdown = getPaymentCountdown();
-  const earningsHistory = await getCreatorDailyEarnings(28);
   const page = Number(searchParams.page) || 1;
   // Maior "Ganhos do mês" entre os criadores — usado pra destacar o card
   // vencedor do dia com o selo dourado. Só entra em jogo se houver ganho
