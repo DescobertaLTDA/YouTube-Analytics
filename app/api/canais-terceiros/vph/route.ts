@@ -63,6 +63,17 @@ export async function GET() {
     }
 
     const channels = (data as TrackedChannelRow[]) || [];
+
+    // DIAGNÓSTICO TEMPORÁRIO — remover depois de descobrir o bug do
+    // Rochudoz. Mostra exatamente o que ESTA chamada específica leu do
+    // banco, com timestamp, pra comparar com o que aparece no SQL Editor.
+    console.log(
+      `[vph-debug ${new Date().toISOString()}] canais ativos lidos:`,
+      JSON.stringify(
+        channels.map((c) => ({ id: c.id, youtube_channel_id: c.youtube_channel_id, title: c.channel_title }))
+      )
+    );
+
     if (channels.length === 0) {
       return noStoreJson({ videos: [] });
     }
