@@ -13,7 +13,7 @@ import {
 } from "./supabase";
 import { isShortVideo } from "./youtube-channel";
 import { CREATORS, CreatorKey, SHORTS_RPM, estimateEarnings } from "./creator-earnings";
-import { getRealRpmMap, sumEstimatedEarnings, effectiveViews } from "./rpm-real";
+import { getRealRpmMap, effectiveViews } from "./rpm-real";
 import { getDailyVideoRevenue } from "./youtube-revenue";
 import { nowInSaoPaulo } from "./date-br";
 import { getAllOrders, sumPaidAmount, filterOrdersByCreator } from "./cakto";
@@ -381,7 +381,19 @@ export type GanhosVideoRow = {
   commentCount: number | null;
   durationSeconds: number | null;
   publishedAt: string | null;
+  // Valor efetivamente atribuído a esse vídeo hoje: quando há valor manual
+  // digitado (28d) ativo, é a fatia rateada por peso RPM do total manual;
+  // senão é a receita OFICIAL da API já liberada pra esse vídeo, caindo pra
+  // estimativa por RPM (fixo ou CSV real) onde a API ainda não liberou nada.
   revenue: number;
+  // Receita OFICIAL da API quando já liberada pra esse vídeo, senão a
+  // estimativa por RPM (fixo ou CSV real) — SEMPRE essa fórmula, mesmo
+  // quando existe um valor manual digitado ativo (`revenue` acima ignora
+  // essa regra nesse caso; `projectedRevenue` nunca ignora). É este campo
+  // (não `revenue`) que deve alimentar toda soma agregada do site: cards de
+  // criador, histórico, metas etc. — combinado, ele reflete o desempenho
+  // real do canal, sem depender de alguém ter digitado um valor manual.
+  projectedRevenue: number;
 };
 
 export type GanhosData = {
@@ -797,37 +809,25 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
 
   // Zero ou não preenchido conta como "sem valor manual" — volta a usar a
   // estimativa por RPM automaticamente, sem precisar de um botão separado.
+  // `isManualRevenue`/`manualAmount` não influenciam mais nenhum cálculo
+  // abaixo — só são retornados no fim da função como informação (o
+  // formulário/coluna "Receita" que os usa não foi alterado nessa parte).
   const isManualRevenue = manualAmount != null && manualAmount > 0;
-  // Estimativa por RPM (Shorts e vídeos longos usam RPM diferente — longos
-  // rendem bem mais — R$5,50 contra R$0,32 dos Shorts —, então soma cada
-  // um separado; dentro de cada formato soma vídeo a vídeo, não views
-  // totais x 1 RPM, porque cada vídeo pode ter seu próprio RPM real
-  // importado via CSV).
-  //
-  // IMPORTANTE: esta variável (`estimatedPeriodEarnings`, só RPM/CSV, sem
-  // receita real da API) é usada como PESO em outros pontos deste arquivo
-  // pra ratear um valor manual digitado entre Shorts/vídeos longos e entre
-  // vídeos individuais (ver `noHashtagVideos`/`topVideosMonth` mais abaixo
-  // e o rateio por criador) — ali ela não representa "quanto o canal
-  // ganhou de verdade", só o peso relativo entre vídeos/formatos. Por isso
-  // ela continua puramente estimada mesmo agora que existe receita real:
-  // se o numerador dessas contas (sempre estimativa) e o denominador
-  // (esta variável) não usarem a mesma base, as fatias do rateio param de
-  // somar exatamente o valor manual digitado. NÃO usar esta variável pra
-  // exibir "quanto o canal ganhou" — pra isso existe
-  // `realOrEstimatedPeriodEarnings` logo abaixo.
-  const estimatedPeriodEarnings =
-    sumEstimatedEarnings(rows.filter((r) => r.is_short), realRpmMap) +
-    sumEstimatedEarnings(rows.filter((r) => !r.is_short), realRpmMap);
-  // Valor de fato exibido no card "Receita Est. · 28d" quando NÃO há valor
-  // manual digitado: prioriza a receita OFICIAL já liberada pela API,
+  // Valor de fato exibido nos totais: sempre prioriza a receita OFICIAL já
+  // liberada pela API,
   // vídeo a vídeo, caindo pra estimativa por RPM só onde o YouTube ainda
   // não liberou nada — mesmo padrão de receita real já aplicado nos cards
   // de Shorts/Vídeos, RPM Shorts/Vídeos e Histórico de Ganhos.
   const realOrEstimatedPeriodEarnings =
     sumRealOrEstimatedEarnings(rows.filter((r) => r.is_short)) +
     sumRealOrEstimatedEarnings(rows.filter((r) => !r.is_short));
-  const periodEarnings = isManualRevenue ? (manualAmount as number) : realOrEstimatedPeriodEarnings;
+  // Valor manual eliminado dos cálculos: periodEarnings agora é sempre
+  // real+RPM (mesma fórmula de `projectedRevenue`), independente de haver
+  // um valor manual digitado. `isManualRevenue`/`manualAmount` continuam
+  // sendo lidos e retornados só como informação (coluna "Receita" e o
+  // formulário em si não foram alterados nessa parte), mas não entram em
+  // nenhuma soma/agregado a partir daqui.
+  const periodEarnings = realOrEstimatedPeriodEarnings;
 
   // RPM médio efetivo do canal inteiro no período (28d), separado por
   // formato — mesmo princípio do `effectiveShortsRpm`/`effectiveLongRpm`
@@ -837,19 +837,10 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
   // peso RPM de cada um (mesma lógica de rateio usada no resto do
   // arquivo), pra o RPM médio exibido continuar batendo com a receita
   // real informada.
-  let periodShortsEarnings: number;
-  let periodLongEarnings: number;
-  if (isManualRevenue) {
-    const shortsWeight = sumEstimatedEarnings(rows.filter((r) => r.is_short), realRpmMap);
-    const longWeight = sumEstimatedEarnings(rows.filter((r) => !r.is_short), realRpmMap);
-    const totalWeight = shortsWeight + longWeight;
-    periodShortsEarnings =
-      totalWeight > 0 ? Math.round(periodEarnings * (shortsWeight / totalWeight) * 100) / 100 : 0;
-    periodLongEarnings = Math.round((periodEarnings - periodShortsEarnings) * 100) / 100;
-  } else {
-    periodShortsEarnings = sumEstimatedEarnings(rows.filter((r) => r.is_short), realRpmMap);
-    periodLongEarnings = sumEstimatedEarnings(rows.filter((r) => !r.is_short), realRpmMap);
-  }
+  // Sem ramo de valor manual: sempre receita real da API com fallback pra
+  // estimativa por RPM, por formato.
+  const periodShortsEarnings = sumRealOrEstimatedEarnings(rows.filter((r) => r.is_short));
+  const periodLongEarnings = sumRealOrEstimatedEarnings(rows.filter((r) => !r.is_short));
   // RPM médio exibido no card = média dos 20 maiores RPMs REAIS entre os
   // vídeos do período, por formato — em vez da média ponderada por views
   // (receita total / views totais). Pedido explícito: refletir o RPM dos
@@ -904,13 +895,12 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
         realRpmMap.get(youtubeVideoId)?.rpm
       );
       const realRevenueSum = sumRealRevenueSince(youtubeVideoId, periodStartDate);
-      const revenue = isManualRevenue
-        ? estimatedPeriodEarnings > 0
-          ? Math.round(periodEarnings * (videoWeight / estimatedPeriodEarnings) * 100) / 100
-          : 0
-        : realRevenueSum > 0
-          ? Math.round(realRevenueSum * 100) / 100
-          : videoWeight;
+      // Projeção: real da API quando liberada, senão a estimativa por RPM.
+      // Valor manual eliminado: `revenue` agora é sempre igual a
+      // `projectedRevenue`, não existe mais ramo separado pra quando há
+      // valor manual digitado.
+      const projectedRevenue = realRevenueSum > 0 ? Math.round(realRevenueSum * 100) / 100 : videoWeight;
+      const revenue = projectedRevenue;
 
       return {
         youtubeVideoId,
@@ -925,6 +915,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
         durationSeconds: first.duration_seconds,
         publishedAt: first.published_at,
         revenue,
+        projectedRevenue,
       };
     })
     .sort((a, b) => {
@@ -944,36 +935,15 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
 
     const viewsSharePct = periodViews > 0 ? (totalViews / periodViews) * 100 : 0;
 
-    let shortsEarnings: number;
-    let longEarnings: number;
-
-    if (isManualRevenue) {
-      // Com valor real digitado, não dá pra saber o breakdown exato por
-      // tipo — mas em vez de ratear só pela % de views (o que ignora que
-      // vídeo longo rende muito mais por view que Shorts), pesa a fatia de
-      // cada tipo pela receita estimada de cada formato (RPM próprio de
-      // cada um). Assim o total bate com o valor real digitado, mas a
-      // divisão respeita a diferença de monetização entre os dois formatos.
-      const totalEarnings =
-        periodViews > 0 ? Math.round(periodEarnings * (totalViews / periodViews) * 100) / 100 : 0;
-      const shortsWeight = sumEstimatedEarnings(shorts, realRpmMap);
-      const longWeight = sumEstimatedEarnings(longs, realRpmMap);
-      const totalWeight = shortsWeight + longWeight;
-      shortsEarnings =
-        totalWeight > 0 ? Math.round(totalEarnings * (shortsWeight / totalWeight) * 100) / 100 : 0;
-      longEarnings = Math.round((totalEarnings - shortsEarnings) * 100) / 100;
-    } else {
-      // Receita real da API vídeo a vídeo, com fallback pro RPM estimado —
-      // mesma lógica e mesma função usada em `realOrEstimatedPeriodEarnings`
-      // acima. PRECISA ser exatamente a mesma base de cálculo usada ali:
-      // "Saldo sem criador" (em app/page.tsx) é `periodEarnings - soma dos
-      // totalEarnings dos 3 criadores` — se aqui usasse só estimativa
-      // enquanto o total usa receita real, os dois números de referência
-      // deixam de bater e esse saldo pode até ficar negativo (foi
-      // exatamente isso que aconteceu antes desse ajuste).
-      shortsEarnings = sumRealOrEstimatedEarnings(shorts);
-      longEarnings = sumRealOrEstimatedEarnings(longs);
-    }
+    // Valor manual eliminado: sempre receita real da API vídeo a vídeo,
+    // com fallback pro RPM estimado — mesma lógica e mesma função usada em
+    // `realOrEstimatedPeriodEarnings` acima. PRECISA ser exatamente a
+    // mesma base de cálculo usada ali: "Saldo sem criador" (em
+    // app/page.tsx) é `periodEarnings - soma dos totalEarnings dos 3
+    // criadores` — se aqui usasse só estimativa enquanto o total usa
+    // receita real, os dois números de referência deixam de bater.
+    const shortsEarnings = sumRealOrEstimatedEarnings(shorts);
+    const longEarnings = sumRealOrEstimatedEarnings(longs);
 
     const totalEarnings = Math.round((shortsEarnings + longEarnings) * 100) / 100;
     // RPM médio efetivo do criador — mistura os dois RPMs de acordo com o
@@ -1087,13 +1057,12 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
         realRpmMap.get(youtubeVideoId)?.rpm
       );
       const realRevenueSum = sumRealRevenueSince(youtubeVideoId, periodStartDate);
-      const revenue = isManualRevenue
-        ? estimatedPeriodEarnings > 0
-          ? Math.round(periodEarnings * (videoWeight / estimatedPeriodEarnings) * 100) / 100
-          : 0
-        : realRevenueSum > 0
-          ? Math.round(realRevenueSum * 100) / 100
-          : videoWeight;
+      // Projeção: real da API quando liberada, senão a estimativa por RPM.
+      // Valor manual eliminado: `revenue` agora é sempre igual a
+      // `projectedRevenue`, não existe mais ramo separado pra quando há
+      // valor manual digitado.
+      const projectedRevenue = realRevenueSum > 0 ? Math.round(realRevenueSum * 100) / 100 : videoWeight;
+      const revenue = projectedRevenue;
 
       return {
         youtubeVideoId,
@@ -1108,6 +1077,7 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
         durationSeconds: first.duration_seconds,
         publishedAt: first.published_at,
         revenue,
+        projectedRevenue,
       };
     })
     .sort((a, b) => {
@@ -1149,14 +1119,20 @@ export async function getCreatorEarnings(): Promise<GanhosData> {
         commentCount: first.comment_count,
         durationSeconds: first.duration_seconds,
         publishedAt: first.published_at,
-        revenue: (() => {
+        // Top 10 do mês nunca usa o valor manual (ele é escopado aos 28d),
+        // então revenue e projectedRevenue são a mesma fórmula — calculada
+        // uma vez e reaproveitada nos dois campos.
+        ...(() => {
           const realRevenueSum = sumRealRevenueSince(youtubeVideoId, monthStartDate);
-          if (realRevenueSum > 0) return Math.round(realRevenueSum * 100) / 100;
-          return estimateEarnings(
-            effectiveViews(youtubeVideoId, first.view_count, realRpmMap),
-            first.is_short,
-            realRpmMap.get(youtubeVideoId)?.rpm
-          );
+          const value =
+            realRevenueSum > 0
+              ? Math.round(realRevenueSum * 100) / 100
+              : estimateEarnings(
+                  effectiveViews(youtubeVideoId, first.view_count, realRpmMap),
+                  first.is_short,
+                  realRpmMap.get(youtubeVideoId)?.rpm
+                );
+          return { revenue: value, projectedRevenue: value };
         })(),
       };
     })
