@@ -26,8 +26,6 @@ import {
   paidSaleDetails,
   type ShopeeSaleDetail,
 } from "./shopee";
-import { calculateRevenueGapsForVideos, type RevenueGapResult } from "./revenue-gap";
-
 export type VideoSource = "manual" | "auto";
 
 export type VideoWithStats = {
@@ -45,9 +43,6 @@ export type VideoWithStats = {
   // CTR/retenção do Studio, change log). "auto" = achado só pela varredura
   // por hashtag da aba Ganhos (tabela `creator_videos`), sem esse histórico.
   source: VideoSource;
-  // Projeção = receita oficial já liberada + estimativa dos dias em trânsito
-  // (Parte 5b). null para vídeos manuais (não têm dados de gap ainda).
-  projectedTotal: number | null;
 };
 
 export async function getDashboardData(): Promise<VideoWithStats[]> {
@@ -122,7 +117,6 @@ export async function getDashboardData(): Promise<VideoWithStats[]> {
         history,
         isShort: isShortVideo(latest?.duration_seconds),
         source: "manual" as const,
-        projectedTotal: null, // vídeos manuais não têm gap calculado
       };
     })
   );
@@ -183,17 +177,6 @@ async function getAutoDiscoveredRows(): Promise<VideoWithStats[]> {
     );
   }
 
-  // Calcula gaps para projeção (Parte 5b)
-  const revenueGaps = calculateRevenueGapsForVideos(
-    Array.from(byVideoId.entries()).map(([youtubeVideoId, group]) => ({
-      youtubeVideoId,
-      currentViewCount: group[0].view_count || 0,
-      isShort: group[0].is_short,
-      realRpm: realRpmMap.get(youtubeVideoId)?.rpm,
-    })),
-    realRevenueRows || []
-  );
-
   const results: VideoWithStats[] = [];
 
   for (const [youtubeVideoId, group] of byVideoId) {
@@ -204,8 +187,6 @@ async function getAutoDiscoveredRows(): Promise<VideoWithStats[]> {
     if (taggedGroup.length === 0) continue;
 
     const first = taggedGroup[0];
-    const gapResult = revenueGaps.get(youtubeVideoId);
-    const projectedTotal = gapResult?.projectedTotal ?? null;
     const creatorLabel = taggedGroup
       .map((r) => CREATORS.find((c) => c.key === r.creator)?.label || r.creator)
       .join(" + ");
@@ -264,7 +245,6 @@ async function getAutoDiscoveredRows(): Promise<VideoWithStats[]> {
       history: [fakeSnapshot],
       isShort: first.is_short,
       source: "auto" as const,
-      projectedTotal,
     });
   }
 
