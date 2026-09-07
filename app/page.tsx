@@ -7,8 +7,6 @@ import { GanhosVideoHistory } from "@/app/components/GanhosVideoHistory";
 import { TopVideosMonth } from "@/app/components/TopVideosMonth";
 import { NoCreatorDrawer } from "@/app/components/NoCreatorDrawer";
 import { EarningsHistoryChart } from "@/app/components/EarningsHistoryChart";
-import { ChannelsHourlySection } from "@/app/components/ChannelsHourlySection";
-import { getTrackedChannelsViewsHistory } from "@/lib/tracked-channels-history";
 import { PaymentCountdownCard } from "@/app/components/PaymentCountdownCard";
 import { PreviousMonthEarningsProvider } from "@/app/components/PreviousMonthEarningsContext";
 import {
@@ -34,10 +32,9 @@ export default async function GanhosPage({
   // chamadas a APIs externas), então rodavam uma depois da outra e SOMAVAM
   // os tempos. Com Promise.all elas rodam em paralelo, cortando o tempo
   // total de carregamento da página pela metade.
-  const [data, earningsHistory, channelsViewsHistory] = await Promise.all([
+  const [data, earningsHistory] = await Promise.all([
     getCreatorEarnings(),
     getCreatorDailyEarnings(28),
-    getTrackedChannelsViewsHistory(7 * 24),
   ]);
 
   // Calculado uma única vez aqui (server component) e passado como prop
@@ -122,8 +119,6 @@ export default async function GanhosPage({
       </div>
 
       <EarningsHistoryChart history={earningsHistory} />
-
-      <ChannelsHourlySection history={channelsViewsHistory} />
 
       <PaymentCountdownCard
         variant="banner"

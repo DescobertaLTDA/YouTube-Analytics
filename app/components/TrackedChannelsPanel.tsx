@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { IconZap, IconTrash } from "@/app/components/Icons";
 import { formatNumber, formatDateShort } from "@/lib/format-br";
 import { formatVph } from "@/lib/vph";
+import { ChannelsHourlySection } from "@/app/components/ChannelsHourlySection";
+import type { TrackedChannelsHistory } from "@/lib/tracked-channels-history";
 
 type TrackedChannel = {
   id: string;
@@ -48,7 +50,11 @@ function maxVphForChannel(channelId: string, videos: TrackedChannelVideo[] | nul
 
 const VIDEOS_PER_PAGE = 10;
 
-export function TrackedChannelsPanel() {
+export function TrackedChannelsPanel({
+  channelsViewsHistory,
+}: {
+  channelsViewsHistory: TrackedChannelsHistory;
+}) {
   const [channels, setChannels] = useState<TrackedChannel[] | null>(null);
   const [videos, setVideos] = useState<TrackedChannelVideo[] | null>(null);
   const [loadingVideos, setLoadingVideos] = useState(false);
@@ -210,6 +216,8 @@ export function TrackedChannelsPanel() {
           })}
         </div>
       )}
+
+      <ChannelsHourlySection history={channelsViewsHistory} />
 
       <h3 className="tracked-channels-subtitle">
         <IconZap size={15} /> vídeos recentes por VPH (views/hora)

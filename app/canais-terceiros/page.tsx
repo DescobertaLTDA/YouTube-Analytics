@@ -1,8 +1,11 @@
 import { TrackedChannelsPanel } from "@/app/components/TrackedChannelsPanel";
+import { getTrackedChannelsViewsHistory } from "@/lib/tracked-channels-history";
 
 export const revalidate = 0;
 
-export default function CanaisTerceirosPage() {
+export default async function CanaisTerceirosPage() {
+  const channelsViewsHistory = await getTrackedChannelsViewsHistory(7 * 24);
+
   return (
     <main className="page">
       <div className="header-row">
@@ -18,7 +21,7 @@ export default function CanaisTerceirosPage() {
         </div>
       </div>
 
-      <TrackedChannelsPanel />
+      <TrackedChannelsPanel channelsViewsHistory={channelsViewsHistory} />
 
       <footer className="page-footer">supabase · projeto ildxajnvgoduikxkcxqv · região sa-east-1</footer>
     </main>
